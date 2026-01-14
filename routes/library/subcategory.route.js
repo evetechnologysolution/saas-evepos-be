@@ -1,5 +1,5 @@
 import express from "express";
-import { isAuth } from "../middleware/auth.js";
+import { isAuth } from "../../middleware/auth.js";
 import {
     getAllSubcategory,
     getPaginateSubcategory,
@@ -7,24 +7,22 @@ import {
     addSubcategory,
     editSubcategory,
     deleteSubcategory
-} from "../controllers/subcategory.controller.js";
+} from "../../controllers/library/subcategory.controller.js";
 
 const router = express.Router();
 
 // GETTING ALL THE DATA
-router.get("/", getAllSubcategory);
-
-// GETTING ALL THE DATA
-router.get("/paginate", getPaginateSubcategory);
+router.get("/all", isAuth, getAllSubcategory);
+router.get("/", isAuth, getPaginateSubcategory);
 
 // GET A SPECIFIC DATA
-router.get("/:id", getSubcategoryById);
+router.get("/:id", isAuth, getSubcategoryById);
 
 // CREATE NEW DATA
-router.post("/", addSubcategory);
+router.post("/", isAuth, addSubcategory);
 
 // UPDATE A SPECIFIC DATA
-router.patch("/:id", editSubcategory);
+router.patch("/:id", isAuth, editSubcategory);
 
 // DELETE A SPECIFIC DATA
 router.delete("/:id", isAuth, deleteSubcategory);

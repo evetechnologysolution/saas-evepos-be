@@ -1,6 +1,6 @@
 import multer from "multer";
 import Voucher from "../models/voucher.js";
-import Product from "../models/product.js";
+import Product from "../models/library/product.js";
 import Member from "../models/member.js";
 import MemberVoucher from "../models/voucherMember.js";
 import { cloudinary, imageUpload } from "../lib/cloudinary.js";

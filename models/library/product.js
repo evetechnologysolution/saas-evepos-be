@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
-import { capitalizeFirstLetter } from "../lib/textSetting.js";
+import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
 const DataSchema = mongoose.Schema({
     name: {
@@ -126,10 +126,6 @@ const DataSchema = mongoose.Schema({
             }
         },
     ],
-    isLaundryBag: {
-        type: Boolean,
-        default: false
-    },
     isRecommended: {
         type: Boolean,
         default: false

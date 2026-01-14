@@ -57,6 +57,8 @@ const DataSchema = mongoose.Schema({
     required: true,
     default: "admin"
   },
+  resetToken: { type: String, default: "" },
+  resetTokenExpiry: { type: Date },
   isActive: {
     type: Boolean,
     default: true,

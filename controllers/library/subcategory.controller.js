@@ -1,11 +1,18 @@
 import multer from "multer";
-import Subcategory from "../models/subcategory.js";
-import { cloudinary, imageUpload } from "../lib/cloudinary.js";
+import Subcategory from "../../models/library/subcategory.js";
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 
 // GETTING ALL THE DATA
 export const getAllSubcategory = async (req, res) => {
     try {
-        const listofData = await Subcategory.find().sort({ "listNumber": 1 });
+        let query = {};
+
+        if (req.userData) {
+            query.tenantRef = req.userData?.tenantRef;
+            query.outletRef = req.userData?.outletRef;
+        }
+
+        const listofData = await Subcategory.find(query).sort({ "listNumber": 1 });
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -15,18 +22,34 @@ export const getAllSubcategory = async (req, res) => {
 // GETTING ALL THE DATA
 export const getPaginateSubcategory = async (req, res) => {
     try {
-        const { page, perPage, search } = req.query;
+        const { page, perPage, search, sort } = req.query;
         let query = {};
+
+        if (req.userData) {
+            query.tenantRef = req.userData?.tenantRef;
+            query.outletRef = req.userData?.outletRef;
+        }
+
         if (search) {
             query = {
                 ...query,
                 name: { $regex: search, $options: 'i' }, // option i for case insensitivity to match upper and lower cases.
             };
         };
+
+        let sortObj = { name: 1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { name: 1 },
+            sort: sortObj,
         }
         const listofData = await Subcategory.paginate(query, options);
         return res.json(listofData);
@@ -61,6 +84,10 @@ export const addSubcategory = async (req, res) => {
             }
 
             let objData = req.body;
+            if (req.userData) {
+                objData.tenantRef = req.userData?.tenantRef;
+                objData.outletRef = req.userData?.outletRef;
+            }
 
             if (req.file) {
                 const cloud = await cloudinary.uploader.upload(req.file.path, {

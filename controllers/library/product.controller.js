@@ -1,14 +1,19 @@
 import multer from "multer";
-import Product from "../models/product.js";
-import Category from "../models/library/category.js";
-import Subcategory from "../models/subcategory.js";
-import { cloudinary, imageUpload } from "../lib/cloudinary.js";
+import Product from "../../models/library/product.js";
+import Category from "../../models/library/category.js";
+import Subcategory from "../../models/library/subcategory.js";
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 
 // GETTING ALL THE DATA
 export const getAllProduct = async (req, res) => {
     try {
         const { category, subcategory } = req.query;
         let query = {};
+
+        if (req.userData) {
+            query.tenantRef = req.userData?.tenantRef;
+            query.outletRef = req.userData?.outletRef;
+        }
 
         if (category) {
             let categoryName = category.replace(":ne", "").trim();
@@ -289,14 +294,30 @@ export const getAllProduct = async (req, res) => {
 // GETTING ALL THE DATA
 export const getPaginateProduct = async (req, res) => {
     try {
-        const { page, perPage, search } = req.query;
+        const { page, perPage, search, sort } = req.query;
         let query = {};
+
+        if (req.userData) {
+            query.tenantRef = req.userData?.tenantRef;
+            query.outletRef = req.userData?.outletRef;
+        }
+
         if (search) {
             query = {
                 ...query,
                 name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
         };
+
+        let sortObj = { name: 1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
         const options = {
             populate: [
                 {
@@ -310,7 +331,7 @@ export const getPaginateProduct = async (req, res) => {
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { name: 1 },
+            sort: sortObj,
         }
         const listofData = await Product.paginate(query, options);
         return res.json(listofData);
@@ -345,6 +366,10 @@ export const addProduct = async (req, res) => {
             }
 
             let objData = req.body;
+            if (req.userData) {
+                objData.tenantRef = req.userData?.tenantRef;
+                objData.outletRef = req.userData?.outletRef;
+            }
 
             if (req.body.variantString) {
                 const objVariant = {

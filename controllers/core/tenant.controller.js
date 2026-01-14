@@ -150,6 +150,13 @@ export const completeData = async (req, res) => {
                 { new: true, session }
             ),
 
+            // UPDATE USER (selalu)
+            User.findOneAndUpdate(
+                { tenantRef: spesificData?._id, role: "owner" },
+                { $set: { fullname: objData?.ownerName || "" } },
+                { new: true, session }
+            ),
+
             // UPDATE OUTLET (hanya sekali)
             Outlet.findOneAndUpdate(
                 { tenantRef: spesificData?._id },
@@ -250,7 +257,7 @@ export const deleteData = async (req, res) => {
         }
 
         // Hapus paralel dalam satu transaction
-        const [tenantResult, outletResult] = await Promise.all([
+        await Promise.all([
             Tenant.deleteOne({ _id: tenantId }).session(session),
             Outlet.deleteMany({ tenantRef: tenantId }).session(session),
             User.deleteMany({ tenantRef: tenantId }).session(session),
@@ -261,9 +268,7 @@ export const deleteData = async (req, res) => {
         await session.commitTransaction();
 
         return res.status(200).json({
-            message: "Delete data success !",
-            tenant: tenantResult,
-            outlet: outletResult
+            message: "Berhasil hapus data."
         });
 
     } catch (err) {

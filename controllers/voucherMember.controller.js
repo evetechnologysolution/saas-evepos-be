@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import MemberVoucher from "../models/voucherMember.js";
 import MemberData from "../models/member.js";
-import Product from "../models/product.js";
+import Product from "../models/library/product.js";
 
 // GETTING ALL THE DATA
 export const getAllVoucher = async (req, res) => {

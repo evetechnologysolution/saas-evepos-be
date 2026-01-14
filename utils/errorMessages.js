@@ -48,4 +48,9 @@ export const ERROR_CONFIG = {
         status: 400,
         message: "Token tidak valid atau sudah kedaluwarsa."
     },
+
+    EMAIL_REQUIRED: {
+        status: 400,
+        message: "Email wajib diisi."
+    },
 };
