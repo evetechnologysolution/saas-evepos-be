@@ -17,6 +17,7 @@ const DataSchema = mongoose.Schema({
     subdistrict: { type: String, uppercase: true, trim: true, default: "" },
     zipCode: { type: String, trim: true, default: "" },
     location: { placeId: String, lat: Number, lng: Number },
+    isPrimary: { type: Boolean, default: false },
     tenantRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
