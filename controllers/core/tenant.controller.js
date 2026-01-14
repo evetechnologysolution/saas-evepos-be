@@ -137,20 +137,6 @@ export const completeData = async (req, res) => {
             }
         }
 
-        const newOutlet = new Outlet({
-            name: objData?.businessName || "UTAMA",
-            phone: objData?.phone || spesificData?.phone,
-            email: objData?.email || spesificData?.email,
-            address: objData?.address || spesificData?.address,
-            province: objData?.provimce || spesificData?.provimce,
-            city: objData?.city || spesificData?.city,
-            district: objData?.district || spesificData?.district,
-            subdistrict: objData?.subdistrict || spesificData?.subdistrict,
-            zipCode: objData?.zipCode || spesificData?.zipCode,
-            tenantRef: spesificData?._id,
-        })
-
-
         const _subsId = new mongoose.Types.ObjectId();
         const today = new Date();
         const endDate = new Date(today);
@@ -179,6 +165,7 @@ export const completeData = async (req, res) => {
                         subdistrict: objData?.subdistrict || spesificData?.subdistrict,
                         zipCode: objData?.zipCode || spesificData?.zipCode,
                         tenantRef: spesificData?._id,
+                        isPrimary: true
                     }
                 },
                 { upsert: true, new: true, session }
