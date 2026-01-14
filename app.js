@@ -1,0 +1,147 @@
+import express from "express";
+import serverless from "serverless-http";
+import cors from "cors";
+import path from "path";
+import logger from "morgan";
+import "dotenv/config.js";
+import dbConnect from "./utils/dbConnect.js";
+import {
+  // skipSleepServer,
+  resetPointHistory,
+} from "./lib/cron.js";
+
+process.env.TZ = "Asia/Jakarta";
+
+const port = process.env.PORT || 7777;
+
+const app = express();
+
+// Tentukan __dirname secara manual karena di ES Modules tidak tersedia langsung
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// jika tidak menggunakan login by google
+app.use(cors({ origin: "*" }));
+
+// Error handling middleware untuk menangani error CORS
+app.use((err, req, res, next) => {
+  if (err instanceof Error && err.message.includes("CORS")) {
+    return res.status(403).json({ error: err.message });
+  }
+  next(err); // Lanjutkan ke middleware error lainnya jika bukan error CORS
+});
+
+// app.use(express.json({ limit: "50mb" }));
+// app.use(express.urlencoded({ limit: "50mb", extended: true, parameterLimit: 50000 }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
+app.use(logger("dev"));
+
+// koneksi database tiap request, hanya 1x per instance
+app.use(async (req, res, next) => {
+  try {
+    await dbConnect();
+    next();
+  } catch (err) {
+    console.error("❌ DB Connect failed:", err.message);
+    res.status(500).json({ error: "Database connection failed" });
+  }
+});
+
+// ROUTES
+import serviceRoutes from "./routes/core/service.route.js";
+import tenantRoute from "./routes/core/tenant.route.js";
+import authTenantRoute from "./routes/core/authTenant.route.js";
+import authUserRoute from "./routes/user/authUser.route.js";
+import pusherRoute from "./routes/pusher.route.js";
+import informationRoute from "./routes/information.route.js";
+import receiptRoute from "./routes/receipt.route.js";
+import userRoute from "./routes/user.route.js";
+import orderRoute from "./routes/order.route.js";
+import promotionRoute from "./routes/promotion.route.js";
+import promotionSpecialRoute from "./routes/promotionSpecial.route.js";
+import categoryRoute from "./routes/category.route.js";
+import subcategoryRoute from "./routes/subcategory.route.js";
+import productRoute from "./routes/product.route.js";
+import variantRoute from "./routes/variant.route.js";
+import bannerRoute from "./routes/banner.route.js";
+import reportRoute from "./routes/report.route.js";
+import cashBalanceRoute from "./routes/cashBalance.route.js";
+import settingRoute from "./routes/setting.route.js";
+import taxRoute from "./routes/tax.route.js";
+import expenseRoute from "./routes/expense.route.js";
+import memberRoute from "./routes/member.route.js";
+import customerRoute from "./routes/customer.route.js";
+import pointHistoryRoute from "./routes/pointHistory.route.js";
+import gmapRoute from "./routes/gmap.route.js";
+import voucherUsedRoute from "./routes/voucherUsed.route.js";
+import paymentRoute from "./routes/payment.route.js";
+import cartRoute from "./routes/cart.route.js";
+import discountRoute from "./routes/discount.route.js";
+import voucherRoute from "./routes/voucher.route.js";
+import voucherMemberRoute from "./routes/voucherMember.route.js";
+import helpRoute from "./routes/help.route.js";
+import messageRoute from "./routes/message.route.js";
+import progressRoute from "./routes/progress.route.js";
+
+app.use("/api/service", serviceRoutes);
+app.use("/api/tenant", tenantRoute);
+app.use("/api/auth-tenant", authTenantRoute);
+app.use("/api/auth", authUserRoute);
+app.use("/api/pusher", pusherRoute);
+app.use("/api/informations", informationRoute);
+app.use("/api/receipt-setting", receiptRoute);
+app.use("/api/users", userRoute);
+app.use("/api/orders", orderRoute);
+app.use("/api/promotions", promotionRoute);
+app.use("/api/special-promotions", promotionSpecialRoute);
+app.use("/api/categories", categoryRoute);
+app.use("/api/subcategories", subcategoryRoute);
+app.use("/api/products", productRoute);
+app.use("/api/variants", variantRoute);
+app.use("/api/banners", bannerRoute);
+app.use("/api/report", reportRoute);
+app.use("/api/cash-balance", cashBalanceRoute);
+app.use("/api/settings", settingRoute);
+app.use("/api/tax", taxRoute);
+app.use("/api/expense", expenseRoute);
+app.use("/api/members", memberRoute);
+app.use("/api/customers", customerRoute);
+app.use("/api/point-history", pointHistoryRoute);
+app.use("/api/gmap", gmapRoute);
+app.use("/api/voucher-used", voucherUsedRoute);
+app.use("/api/payment", paymentRoute);
+app.use("/api/cart", cartRoute);
+app.use("/api/discount", discountRoute);
+app.use("/api/vouchers", voucherRoute);
+app.use("/api/member-vouchers", voucherMemberRoute);
+app.use("/api/help", helpRoute);
+app.use("/api/messages", messageRoute);
+app.use("/api/progress", progressRoute);
+
+app.get("/", (_, res) => {
+  res.send("We are on home");
+});
+
+app.get("/healthz", (_, res) => {
+  res.status(200).send("Ok");
+});
+
+// === HANYA LISTEN DI LOCAL ===
+if (process.env.NODE_ENV !== "production") {
+  app.listen(port, () => {
+    console.log(`🚀 Server running locally on http://localhost:${port}`);
+  });
+} else {
+  console.log("🟢 Running in server");
+}
+
+// running cron job
+// skipSleepServer.start();
+resetPointHistory.start();
+
+export default app;
+export const handler = serverless(app);
