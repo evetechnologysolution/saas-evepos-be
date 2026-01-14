@@ -56,7 +56,7 @@ export const registerTenant = async (req, res) => {
         // Generate token
         const token = nanoid(64);
         const fixUrl = objData?.baseUrl || process.env.FRONTEND_URL || "https://evepos-web.vercel.app";
-        const verifyUrl = `${fixUrl}/tenant/register-verify?t=${token}`;
+        const verifyUrl = `${fixUrl}/auth/konfirmasi?token=${token}`;
 
         // Cek pending
         let pending = await Pending.findOne(

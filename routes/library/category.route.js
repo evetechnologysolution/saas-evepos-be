@@ -12,10 +12,8 @@ import {
 const router = express.Router();
 
 // GETTING ALL THE DATA
-router.get("/", isAuth, getAllCategory);
-
-// GETTING ALL THE DATA
-router.get("/paginate", isAuth, getPaginateCategory);
+router.get("/all", isAuth, getAllCategory);
+router.get("/", isAuth, getPaginateCategory);
 
 // GET A SPECIFIC DATA
 router.get("/:id", isAuth, getCategoryById);
