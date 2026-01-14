@@ -23,7 +23,7 @@ export const loginUser = async (req, res) => {
             // { expiresIn: process.env.TIMEEXPIRES || "5d" }
         );
 
-        const userWithoutPassword = userExist.toObject();
+        const userWithoutPassword = userExist;
         delete userWithoutPassword.password;
 
         return res.json({

@@ -13,7 +13,7 @@ import { sendVerificationRegister, sendOtpForgotPassword, sendUrlForgotPassword 
 export const loginUser = async (req, res) => {
     try {
         // Chek user
-        const userExist = await User.findOne({ username: req.body.username, isActive: true });
+        const userExist = await User.findOne({ username: req.body.username, isActive: true }).lean();
         if (!userExist) return res.status(400).json({ message: "User is not found" });
         if (!userExist.isActive) return res.status(400).json({ message: "User is not active" });
 
@@ -27,7 +27,7 @@ export const loginUser = async (req, res) => {
             // { expiresIn: process.env.TIMEEXPIRES || "5d" }
         );
 
-        const userWithoutPassword = userExist.toObject();
+        const userWithoutPassword = userExist;
         delete userWithoutPassword.password;
 
         return res.json({
