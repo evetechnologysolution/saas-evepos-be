@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/core/user.js";
@@ -477,7 +477,7 @@ export const forgotPasswordMemberByToken = async (req, res) => {
         }
 
         // Generate a new token
-        const token = crypto.randomBytes(32).toString("hex");
+        const token = nanoid(64);
         const fixUrl = baseUrl || "https://evewash.com";
         const resetUrl = `${fixUrl}/change-password?t=${token}`;
 

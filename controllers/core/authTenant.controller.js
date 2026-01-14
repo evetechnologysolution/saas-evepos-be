@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import crypto from "crypto";
+import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import Pending from "../../models/core/tenantPending.js";
@@ -44,7 +44,7 @@ export const registerTenant = async (req, res) => {
         }
 
         // Generate token
-        const token = crypto.randomBytes(32).toString("hex");
+        const token = nanoid(64);
         const fixUrl = process.env.FRONTEND_URL || "https://evepos-web.vercel.app";
         const verifyUrl = `${fixUrl}/tenant/register-verify?t=${token}`;
 

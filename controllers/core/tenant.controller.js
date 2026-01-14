@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import Pending from "../../models/core/tenantPending.js";
 import Tenant from "../../models/core/tenant.js";
 import User from "../../models/core/user.js";
 import Outlet from "../../models/core/outlet.js";

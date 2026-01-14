@@ -1,20 +1,9 @@
-// import crypto from "crypto";
 import Order from "../models/order.js";
 import Balance from "../models/cashBalance.js";
 import Member from "../models/member.js";
 import { generatePayment } from "../lib/xendit.js";
 import { generatePaymentMidtrans, deletePaymentMidtrans } from "../lib/midtrans.js";
 import { checkPoint, adjustPointHistories, createPointHistory } from "../lib/handlePoint.js";
-
-// function generateSHA512(order_id, status_code, gross_amount) {
-//     const serverkey = process.env.MIDTRANS_KEY.replace("Basic ", "");
-//     const data = order_id + status_code + gross_amount + serverkey;
-
-//     // Generate SHA512 hash
-//     const hash = crypto.createHash("sha512").update(data).digest("hex");
-
-//     return hash;
-// }
 
 export const createPaymentMidtrans = async (req, res) => {
     try {
@@ -87,12 +76,6 @@ export const callbackSuccessPaymentMidtrans = async (req, res) => {
         if (!check) {
             return res.status(200).json({ message: "Data not found" });
         }
-
-        // const sha512Hash = generateSHA512(originalOrderId, req.body.status_code, req.body.gross_amount);
-
-        // if (sha512Hash !== req.body.signature_key) {
-        //     return res.status(200).json({ message: "Signature not match." });
-        // }
 
         let checkMember = null;
         if (check.customer.memberId) {
