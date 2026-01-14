@@ -36,6 +36,16 @@ export const registerTenant = async (req, res) => {
             throw new Error("ACCOUNT_ALREADY_EXISTS");
         }
 
+        const userExists = await User.findOne(
+            { username: objData?.username },
+            null,
+            { session }
+        );
+
+        if (userExists) {
+            throw new Error("USERNAME_ALREADY_EXISTS");
+        }
+
         // Hash password
         let hashedPassword;
         if (objData.password) {

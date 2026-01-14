@@ -19,6 +19,11 @@ export const ERROR_CONFIG = {
         message: "Akun Anda sudah terdaftar, silakan login ulang."
     },
 
+    USERNAME_ALREADY_EXISTS: {
+        status: 400,
+        message: "Username sudah terdaftar, silakan input ulang."
+    },
+
     DUPLICATE_DATA: {
         status: 400,
         message: "Email atau nomor HP sudah terdaftar."

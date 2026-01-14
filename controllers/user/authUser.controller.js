@@ -8,7 +8,8 @@ export const loginUser = async (req, res) => {
         const userExist = await User.findOne({ username: req.body.username })
             .populate([
                 { path: "tenantRef", select: "ownerName businessName status" }
-            ]);
+            ]).lean();
+
         if (!userExist) return res.status(400).json({ message: "User is not found" });
         if (!userExist?.isActive) return res.status(400).json({ message: "User is not active" });
 
@@ -30,6 +31,20 @@ export const loginUser = async (req, res) => {
             accessToken: token,
             user: userWithoutPassword
         });
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
+    }
+};
+
+export const getMyUser = async (req, res) => {
+    try {
+        const userExist = await User.findOne({ _id: req.userData._id, isActive: true })
+            .select("-password")
+            .populate([
+                { path: "tenantRef", select: "ownerName businessName status" }
+            ])
+            .lean();
+        res.json({ user: userExist });
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }

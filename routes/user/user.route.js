@@ -1,5 +1,5 @@
 import express from "express";
-import { isAuth } from "../middleware/auth.js";
+import { isAuth } from "../../middleware/auth.js";
 import {
     getAllUser,
     getUserById,
@@ -7,24 +7,24 @@ import {
     editUser,
     changeUserPassword,
     deleteUser
-} from "../controllers/user.controller.js";
+} from "../../controllers/user/user.controller.js";
 
 const router = express.Router();
 
 // GETTING ALL THE DATA
-router.get("/", getAllUser);
+router.get("/", isAuth, getAllUser);
 
 // GET A SPECIFIC DATA
-router.get("/:id", getUserById);
+router.get("/:id", isAuth, getUserById);
 
 // CREATE NEW DATA
-router.post("/", addUser);
+router.post("/", isAuth, addUser);
 
 // UPDATE A SPECIFIC DATA
-router.patch("/:id", editUser);
+router.patch("/:id", isAuth, editUser);
 
 // UPDATE A SPECIFIC DATA
-router.patch("/profile/:id", editUser);
+router.patch("/profile/:id", isAuth, editUser);
 
 // UPDATE PASSWORD
 router.patch("/change-password/:id", isAuth, changeUserPassword);

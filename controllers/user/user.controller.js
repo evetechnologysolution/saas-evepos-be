@@ -1,15 +1,20 @@
 import bcrypt from "bcrypt";
 import multer from "multer";
-import User from "../models/core/user.js";
-import Counter from "../models/counter.js";
-import { imageUpload } from "../lib/fileUpload.js";
-import { cloudinary } from "../lib/cloudinary.js";
+import User from "../../models/core/user.js";
+import { imageUpload } from "../../lib/fileUpload.js";
+import { cloudinary } from "../../lib/cloudinary.js";
 
 // GETTING ALL THE DATA
 export const getAllUser = async (req, res) => {
   try {
-    const { page, perPage, search, status, role } = req.query;
+    const { page, perPage, search, status, role, sort } = req.query;
     let query = {};
+
+    if (req.userData) {
+      query.tenantRef = req.userData?.tenantRef;
+      query.outletRef = req.userData?.outletRef;
+    }
+
     if (search) {
       query = {
         ...query,
@@ -30,11 +35,7 @@ export const getAllUser = async (req, res) => {
       };
     }
 
-    if (
-      status === "inactive" ||
-      status === "nonactive" ||
-      status === "notactive"
-    ) {
+    if (["inactive", "nonactive", "notactive"].includes(status)) {
       query = {
         ...query,
         isActive: { $ne: true },
@@ -45,11 +46,20 @@ export const getAllUser = async (req, res) => {
       query.role = role;
     }
 
+    let sortObj = { fullname: 1 }; // default
+    if (sort && sort.trim() !== "") {
+      sortObj = {};
+      sort.split(",").forEach((rule) => {
+        const [field, type] = rule.split(":");
+        sortObj[field] = type === "asc" ? 1 : -1;
+      });
+    }
+
     const options = {
       page: parseInt(page, 10) || 1,
       limit: parseInt(perPage, 10) || 10,
-      sort: { fullname: 1 },
       select: "-password",
+      sort: sortObj,
     };
     const listofData = await User.paginate(query, options);
     return res.json(listofData);
@@ -84,31 +94,15 @@ export const addUser = async (req, res) => {
       }
 
       let objData = req.body;
+      if (req.userData) {
+        objData.tenantRef = req.userData?.tenantRef;
+        objData.outletRef = req.userData?.outletRef;
+      }
 
       // Check user
       const userExist = await User.findOne({ username: objData.username });
       if (userExist)
         return res.json({ status: 400, message: "Username already exists" });
-
-      if (!objData.userId) {
-        // generate auto increment
-        const currYear = new Date().getFullYear();
-        const count = await Counter.findOneAndUpdate(
-          {
-            $and: [{ name: "Admin" }, { year: currYear }],
-          },
-          { $inc: { seq: 1 } },
-          { new: true, upsert: true }
-        );
-
-        const str = "" + count.seq;
-        const pad = "000000";
-        const number = pad.substring(0, pad.length - str.length) + str;
-
-        objData = Object.assign(objData, {
-          userId: `EV${currYear}${number}`,
-        });
-      }
 
       // Hash password
       const salt = await bcrypt.genSalt(10);

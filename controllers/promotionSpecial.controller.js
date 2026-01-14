@@ -3,7 +3,7 @@ import multer from "multer";
 import Promotion from "../models/promotionSpecial.js";
 import Counter from "../models/counter.js";
 import Variant from "../models/variant.js";
-import Category from "../models/category.js";
+import Category from "../models/library/category.js";
 import Product from "../models/product.js";
 import { cloudinary, imageUpload } from "../lib/cloudinary.js";
 

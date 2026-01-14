@@ -1,6 +1,6 @@
 import multer from "multer";
 import Product from "../models/product.js";
-import Category from "../models/category.js";
+import Category from "../models/library/category.js";
 import Subcategory from "../models/subcategory.js";
 import { cloudinary, imageUpload } from "../lib/cloudinary.js";
 
