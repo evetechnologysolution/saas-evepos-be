@@ -1,4 +1,5 @@
 import Variant from "../../models/library/variant.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllVariant = async (req, res) => {
@@ -13,7 +14,11 @@ export const getAllVariant = async (req, res) => {
         const listofData = await Variant.find(query).lean();
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
@@ -52,7 +57,11 @@ export const getPaginateVariant = async (req, res) => {
         const listofData = await Variant.paginate(query, options);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
@@ -62,7 +71,11 @@ export const getVariantById = async (req, res) => {
         const spesificData = await Variant.findById(req.params.id);
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
@@ -72,13 +85,19 @@ export const addVariant = async (req, res) => {
         let objData = req.body;
         if (req.userData) {
             objData.tenantRef = req.userData?.tenantRef;
-            objData.outletRef = req.userData?.outletRef;
+            if (req.userData?.outletRef) {
+                objData.outletRef = [req.userData.outletRef];
+            }
         }
         const data = new Variant(objData);
         const newData = await data.save();
         return res.json(newData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
@@ -93,7 +112,11 @@ export const editVariant = async (req, res) => {
         );
         return res.json(updatedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
@@ -103,6 +126,10 @@ export const deleteVariant = async (req, res) => {
         const deletedData = await Variant.deleteOne({ _id: req.params.id });
         return res.json(deletedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };

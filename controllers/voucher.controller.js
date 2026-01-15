@@ -296,7 +296,7 @@ export const deleteVoucher = async (req, res) => {
     try {
         // Check image & delete image
         const exist = await Voucher.findById(req.params.id);
-        if (exist.imageId) {
+        if (exist?.imageId) {
             await cloudinary.uploader.destroy(exist.imageId);
         }
 

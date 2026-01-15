@@ -100,7 +100,7 @@ export const editGallery = async (req, res) => {
 
       if (req.file) {
         // Chek & delete image
-        if (exist.imageId) {
+        if (exist?.imageId) {
           await cloudinary.uploader.destroy(exist.imageId);
         }
 
@@ -136,7 +136,7 @@ export const deleteGallery = async (req, res) => {
   try {
     // Check image & delete image
     const exist = await Gallery.findById(req.params.id);
-    if (exist.imageId) {
+    if (exist?.imageId) {
       await cloudinary.uploader.destroy(exist.imageId);
     }
     const deletedData = await Gallery.deleteOne({ _id: req.params.id });

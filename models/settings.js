@@ -33,10 +33,12 @@ const DataSchema = mongoose.Schema({
         default: null,
     },
     outletRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Outlets",
-        default: null,
-    },
+        type: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Outlets",
+        }],
+        default: []
+    }
 }, { timestamps: true });
 
 export default mongoose.model("Settings", DataSchema);

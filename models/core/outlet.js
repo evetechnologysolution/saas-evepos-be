@@ -6,7 +6,7 @@ const DataSchema = mongoose.Schema({
         type: String,
         uppercase: true,
         trim: true,
-        required: true
+        required: [true, "Name wajib diisi"],
     },
     phone: { type: String, trim: true, default: "" },
     email: { type: String, trim: true, default: "" },

@@ -11,7 +11,7 @@ const DataSchema = mongoose.Schema({
   },
   username: {
     type: String,
-    required: true,
+    required: [true, "Username wajib diisi"],
     unique: true,
     trim: true
   },

@@ -401,7 +401,7 @@ export const editPromotion = async (req, res) => {
 
             // Handle image upload and delete old image if necessary
             if (req.file) {
-                if (exist.imageId) {
+                if (exist?.imageId) {
                     await cloudinary.uploader.destroy(exist.imageId);
                 }
 
@@ -437,7 +437,7 @@ export const deletePromotion = async (req, res) => {
             return res.status(404).json({ message: "Promotion not found" });
         }
 
-        if (exist.imageId) {
+        if (exist?.imageId) {
             await cloudinary.uploader.destroy(exist.imageId);
         }
 

@@ -37,10 +37,12 @@ const DataSchema = mongoose.Schema({
         default: null,
     },
     outletRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Outlets",
-        default: null,
-    },
+        type: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Outlets",
+        }],
+        default: []
+    }
 }, { timestamps: true });
 
 //'Orders' is the table thats gonna show up in Mongo DB

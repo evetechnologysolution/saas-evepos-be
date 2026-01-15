@@ -63,11 +63,6 @@ const DataSchema = new mongoose.Schema({
     ref: "Tenants",
     default: null,
   },
-  outletRef: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Outlets",
-    default: null,
-  },
 }, { timestamps: true });
 
 DataSchema.pre("save", async function (next) {

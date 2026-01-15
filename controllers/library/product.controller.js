@@ -3,6 +3,7 @@ import Product from "../../models/library/product.js";
 import Category from "../../models/library/category.js";
 import Subcategory from "../../models/library/subcategory.js";
 import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllProduct = async (req, res) => {
@@ -287,7 +288,11 @@ export const getAllProduct = async (req, res) => {
 
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
@@ -336,7 +341,11 @@ export const getPaginateProduct = async (req, res) => {
         const listofData = await Product.paginate(query, options);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
@@ -345,30 +354,36 @@ export const getProductById = async (req, res) => {
         const spesificData = await Product.findById(req.params.id);
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
 // CREATE NEW DATA
 export const addProduct = async (req, res) => {
-    try {
-        imageUpload.single("image")(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.single("image")(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err.message.message,
+            });
+        }
 
+        try {
             let objData = req.body;
             if (req.userData) {
                 objData.tenantRef = req.userData?.tenantRef;
-                objData.outletRef = req.userData?.outletRef;
+                if (req.userData?.outletRef) {
+                    objData.outletRef = [req.userData.outletRef];
+                }
             }
 
             if (req.body.variantString) {
@@ -393,28 +408,45 @@ export const addProduct = async (req, res) => {
             const data = new Product(objData);
             const newData = await data.save();
             return res.json(newData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            if (err.name === "ValidationError") {
+                const errors = {};
+                Object.keys(err.errors).forEach((key) => {
+                    errors[key] = err.errors[key].message;
+                });
+
+                return errorResponse(res, {
+                    code: "VALIDATION_ERROR",
+                    message: "Validasi gagal",
+                    errors
+                });
+            }
+
+            return errorResponse(res, {
+                statusCode: 500,
+                code: "SERVER_ERROR",
+                message: err.message || "Terjadi kesalahan pada server"
+            });
+        }
+    });
 };
 
 // UPDATE A SPECIFIC DATA
 export const editProduct = async (req, res) => {
-    try {
-        imageUpload.single("image")(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.single("image")(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err.message.message,
+            });
+        }
 
+        try {
             let objData = req.body;
 
             if (req.body.variantString) {
@@ -450,10 +482,14 @@ export const editProduct = async (req, res) => {
                 }
             );
             return res.json(updatedData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            return errorResponse(res, {
+                statusCode: 500,
+                code: "SERVER_ERROR",
+                message: err.message || "Terjadi kesalahan pada server"
+            });
+        }
+    });
 };
 
 // DELETE A SPECIFIC DATA
@@ -461,13 +497,17 @@ export const deleteProduct = async (req, res) => {
     try {
         // Check image & delete image
         const exist = await Product.findById(req.params.id);
-        if (exist.imageId) {
+        if (exist?.imageId) {
             await cloudinary.uploader.destroy(exist.imageId);
         }
 
         const deletedData = await Product.deleteOne({ _id: req.params.id });
         return res.json(deletedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };

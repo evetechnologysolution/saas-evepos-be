@@ -5,12 +5,12 @@ import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 const DataSchema = mongoose.Schema({
     name: {
         type: String,
-        required: true,
+        required: [true, "Name wajib diisi"],
         trim: true
     },
     listNumber: {
         type: Number,
-        required: true
+        default: 0
     },
     image: {
         type: String
@@ -24,10 +24,12 @@ const DataSchema = mongoose.Schema({
         default: null,
     },
     outletRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Outlets",
-        default: null,
-    },
+        type: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Outlets",
+        }],
+        default: []
+    }
 }, { timestamps: true });
 
 DataSchema.pre("save", function (next) {
