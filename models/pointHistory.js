@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const DataSchema = mongoose.Schema({
@@ -54,6 +55,7 @@ const DataSchema = mongoose.Schema({
 
 DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 DataSchema.plugin(aggregatePaginate);
 
 export default mongoose.model("pointHistories", DataSchema);

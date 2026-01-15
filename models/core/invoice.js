@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { generateRandomId } from "../../lib/generateRandom.js";
 
 const DataSchema = mongoose.Schema({
@@ -68,5 +69,6 @@ DataSchema.pre("save", async function (next) {
 DataSchema.index({ tenantRef: 1, subsRef: 1 });
 
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("Invoices", DataSchema);

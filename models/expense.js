@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter } from "../lib/textSetting.js";
 
 const DataSchema = mongoose.Schema({
@@ -48,6 +49,7 @@ const DataSchema = mongoose.Schema({
 
 DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 //"Expenses" is the table thats gonna show up in Mongo DB
 export default mongoose.model("Expenses", DataSchema);

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 
 const DataSchema = mongoose.Schema({
     name: {
@@ -28,5 +29,6 @@ const DataSchema = mongoose.Schema({
 DataSchema.index({ tenantRef: 1 });
 
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("Outlets", DataSchema);
