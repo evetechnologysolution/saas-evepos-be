@@ -35,6 +35,8 @@ export const loginUser = async (req, res) => {
 
         const userWithoutPassword = userExist;
         delete userWithoutPassword.password;
+        delete userWithoutPassword.resetToken;
+        delete userWithoutPassword.resetTokenExpiry;
 
         return res.json({
             message: "Login Berhasil",
