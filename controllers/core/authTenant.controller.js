@@ -55,7 +55,7 @@ export const registerTenant = async (req, res) => {
 
         // Generate token
         const token = nanoid(64);
-        const fixUrl = objData?.baseUrl || process.env.FRONTEND_URL || "https://evepos-web.vercel.app";
+        const fixUrl = objData?.baseUrl || process.env.FE_URL || "https://saas-evepos.vercel.app";
         const verifyUrl = `${fixUrl}/auth/konfirmasi?token=${token}`;
 
         // Cek pending
@@ -141,7 +141,7 @@ export const resendVerify = async (req, res) => {
 
         const token = nanoid(64);
         const tokenExpiry = Date.now() + 10 * 60 * 1000;
-        const fixUrl = objData?.baseUrl || process.env.FRONTEND_URL || "https://evepos-web.vercel.app";
+        const fixUrl = objData?.baseUrl || process.env.FE_URL || "https://saas-evepos.vercel.app";
         const verifyUrl = `${fixUrl}/auth/konfirmasi?token=${token}`;
 
         const updatedData = await Pending.findOneAndUpdate(

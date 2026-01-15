@@ -68,7 +68,7 @@ export const forgotPasswordByToken = async (req, res) => {
 
         // Generate a new token
         const token = nanoid(64);
-        const fixUrl = baseUrl || process.env.FRONTEND_URL || "https://evepos-web.vercel.app";
+        const fixUrl = baseUrl || process.env.FE_URL || "https://saas-evepos.vercel.app";
         const resetUrl = `${fixUrl}/auth/reset-password?token=${token}`;
 
         // Update the member with the new OTP
