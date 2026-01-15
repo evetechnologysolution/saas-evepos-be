@@ -49,6 +49,7 @@ DataSchema.pre("findOneAndUpdate", function (next) {
   next();
 });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
 
 // the table thats gonna show up in Mongo DB

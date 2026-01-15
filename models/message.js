@@ -64,6 +64,7 @@ const DataSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
 
 export default mongoose.model("Messages", DataSchema);

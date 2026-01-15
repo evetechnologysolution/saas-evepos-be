@@ -88,8 +88,6 @@ DataSchema.pre("save", function (next) {
     next();
 });
 
-DataSchema.plugin(mongoosePaginate);
-
 DataSchema.pre("updateOne", function (next) {
     const update = this.getUpdate();
     const lastStatus = extractLastPushedStatus(update);
@@ -109,5 +107,8 @@ DataSchema.pre("findOneAndUpdate", function (next) {
     }
     next();
 });
+
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
+DataSchema.plugin(mongoosePaginate);
 
 export default mongoose.model("Progress", DataSchema);

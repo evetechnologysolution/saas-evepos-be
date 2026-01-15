@@ -65,6 +65,8 @@ DataSchema.pre("save", async function (next) {
     next();
 });
 
+DataSchema.index({ tenantRef: 1, subsRef: 1 });
+
 DataSchema.plugin(mongoosePaginate);
 
 export default mongoose.model("Invoices", DataSchema);

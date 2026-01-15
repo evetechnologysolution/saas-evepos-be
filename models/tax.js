@@ -45,5 +45,7 @@ const DataSchema = mongoose.Schema({
     }
 }, { timestamps: true });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
+
 //'Orders' is the table thats gonna show up in Mongo DB
 export default mongoose.model('taxs', DataSchema);

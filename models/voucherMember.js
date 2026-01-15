@@ -82,8 +82,6 @@ const DataSchema = mongoose.Schema({
     }
 }, { timestamps: true });
 
-DataSchema.plugin(aggregatePaginate);
-
 DataSchema.pre("save", function (next) {
     if (this.scanDate) {
         this.usedAt = this.scanDate;
@@ -106,5 +104,8 @@ DataSchema.pre("findOneAndUpdate", function (next) {
     }
     next();
 });
+
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
+DataSchema.plugin(aggregatePaginate);
 
 export default mongoose.model("VoucherMembers", DataSchema);

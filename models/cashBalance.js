@@ -119,7 +119,7 @@ const DataSchema = mongoose.Schema({
     },
 }, { timestamps: true });
 
-DataSchema.post('findOneAndUpdate', function (result, next) {
+DataSchema.post("findOneAndUpdate", function (result, next) {
     if (result) {
         result.total = (result.cashIn + result.sales) - result.cashOut;
         result.save();
@@ -127,7 +127,7 @@ DataSchema.post('findOneAndUpdate', function (result, next) {
     next();
 });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
 
-//'CashBalances' is the table thats gonna show up in Mongo DB
-export default mongoose.model('CashBalances', DataSchema);
+export default mongoose.model("CashBalances", DataSchema);

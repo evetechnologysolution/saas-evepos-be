@@ -42,6 +42,8 @@ DataSchema.pre("save", async function (next) {
     next();
 });
 
+DataSchema.index({ tenantRef: 1, serviceRef: 1 });
+
 DataSchema.plugin(mongoosePaginate);
 
 export default mongoose.model("Subscriptions", DataSchema);

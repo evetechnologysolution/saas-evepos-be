@@ -109,4 +109,6 @@ const DataSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
+
 export default mongoose.model("Carts", DataSchema);

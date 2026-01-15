@@ -310,8 +310,6 @@ const DataSchema = mongoose.Schema({
     },
 }, { timestamps: true });
 
-DataSchema.plugin(mongoosePaginate);
-
 DataSchema.pre("save", function (next) {
     if (this.pickupData) {
         if (this.pickupData?.by) {
@@ -382,5 +380,7 @@ DataSchema.virtual("progressRef", {
 // Agar virtual ikut saat toJSON/toObject
 DataSchema.set("toJSON", { virtuals: true });
 DataSchema.set("toObject", { virtuals: true });
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
+DataSchema.plugin(mongoosePaginate);
 
 export default mongoose.model("Orders", DataSchema);

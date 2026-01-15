@@ -147,6 +147,7 @@ DataSchema.pre("save", async function (next) {
   });
 });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
 
 export default mongoose.model("Members", DataSchema);
