@@ -1,11 +1,12 @@
 import mongoose from "mongoose";
 import multer from "multer";
-import Promotion from "../models/promotion.js";
-import Counter from "../models/counter.js";
-import Variant from "../models/library/variant.js";
-import Category from "../models/library/category.js";
-import Product from "../models/library/product.js";
-import { cloudinary, imageUpload } from "../lib/cloudinary.js";
+import Promotion from "../../models/library/promotion.js";
+import Counter from "../../models/counter.js";
+import Variant from "../../models/library/variant.js";
+import Category from "../../models/library/category.js";
+import Product from "../../models/library/product.js";
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllPromotion = async (req, res) => {
@@ -16,13 +17,26 @@ export const getAllPromotion = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
         }
 
-        const searchQuery = [
-            {
-                $match: { name: { $regex: search, $options: "i" } },
-            }
-        ]
+        const matchQuery = {};
 
-        const defaultQuery = [
+        if (req.userData?.tenantRef) {
+            matchQuery.tenantRef = req.userData.tenantRef;
+        }
+
+        if (req.userData?.outletRef) {
+            matchQuery.outletRef = {
+                $in: Array.isArray(req.userData.outletRef)
+                    ? req.userData.outletRef
+                    : [req.userData.outletRef],
+            };
+        }
+
+        if (search) {
+            matchQuery.name = { $regex: search, $options: "i" };
+        }
+
+        const pipeline = [
+            { $match: matchQuery },
             {
                 $lookup: {
                     from: "products",
@@ -54,13 +68,7 @@ export const getAllPromotion = async (req, res) => {
             },
         ]
 
-        let fixQuery = defaultQuery;
-
-        if (search) {
-            fixQuery = searchQuery.concat(defaultQuery);
-        }
-
-        const myAggregate = Promotion.aggregate(fixQuery);
+        const myAggregate = Promotion.aggregate(pipeline);
 
         myAggregate.paginateExec(options, function (err, result) {
             if (err) {
@@ -71,7 +79,11 @@ export const getAllPromotion = async (req, res) => {
             }
         });
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
@@ -81,22 +93,34 @@ export const getAvailablePromotion = async (req, res) => {
         var d = new Date();
         var currDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-        Promotion.aggregate([
-            {
-                $match: {
-                    $and: [
-                        { isAvailable: true },
-                        { startDate: { $lte: currDate } },
-                        {
-                            $or: [
-                                { endDate: { $exists: false } },
-                                { endDate: null },
-                                { endDate: { $gte: currDate } },
-                            ]
-                        }
+        const matchQuery = {
+            $and: [
+                { isAvailable: true },
+                { startDate: { $lte: currDate } },
+                {
+                    $or: [
+                        { endDate: { $exists: false } },
+                        { endDate: null },
+                        { endDate: { $gte: currDate } },
                     ]
                 }
-            },
+            ]
+        };
+
+        if (req.userData?.tenantRef) {
+            matchQuery.tenantRef = req.userData.tenantRef;
+        }
+
+        if (req.userData?.outletRef) {
+            matchQuery.outletRef = {
+                $in: Array.isArray(req.userData.outletRef)
+                    ? req.userData.outletRef
+                    : [req.userData.outletRef],
+            };
+        }
+
+        Promotion.aggregate([
+            { $match: matchQuery },
             {
                 $lookup: {
                     from: "products",
@@ -174,35 +198,48 @@ export const getAvailablePromotion = async (req, res) => {
             }
         })
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
 export const getPromotionById = async (req, res) => {
     try {
-        const spesificData = await Promotion.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const spesificData = await Promotion.findOne(qMatch).lean();
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
 // CREATE NEW DATA
 export const addPromotion = async (req, res) => {
-    try {
-        imageUpload.single("image")(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.single("image")(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err.message.message,
+            });
+        }
 
+        try {
             // Generate auto increment
             const currYear = new Date().getFullYear();
             const count = await Counter.findOneAndUpdate(
@@ -227,6 +264,13 @@ export const addPromotion = async (req, res) => {
                 _id: newObjectId,
                 promotionId: `PRM${currYear}${number}`,
             };
+
+            if (req.userData) {
+                objData.tenantRef = req.userData?.tenantRef;
+                if (req.userData?.outletRef) {
+                    objData.outletRef = [req.userData.outletRef];
+                }
+            }
 
             let convertId = [];
             if (req.body.products) {
@@ -285,32 +329,53 @@ export const addPromotion = async (req, res) => {
             const data = new Promotion(objData);
             const newData = await data.save();
             return res.json(newData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            if (err.name === "ValidationError") {
+                const errors = {};
+                Object.keys(err.errors).forEach((key) => {
+                    errors[key] = err.errors[key].message;
+                });
+
+                return errorResponse(res, {
+                    code: "VALIDATION_ERROR",
+                    message: "Validasi gagal",
+                    errors
+                });
+            }
+
+            return errorResponse(res, {
+                statusCode: 500,
+                code: "SERVER_ERROR",
+                message: err.message || "Terjadi kesalahan pada server"
+            });
+        }
+    });
 };
 
 
 // UPDATE A SPECIFIC DATA
 export const editPromotion = async (req, res) => {
-    try {
-        // Handle image upload
-        imageUpload.single("image")(req, res, async (err) => {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.single("image")(req, res, async (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err.message.message,
+            });
+        }
 
+        try {
+            let qMatch = { _id: req.params.id };
+            if (req.userData) {
+                qMatch.tenantRef = req.userData?.tenantRef;
+                qMatch.outletRef = req.userData?.outletRef;
+            }
             // Check if the promotion exists
-            const exist = await Promotion.findById(req.params.id);
+            const exist = await Promotion.findOne(qMatch).lean();
             if (!exist) {
                 return res.status(400).json({ message: "Data not found" });
             }
@@ -404,20 +469,29 @@ export const editPromotion = async (req, res) => {
             }
 
             // Update the promotion with new data
-            const updatedData = await Promotion.findByIdAndUpdate(req.params.id, { $set: objData }, { new: true });
+            const updatedData = await Promotion.findOneAndUpdate(qMatch, { $set: objData }, { new: true });
             return res.json(updatedData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            return errorResponse(res, {
+                statusCode: 500,
+                code: "SERVER_ERROR",
+                message: err.message || "Terjadi kesalahan pada server"
+            });
+        }
+    });
 };
 
 
 // DELETE A SPECIFIC DATA
 export const deletePromotion = async (req, res) => {
     try {
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
         // Check image & delete image
-        const exist = await Promotion.findById(req.params.id);
+        const exist = await Promotion.findOne(qMatch).lean();
         if (!exist) {
             return res.status(404).json({ message: "Promotion not found" });
         }
@@ -453,9 +527,13 @@ export const deletePromotion = async (req, res) => {
         }
 
         // Delete the promotion
-        const deletedData = await Promotion.deleteOne({ _id: req.params.id });
+        const deletedData = await Promotion.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };

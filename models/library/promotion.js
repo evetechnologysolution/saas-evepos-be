@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import aggregatePaginate from "mongoose-aggregate-paginate-v2";
-import { capitalizeFirstLetter } from "../lib/textSetting.js";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
+import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
 const DataSchema = mongoose.Schema({
     promotionId: {
@@ -86,6 +87,7 @@ DataSchema.pre("findOneAndUpdate", function (next) {
 
 DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(aggregatePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 //"Promotions" is the table thats gonna show up in Mongo DB
 export default mongoose.model("Promotions", DataSchema);

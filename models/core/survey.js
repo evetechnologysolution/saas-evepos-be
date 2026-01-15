@@ -8,6 +8,22 @@ const DataSchema = mongoose.Schema({
         required: true,
         default: false,
     },
+    hasUsed: {
+        type: Boolean,
+        required: true,
+        default: false,
+    },
+    hasUsedOtherApp: {
+        type: Boolean,
+        required: true,
+        default: false,
+    },
+    otherAppName: {
+        type: String,
+        trim: true,
+        uppercase: true,
+        default: "",
+    },
     productType: {
         type: [{
             type: String,
@@ -23,11 +39,6 @@ const DataSchema = mongoose.Schema({
             // enum: ["akunting", "pencatatan transaksi", "manajemen stok"],
         }],
         default: [],
-    },
-    hasUsed: {
-        type: Boolean,
-        required: true,
-        default: false,
     },
     source: {
         type: String,
