@@ -95,7 +95,7 @@ app.use("/api/user", userRoute);
 app.use("/api/category", categoryRoute);
 app.use("/api/subcategory", subcategoryRoute);
 app.use("/api/variant", variantRoute);
-app.use("/api/products", productRoute);
+app.use("/api/product", productRoute);
 // app.use("/api/pusher", pusherRoute);
 // app.use("/api/informations", informationRoute);
 // app.use("/api/receipt-setting", receiptRoute);

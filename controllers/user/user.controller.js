@@ -3,21 +3,22 @@ import multer from "multer";
 import User from "../../models/core/user.js";
 import { imageUpload } from "../../lib/fileUpload.js";
 import { cloudinary } from "../../lib/cloudinary.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllUser = async (req, res) => {
   try {
     const { page, perPage, search, status, role, sort } = req.query;
-    let query = {};
+    let qMatch = {};
 
     if (req.userData) {
-      query.tenantRef = req.userData?.tenantRef;
-      query.outletRef = req.userData?.outletRef;
+      qMatch.tenantRef = req.userData?.tenantRef;
+      qMatch.outletRef = req.userData?.outletRef;
     }
 
     if (search) {
-      query = {
-        ...query,
+      qMatch = {
+        ...qMatch,
         $or: [
           { userId: { $regex: search, $options: "i" } },
           { username: { $regex: search, $options: "i" } },
@@ -29,21 +30,21 @@ export const getAllUser = async (req, res) => {
     }
 
     if (status === "active") {
-      query = {
-        ...query,
+      qMatch = {
+        ...qMatch,
         isActive: { $eq: true },
       };
     }
 
     if (["inactive", "nonactive", "notactive"].includes(status)) {
-      query = {
-        ...query,
+      qMatch = {
+        ...qMatch,
         isActive: { $ne: true },
       };
     }
 
     if (role) {
-      query.role = role;
+      qMatch.role = role;
     }
 
     let sortObj = { fullname: 1 }; // default
@@ -61,10 +62,14 @@ export const getAllUser = async (req, res) => {
       select: "-password",
       sort: sortObj,
     };
-    const listofData = await User.paginate(query, options);
+    const listofData = await User.paginate(qMatch, options);
     return res.json(listofData);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return errorResponse(res, {
+      statusCode: 500,
+      code: "SERVER_ERROR",
+      message: err.message || "Terjadi kesalahan pada server"
+    });
   }
 };
 
@@ -73,26 +78,30 @@ export const getUserById = async (req, res) => {
     const spesificData = await User.findById(req.params.id);
     return res.json(spesificData);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return errorResponse(res, {
+      statusCode: 500,
+      code: "SERVER_ERROR",
+      message: err.message || "Terjadi kesalahan pada server"
+    });
   }
 };
 
 // CREATE NEW DATA
 export const addUser = async (req, res) => {
-  try {
-    imageUpload.single("image")(req, res, async function (err) {
-      if (err instanceof multer.MulterError) {
-        return res.status(400).json({
-          status: "Failed",
-          message: "Failed to upload image",
-        });
-      } else if (err) {
-        return res.status(400).json({
-          status: "Failed",
-          message: err.message,
-        });
-      }
+  imageUpload.single("image")(req, res, async function (err) {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({
+        status: "Failed",
+        message: "Failed to upload image",
+      });
+    } else if (err) {
+      return res.status(400).json({
+        status: "Failed",
+        message: err.message,
+      });
+    }
 
+    try {
       let objData = req.body;
       if (req.userData) {
         objData.tenantRef = req.userData?.tenantRef;
@@ -100,15 +109,15 @@ export const addUser = async (req, res) => {
       }
 
       // Check user
-      const userExist = await User.findOne({ username: objData.username });
-      if (userExist)
-        return res.json({ status: 400, message: "Username already exists" });
+      const userExist = await User.findOne({ username: objData.username }).lean();
+      if (userExist) return res.json({ status: 400, message: "Username already exists" });
 
       // Hash password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(req.body.password, salt);
-
-      objData = Object.assign(objData, { password: hashedPassword });
+      if (req.body.password) {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(req.body.password, salt);
+        objData = Object.assign(objData, { password: hashedPassword });
+      }
 
       if (req.file) {
         try {
@@ -131,35 +140,60 @@ export const addUser = async (req, res) => {
 
       const data = new User(objData);
       const newData = await data.save();
-      return res.json(newData);
-    });
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
+      const withoutPassword = newData.toObject();
+      delete withoutPassword.password;
+      return res.json(withoutPassword);
+    } catch (err) {
+      if (err.name === "ValidationError") {
+        const errors = {};
+        Object.keys(err.errors).forEach((key) => {
+          errors[key] = err.errors[key].message;
+        });
+
+        return errorResponse(res, {
+          code: "VALIDATION_ERROR",
+          message: "Validasi gagal",
+          errors
+        });
+      }
+
+      return errorResponse(res, {
+        statusCode: 500,
+        code: "SERVER_ERROR",
+        message: err.message || "Terjadi kesalahan pada server"
+      });
+    }
+  });
 };
 
 // UPDATE A SPECIFIC DATA
 export const editUser = async (req, res) => {
-  try {
-    imageUpload.single("image")(req, res, async function (err) {
-      if (err instanceof multer.MulterError) {
-        return res.status(400).json({
-          status: "Failed",
-          message: "Failed to upload image",
-        });
-      } else if (err) {
-        return res.status(400).json({
-          status: "Failed",
-          message: err.message,
-        });
+  imageUpload.single("image")(req, res, async function (err) {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({
+        status: "Failed",
+        message: "Failed to upload image",
+      });
+    } else if (err) {
+      return res.status(400).json({
+        status: "Failed",
+        message: err.message,
+      });
+    }
+
+    try {
+      let qMatch = { _id: req.params.id };
+      if (req.userData) {
+        qMatch.tenantRef = req.userData?.tenantRef;
+        qMatch.outletRef = req.userData?.outletRef;
       }
 
       let objData = req.body;
 
-      const spesificData = await User.findById(req.params.id);
+      const spesificData = await User.findOne(qMatch).lean();
 
       // Check username
-      const usernameExist = await User.findOne({ username: objData.username });
+      const usernameExist = await User.findOne({ username: objData.username }).lean();
       if (objData.username !== spesificData.username && usernameExist)
         return res.json({ status: 400, message: "Username already exists" });
 
@@ -199,23 +233,32 @@ export const editUser = async (req, res) => {
       }
 
       const updatedData = await User.updateOne(
-        { _id: req.params.id },
+        qMatch,
         {
           $set: objData,
         }
       );
       return res.json(updatedData);
-    });
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
+    } catch (err) {
+      return errorResponse(res, {
+        statusCode: 500,
+        code: "SERVER_ERROR",
+        message: err.message || "Terjadi kesalahan pada server"
+      });
+    }
+  });
 };
 
 // UPDATE PASSWORD
 export const changeUserPassword = async (req, res) => {
   try {
+    let qMatch = { _id: req.params.id };
+    if (req.userData) {
+      qMatch.tenantRef = req.userData?.tenantRef;
+      qMatch.outletRef = req.userData?.outletRef;
+    }
     // Chek user
-    const userExist = await User.findById(req.params.id);
+    const userExist = await User.findOne(qMatch).lean();
     if (!userExist)
       return res.status(400).json({ message: "User is not found" });
 
@@ -242,23 +285,36 @@ export const changeUserPassword = async (req, res) => {
     };
 
     const updatedData = await User.updateOne(
-      { _id: req.params.id },
+      qMatch,
       {
         $set: objPassword,
       }
     );
     return res.json(updatedData);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return errorResponse(res, {
+      statusCode: 500,
+      code: "SERVER_ERROR",
+      message: err.message || "Terjadi kesalahan pada server"
+    });
   }
 };
 
 // DELETE A SPECIFIC DATA
 export const deleteUser = async (req, res) => {
   try {
-    const deletedData = await User.deleteOne({ _id: req.params.id });
+    let qMatch = { _id: req.params.id };
+    if (req.userData) {
+      qMatch.tenantRef = req.userData?.tenantRef;
+      qMatch.outletRef = req.userData?.outletRef;
+    }
+    const deletedData = await User.deleteOne(qMatch);
     return res.json(deletedData);
   } catch (err) {
-    return res.status(500).json({ message: err.message });
+    return errorResponse(res, {
+      statusCode: 500,
+      code: "SERVER_ERROR",
+      message: err.message || "Terjadi kesalahan pada server"
+    });
   }
 };

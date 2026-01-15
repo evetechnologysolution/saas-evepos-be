@@ -6,14 +6,14 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllCategory = async (req, res) => {
     try {
-        let query = {};
+        let qMatch = {};
 
         if (req.userData) {
-            query.tenantRef = req.userData?.tenantRef;
-            query.outletRef = req.userData?.outletRef;
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
         }
 
-        const listofData = await Category.find(query).sort({ "listNumber": 1 });
+        const listofData = await Category.find(qMatch).sort({ "listNumber": 1 }).lean();
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
@@ -28,16 +28,16 @@ export const getAllCategory = async (req, res) => {
 export const getPaginateCategory = async (req, res) => {
     try {
         const { page, perPage, search, sort } = req.query;
-        let query = {};
+        let qMatch = {};
 
         if (req.userData) {
-            query.tenantRef = req.userData?.tenantRef;
-            query.outletRef = req.userData?.outletRef;
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
         }
 
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 name: { $regex: search, $options: 'i' }, // option i for case insensitivity to match upper and lower cases.
             };
         };
@@ -56,7 +56,7 @@ export const getPaginateCategory = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
         }
-        const listofData = await Category.paginate(query, options);
+        const listofData = await Category.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
@@ -69,7 +69,12 @@ export const getPaginateCategory = async (req, res) => {
 
 export const getCategoryById = async (req, res) => {
     try {
-        const spesificData = await Category.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const spesificData = await Category.findOne(qMatch).lean();
         return res.json(spesificData);
     } catch (err) {
         return errorResponse(res, {
@@ -159,11 +164,16 @@ export const editCategory = async (req, res) => {
         }
 
         try {
+            let qMatch = { _id: req.params.id };
+            if (req.userData) {
+                qMatch.tenantRef = req.userData?.tenantRef;
+                qMatch.outletRef = req.userData?.outletRef;
+            }
             let objData = req.body;
 
             if (req.file) {
                 // Chek image & delete image
-                const exist = await Category.findById(req.params.id);
+                const exist = await Category.findOne(qMatch).lean();
                 if (exist?.imageId) {
                     await cloudinary.uploader.destroy(exist.imageId);
                 }
@@ -179,7 +189,7 @@ export const editCategory = async (req, res) => {
                 objData = Object.assign(objData, { image: cloud.secure_url, imageId: cloud.public_id });
             }
             const updatedData = await Category.updateOne(
-                { _id: req.params.id },
+                qMatch,
                 {
                     $set: objData
                 }
@@ -198,13 +208,18 @@ export const editCategory = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteCategory = async (req, res) => {
     try {
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
         // Check image & delete image
-        const exist = await Category.findById(req.params.id);
+        const exist = await Category.findOne(qMatch).lean();
         if (exist?.imageId) {
             await cloudinary.uploader.destroy(exist.imageId);
         }
 
-        const deletedData = await Category.deleteOne({ _id: req.params.id });
+        const deletedData = await Category.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {

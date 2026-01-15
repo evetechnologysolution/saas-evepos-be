@@ -23,7 +23,9 @@ const DataSchema = mongoose.Schema({
                 default: 0
             },
             productionNotes: {
-                type: String
+                type: String,
+                trim: true,
+                default: ""
             },
             isMultiple: {
                 type: Boolean,

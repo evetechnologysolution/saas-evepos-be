@@ -4,14 +4,14 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllVariant = async (req, res) => {
     try {
-        let query = {};
+        let qMatch = {};
 
         if (req.userData) {
-            query.tenantRef = req.userData?.tenantRef;
-            query.outletRef = req.userData?.outletRef;
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
         }
 
-        const listofData = await Variant.find(query).lean();
+        const listofData = await Variant.find(qMatch).lean();
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
@@ -26,16 +26,16 @@ export const getAllVariant = async (req, res) => {
 export const getPaginateVariant = async (req, res) => {
     try {
         const { page, perPage, search, sort } = req.query;
-        let query = {};
+        let qMatch = {};
 
         if (req.userData) {
-            query.tenantRef = req.userData?.tenantRef;
-            query.outletRef = req.userData?.outletRef;
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
         }
 
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 name: { $regex: search, $options: 'i' }, // option i for case insensitivity to match upper and lower cases.
             };
         };
@@ -54,7 +54,7 @@ export const getPaginateVariant = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
         }
-        const listofData = await Variant.paginate(query, options);
+        const listofData = await Variant.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
@@ -68,7 +68,12 @@ export const getPaginateVariant = async (req, res) => {
 // UPDATE A SPECIFIC DATA BY ID
 export const getVariantById = async (req, res) => {
     try {
-        const spesificData = await Variant.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const spesificData = await Variant.findOne(qMatch);
         return res.json(spesificData);
     } catch (err) {
         return errorResponse(res, {
@@ -104,8 +109,13 @@ export const addVariant = async (req, res) => {
 // UPDATE A SPECIFIC DATA
 export const editVariant = async (req, res) => {
     try {
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
         const updatedData = await Variant.updateOne(
-            { _id: req.params.id },
+            qMatch,
             {
                 $set: req.body
             }
@@ -123,7 +133,12 @@ export const editVariant = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteVariant = async (req, res) => {
     try {
-        const deletedData = await Variant.deleteOne({ _id: req.params.id });
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const deletedData = await Variant.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {

@@ -23,7 +23,9 @@ const DataSchema = mongoose.Schema({
         default: 0
     },
     productionNotes: {
-        type: String
+        type: String,
+        trim: true,
+        default: ""
     },
     discount: {
         promotion: {
@@ -86,10 +88,13 @@ const DataSchema = mongoose.Schema({
         ref: "Subcategories",
     },
     description: {
-        type: String
+        type: String,
+        trim: true,
+        default: ""
     },
     unit: {
         type: String,
+        trim: true,
         lowercase: true,
         default: "pcs"
     },
@@ -99,7 +104,7 @@ const DataSchema = mongoose.Schema({
     },
     extraNotes: {
         type: Boolean,
-        default: false
+        default: false,
     },
     listNumber: {
         type: Number,
@@ -109,23 +114,26 @@ const DataSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
-    variant: [
-        {
-            variantRef: {
-                type: mongoose.Schema.Types.ObjectId,
-                default: null,
-                ref: "Variants",
+    variant: {
+        type: [
+            {
+                variantRef: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    default: null,
+                    ref: "Variants",
+                },
+                isMandatory: {
+                    type: Boolean,
+                    default: false
+                },
+                isMultiple: {
+                    type: Boolean,
+                    default: false
+                }
             },
-            isMandatory: {
-                type: Boolean,
-                default: false
-            },
-            isMultiple: {
-                type: Boolean,
-                default: false
-            }
-        },
-    ],
+        ],
+        default: []
+    },
     isRecommended: {
         type: Boolean,
         default: false

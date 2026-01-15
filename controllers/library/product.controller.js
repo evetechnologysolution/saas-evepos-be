@@ -9,11 +9,11 @@ import { errorResponse } from "../../utils/errorResponse.js";
 export const getAllProduct = async (req, res) => {
     try {
         const { category, subcategory } = req.query;
-        let query = {};
+        let qMatch = {};
 
         if (req.userData) {
-            query.tenantRef = req.userData?.tenantRef;
-            query.outletRef = req.userData?.outletRef;
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
         }
 
         if (category) {
@@ -25,9 +25,9 @@ export const getAllProduct = async (req, res) => {
             const filteredCategory = categories.map((item) => item._id);
 
             if (category.includes(":ne")) {
-                query.category = { $nin: filteredCategory };
+                qMatch.category = { $nin: filteredCategory };
             } else {
-                query.category = { $in: filteredCategory };
+                qMatch.category = { $in: filteredCategory };
             }
         }
 
@@ -40,9 +40,9 @@ export const getAllProduct = async (req, res) => {
             const filteredSub = subs.map((item) => item._id);
 
             if (subcategory.includes(":ne")) {
-                query.subcategory = { $nin: filteredSub };
+                qMatch.subcategory = { $nin: filteredSub };
             } else {
-                query.subcategory = { $in: filteredSub };
+                qMatch.subcategory = { $in: filteredSub };
             }
         }
 
@@ -50,7 +50,7 @@ export const getAllProduct = async (req, res) => {
         var currDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
         const listofData = await Product.aggregate([
-            { $match: query },
+            { $match: qMatch },
             {
                 $lookup: {
                     from: "categories",
@@ -300,16 +300,16 @@ export const getAllProduct = async (req, res) => {
 export const getPaginateProduct = async (req, res) => {
     try {
         const { page, perPage, search, sort } = req.query;
-        let query = {};
+        let qMatch = {};
 
         if (req.userData) {
-            query.tenantRef = req.userData?.tenantRef;
-            query.outletRef = req.userData?.outletRef;
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
         }
 
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
         };
@@ -338,7 +338,7 @@ export const getPaginateProduct = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
         }
-        const listofData = await Product.paginate(query, options);
+        const listofData = await Product.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
@@ -351,7 +351,12 @@ export const getPaginateProduct = async (req, res) => {
 
 export const getProductById = async (req, res) => {
     try {
-        const spesificData = await Product.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const spesificData = await Product.findOne(qMatch).lean();
         return res.json(spesificData);
     } catch (err) {
         return errorResponse(res, {
@@ -447,6 +452,11 @@ export const editProduct = async (req, res) => {
         }
 
         try {
+            let qMatch = { _id: req.params.id };
+            if (req.userData) {
+                qMatch.tenantRef = req.userData?.tenantRef;
+                qMatch.outletRef = req.userData?.outletRef;
+            }
             let objData = req.body;
 
             if (req.body.variantString) {
@@ -458,7 +468,7 @@ export const editProduct = async (req, res) => {
 
             if (req.file) {
                 // Chek product image & delete image
-                const productExist = await Product.findById(req.params.id);
+                const productExist = await Product.findOne(qMatch).lean();
                 if (productExist.imageId) {
                     await cloudinary.uploader.destroy(productExist.imageId);
                 }
@@ -476,7 +486,7 @@ export const editProduct = async (req, res) => {
 
 
             const updatedData = await Product.updateOne(
-                { _id: req.params.id },
+                qMatch,
                 {
                     $set: objData
                 }
@@ -495,13 +505,18 @@ export const editProduct = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteProduct = async (req, res) => {
     try {
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
         // Check image & delete image
-        const exist = await Product.findById(req.params.id);
+        const exist = await Product.findOne(qMatch).lean();
         if (exist?.imageId) {
             await cloudinary.uploader.destroy(exist.imageId);
         }
 
-        const deletedData = await Product.deleteOne({ _id: req.params.id });
+        const deletedData = await Product.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {
