@@ -101,11 +101,13 @@ const DataSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Outlets",
         default: null,
+        set: val => val === "" ? null : val
     },
 }, { timestamps: true });
 

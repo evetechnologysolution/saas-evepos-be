@@ -26,6 +26,7 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Orders",
         default: null,
+        set: val => val === "" ? null : val
     },
     latestStatus: {
         type: String,
@@ -60,8 +61,9 @@ const DataSchema = mongoose.Schema({
                 },
                 staff: {
                     type: mongoose.Schema.Types.ObjectId,
-                    default: null,
                     ref: "Users",
+                    default: null,
+                    set: val => val === "" ? null : val
                 }
             },
         ],
@@ -71,11 +73,13 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Outlets",
         default: null,
+        set: val => val === "" ? null : val
     },
 }, { timestamps: true });
 

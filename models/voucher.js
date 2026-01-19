@@ -33,9 +33,11 @@ const DataSchema = mongoose.Schema({
         default: 1
     },
     product: {
-        type: [mongoose.Schema.Types.ObjectId],
-        default: null,
-        ref: "Products",
+        type: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Products",
+        }],
+        default: []
     },
     qtyProduct: {
         type: Number,
@@ -57,6 +59,7 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
         type: [{

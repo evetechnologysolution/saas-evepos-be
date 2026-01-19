@@ -33,6 +33,7 @@ const DataSchema = mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: "Promotions",
             default: null,
+            set: val => val === "" ? null : val
         },
         amount: {
             type: Number,
@@ -52,6 +53,7 @@ const DataSchema = mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: "PromotionSpecial",
             default: null,
+            set: val => val === "" ? null : val
         },
         amount: {
             type: Number,
@@ -80,13 +82,15 @@ const DataSchema = mongoose.Schema({
     },
     category: {
         type: mongoose.Schema.Types.ObjectId,
-        default: null,
         ref: "Categories",
+        default: null,
+        set: val => val === "" ? null : val
     },
     subcategory: {
         type: mongoose.Schema.Types.ObjectId,
-        default: null,
         ref: "Subcategories",
+        default: null,
+        set: val => val === "" ? null : val
     },
     description: {
         type: String,
@@ -120,8 +124,9 @@ const DataSchema = mongoose.Schema({
             {
                 variantRef: {
                     type: mongoose.Schema.Types.ObjectId,
-                    default: null,
                     ref: "Variants",
+                    default: null,
+                    set: val => val === "" ? null : val
                 },
                 isMandatory: {
                     type: Boolean,
@@ -143,6 +148,7 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
         type: [{

@@ -5,28 +5,33 @@ import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 const DataSchema = new mongoose.Schema({
     conversation: {
         type: mongoose.Schema.Types.ObjectId,
-        default: null,
         ref: "Conversations",
+        default: null,
+        set: val => val === "" ? null : val
     },
     reply: {
         type: mongoose.Schema.Types.ObjectId,
-        default: null,
         ref: "Messages",
+        default: null,
+        set: val => val === "" ? null : val
     },
     memberRef: {
         type: mongoose.Schema.Types.ObjectId,
-        default: null,
         ref: "Members",
+        default: null,
+        set: val => val === "" ? null : val
     },
     admin: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Users",
         default: null,
+        set: val => val === "" ? null : val
     },
     // sender: {
     //     type: mongoose.Schema.Types.ObjectId,
-    //     default: null,
     //     refPath: "targetModel",
+    //     default: null,
+    //     set: val => val === "" ? null : val
     // },
     // targetModel: {
     //     type: String,
@@ -57,11 +62,13 @@ const DataSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Outlets",
         default: null,
+        set: val => val === "" ? null : val
     },
 }, { timestamps: true });
 

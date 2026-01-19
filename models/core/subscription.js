@@ -13,11 +13,13 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Services",
         default: null,
+        set: val => val === "" ? null : val
     },
     tenantRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     startDate: {
         type: Date

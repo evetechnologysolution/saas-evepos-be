@@ -37,10 +37,12 @@ const DataSchema = mongoose.Schema({
     startDate: {
         type: Date,
         default: null,
+        set: val => val === "" ? null : val
     },
     endDate: {
         type: Date,
         default: null,
+        set: val => val === "" ? null : val
     },
     validUntil: {
         type: Boolean,
@@ -62,6 +64,7 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
         type: [{

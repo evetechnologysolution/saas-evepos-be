@@ -6,8 +6,9 @@ import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 const DataSchema = mongoose.Schema({
     memberRef: {
         type: mongoose.Schema.Types.ObjectId,
-        default: null,
         ref: "Members",
+        default: null,
+        set: val => val === "" ? null : val
     },
     orderRef: {
         type: String,
@@ -45,11 +46,13 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Outlets",
         default: null,
+        set: val => val === "" ? null : val
     },
 }, { timestamps: true });
 
