@@ -27,12 +27,15 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Outlets",
-        default: null,
-    },
+        type: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Outlets",
+        }],
+        default: []
+    }
 }, { timestamps: true });
 
 DataSchema.pre("save", function (next) {
@@ -57,5 +60,7 @@ DataSchema.pre("findOneAndUpdate", function (next) {
     }
     next();
 });
+
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
 
 export default mongoose.model("Discounts", DataSchema);

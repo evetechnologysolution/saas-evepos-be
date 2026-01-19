@@ -1,12 +1,14 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const DataSchema = mongoose.Schema({
     memberRef: {
         type: mongoose.Schema.Types.ObjectId,
-        default: null,
         ref: "Members",
+        default: null,
+        set: val => val === "" ? null : val
     },
     orderRef: {
         type: String,
@@ -44,15 +46,19 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Outlets",
         default: null,
+        set: val => val === "" ? null : val
     },
 }, { timestamps: true });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 DataSchema.plugin(aggregatePaginate);
 
 export default mongoose.model("pointHistories", DataSchema);

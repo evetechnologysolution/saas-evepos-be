@@ -1,12 +1,13 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 
 const DataSchema = mongoose.Schema({
     name: {
         type: String,
         uppercase: true,
         trim: true,
-        required: true
+        required: [true, "Name wajib diisi"],
     },
     phone: { type: String, trim: true, default: "" },
     email: { type: String, trim: true, default: "" },
@@ -22,9 +23,13 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
 }, { timestamps: true });
 
+DataSchema.index({ tenantRef: 1 });
+
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("Outlets", DataSchema);

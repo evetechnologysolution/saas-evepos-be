@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
-import { capitalizeFirstLetter } from "../lib/textSetting.js";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
+import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
 const DataSchema = mongoose.Schema({
     name: {
@@ -23,13 +24,16 @@ const DataSchema = mongoose.Schema({
         default: 0
     },
     productionNotes: {
-        type: String
+        type: String,
+        trim: true,
+        default: ""
     },
     discount: {
         promotion: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Promotions",
             default: null,
+            set: val => val === "" ? null : val
         },
         amount: {
             type: Number,
@@ -49,6 +53,7 @@ const DataSchema = mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: "PromotionSpecial",
             default: null,
+            set: val => val === "" ? null : val
         },
         amount: {
             type: Number,
@@ -77,19 +82,24 @@ const DataSchema = mongoose.Schema({
     },
     category: {
         type: mongoose.Schema.Types.ObjectId,
-        default: null,
         ref: "Categories",
+        default: null,
+        set: val => val === "" ? null : val
     },
     subcategory: {
         type: mongoose.Schema.Types.ObjectId,
-        default: null,
         ref: "Subcategories",
+        default: null,
+        set: val => val === "" ? null : val
     },
     description: {
-        type: String
+        type: String,
+        trim: true,
+        default: ""
     },
     unit: {
         type: String,
+        trim: true,
         lowercase: true,
         default: "pcs"
     },
@@ -99,7 +109,7 @@ const DataSchema = mongoose.Schema({
     },
     extraNotes: {
         type: Boolean,
-        default: false
+        default: false,
     },
     listNumber: {
         type: Number,
@@ -109,26 +119,26 @@ const DataSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
-    variant: [
-        {
-            variantRef: {
-                type: mongoose.Schema.Types.ObjectId,
-                default: null,
-                ref: "Variants",
+    variant: {
+        type: [
+            {
+                variantRef: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "Variants",
+                    default: null,
+                    set: val => val === "" ? null : val
+                },
+                isMandatory: {
+                    type: Boolean,
+                    default: false
+                },
+                isMultiple: {
+                    type: Boolean,
+                    default: false
+                }
             },
-            isMandatory: {
-                type: Boolean,
-                default: false
-            },
-            isMultiple: {
-                type: Boolean,
-                default: false
-            }
-        },
-    ],
-    isLaundryBag: {
-        type: Boolean,
-        default: false
+        ],
+        default: []
     },
     isRecommended: {
         type: Boolean,
@@ -138,12 +148,15 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Outlets",
-        default: null,
-    },
+        type: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Outlets",
+        }],
+        default: []
+    }
 }, { timestamps: true });
 
 DataSchema.pre("save", function (next) {
@@ -169,6 +182,8 @@ DataSchema.pre("findOneAndUpdate", function (next) {
     next();
 });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("Products", DataSchema);

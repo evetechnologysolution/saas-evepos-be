@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { generateRandomId } from "../../lib/generateRandom.js";
 
 const DataSchema = mongoose.Schema({
@@ -12,11 +13,13 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Subscriptions",
         default: null,
+        set: val => val === "" ? null : val
     },
     tenantRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     amount: {
         type: Number,
@@ -65,6 +68,9 @@ DataSchema.pre("save", async function (next) {
     next();
 });
 
+DataSchema.index({ tenantRef: 1, subsRef: 1 });
+
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("Invoices", DataSchema);

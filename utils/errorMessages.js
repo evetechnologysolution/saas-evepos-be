@@ -19,6 +19,11 @@ export const ERROR_CONFIG = {
         message: "Akun Anda sudah terdaftar, silakan login ulang."
     },
 
+    USERNAME_ALREADY_EXISTS: {
+        status: 400,
+        message: "Username sudah terdaftar, silakan input ulang."
+    },
+
     DUPLICATE_DATA: {
         status: 400,
         message: "Email atau nomor HP sudah terdaftar."
@@ -42,5 +47,10 @@ export const ERROR_CONFIG = {
     TOKEN_INVALID: {
         status: 400,
         message: "Token tidak valid atau sudah kedaluwarsa."
+    },
+
+    EMAIL_REQUIRED: {
+        status: 400,
+        message: "Email wajib diisi."
     },
 };

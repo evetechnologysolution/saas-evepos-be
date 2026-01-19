@@ -1,5 +1,5 @@
 import express from "express";
-import { isAuth } from "../middleware/auth.js";
+import { isAuth } from "../../middleware/auth.js";
 import {
     getAllPromotion,
     getAvailablePromotion,
@@ -7,7 +7,7 @@ import {
     addPromotion,
     editPromotion,
     deletePromotion
-} from "../controllers/promotion.controller.js";
+} from "../../controllers/library/promotion.controller.js";
 
 const router = express.Router();
 

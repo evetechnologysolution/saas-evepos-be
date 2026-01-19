@@ -1,12 +1,13 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 
 const DataSchema = mongoose.Schema({
     name: {
         type: String,
         uppercase: true,
         trim: true,
-        required: true
+        required: [true, "Name wajib diisi"],
         // "BASIC", "START UP", "ENTERPRISE"
     },
     price: {
@@ -40,5 +41,6 @@ const DataSchema = mongoose.Schema({
 }, { timestamps: true });
 
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("Services", DataSchema);

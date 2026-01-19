@@ -36,6 +36,16 @@ export const registerTenant = async (req, res) => {
             throw new Error("ACCOUNT_ALREADY_EXISTS");
         }
 
+        const userExists = await User.findOne(
+            { username: objData?.username },
+            null,
+            { session }
+        );
+
+        if (userExists) {
+            throw new Error("USERNAME_ALREADY_EXISTS");
+        }
+
         // Hash password
         let hashedPassword;
         if (objData.password) {
@@ -45,8 +55,8 @@ export const registerTenant = async (req, res) => {
 
         // Generate token
         const token = nanoid(64);
-        const fixUrl = objData?.baseUrl || process.env.FRONTEND_URL || "https://evepos-web.vercel.app";
-        const verifyUrl = `${fixUrl}/tenant/register-verify?t=${token}`;
+        const fixUrl = objData?.baseUrl || process.env.FE_URL || "https://saas-evepos.vercel.app";
+        const verifyUrl = `${fixUrl}/auth/konfirmasi?token=${token}`;
 
         // Cek pending
         let pending = await Pending.findOne(
@@ -91,7 +101,7 @@ export const registerTenant = async (req, res) => {
         await session.commitTransaction();
 
         return res.json({
-            message: "Register success!",
+            message: "Register berhasil!",
             user: pending
         });
 
@@ -105,7 +115,7 @@ export const registerTenant = async (req, res) => {
             return res.status(400).json({
                 code: "DUPLICATE_KEY",
                 field,
-                message: `${field} already exists`,
+                message: `${field} sudah digunakan`,
             });
         }
 
@@ -119,6 +129,55 @@ export const registerTenant = async (req, res) => {
     } finally {
         session.endSession();
     }
+};
+
+export const resendVerify = async (req, res) => {
+    try {
+        let objData = req.body;
+
+        if (!objData.email) {
+            throw new Error("EMAIL_REQUIRED");
+        }
+
+        const token = nanoid(64);
+        const tokenExpiry = Date.now() + 10 * 60 * 1000;
+        const fixUrl = objData?.baseUrl || process.env.FE_URL || "https://saas-evepos.vercel.app";
+        const verifyUrl = `${fixUrl}/auth/konfirmasi?token=${token}`;
+
+        const updatedData = await Pending.findOneAndUpdate(
+            { email: objData.email },
+            {
+                $set: {
+                    token,
+                    tokenExpiry
+                }
+            },
+            {
+                new: true,
+                select: "-password -token -tokenExpiry"
+            }
+        ).lean();
+
+        if (!updatedData) {
+            throw new Error("DATA_NOT_FOUND");
+        }
+
+        await sendVerificationRegister({
+            ...updatedData,
+            verifyUrl,
+        });
+
+        return res.json({ message: "Verifikasi berhasil dikirim." });
+
+    } catch (err) {
+        const error = ERROR_CONFIG[err.message] || ERROR_CONFIG.INTERNAL_ERROR;
+
+        return res.status(error.status).json({
+            code: err.message,
+            message: error.message
+        });
+    }
+
 };
 
 export const verifyRegisterTenant = async (req, res) => {
@@ -209,7 +268,7 @@ export const verifyRegisterTenant = async (req, res) => {
             return res.status(400).json({
                 code: "DUPLICATE_KEY",
                 field,
-                message: `${field} already exists`,
+                message: `${field} sudah digunakan`,
             });
         }
 

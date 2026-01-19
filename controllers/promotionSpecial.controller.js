@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import multer from "multer";
 import Promotion from "../models/promotionSpecial.js";
 import Counter from "../models/counter.js";
-import Variant from "../models/variant.js";
-import Category from "../models/category.js";
-import Product from "../models/product.js";
+import Variant from "../models/library/variant.js";
+import Category from "../models/library/category.js";
+import Product from "../models/library/product.js";
 import { cloudinary, imageUpload } from "../lib/cloudinary.js";
 
 // GETTING ALL THE DATA
@@ -401,7 +401,7 @@ export const editPromotion = async (req, res) => {
 
             // Handle image upload and delete old image if necessary
             if (req.file) {
-                if (exist.imageId) {
+                if (exist?.imageId) {
                     await cloudinary.uploader.destroy(exist.imageId);
                 }
 
@@ -437,7 +437,7 @@ export const deletePromotion = async (req, res) => {
             return res.status(404).json({ message: "Promotion not found" });
         }
 
-        if (exist.imageId) {
+        if (exist?.imageId) {
             await cloudinary.uploader.destroy(exist.imageId);
         }
 

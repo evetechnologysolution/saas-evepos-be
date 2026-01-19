@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { generateRandomId } from "../../lib/generateRandom.js";
 
 const DataSchema = mongoose.Schema({
@@ -62,8 +63,6 @@ const DataSchema = mongoose.Schema({
     },
 }, { timestamps: true });
 
-DataSchema.plugin(mongoosePaginate);
-
 DataSchema.pre("save", async function (next) {
     if (!this.tenantId) {
         const currYear = new Date().getFullYear();
@@ -72,6 +71,25 @@ DataSchema.pre("save", async function (next) {
     }
     next();
 });
+
+// virtual
+DataSchema.virtual("surveyRef", {
+    ref: "Survey",
+    localField: "_id",
+    foreignField: "tenantRef",
+    justOne: true,
+});
+
+// boolean helper
+DataSchema.virtual("hasSurvey").get(function () {
+    return !!this.surveyRef;
+});
+
+DataSchema.set("toJSON", { virtuals: true });
+DataSchema.set("toObject", { virtuals: true });
+
+DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 // the table thats gonna show up in Mongo DB
 export default mongoose.model("Tenants", DataSchema);

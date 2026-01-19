@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter, convertToE164 } from "../lib/textSetting.js";
 
 const DataSchema = new mongoose.Schema({
@@ -59,6 +60,7 @@ const DataSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
 }, { timestamps: true });
 
@@ -94,6 +96,8 @@ DataSchema.pre("findOneAndUpdate", function (next) {
     next();
 });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("MemberPendings", DataSchema);

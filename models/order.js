@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter, convertToE164 } from "../lib/textSetting.js";
 
 const DataSchema = mongoose.Schema({
@@ -302,15 +303,15 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Outlets",
         default: null,
+        set: val => val === "" ? null : val
     },
 }, { timestamps: true });
-
-DataSchema.plugin(mongoosePaginate);
 
 DataSchema.pre("save", function (next) {
     if (this.pickupData) {
@@ -382,5 +383,8 @@ DataSchema.virtual("progressRef", {
 // Agar virtual ikut saat toJSON/toObject
 DataSchema.set("toJSON", { virtuals: true });
 DataSchema.set("toObject", { virtuals: true });
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
+DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("Orders", DataSchema);

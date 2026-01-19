@@ -1,5 +1,5 @@
 import express from "express";
-import { isAuth } from "../middleware/auth.js";
+import { isAuth } from "../../middleware/auth.js";
 import {
     getAllVariant,
     getPaginateVariant,
@@ -7,24 +7,22 @@ import {
     addVariant,
     editVariant,
     deleteVariant
-} from "../controllers/variant.controller.js";
+} from "../../controllers/library/variant.controller.js";
 
 const router = express.Router();
 
 // GETTING ALL THE DATA
-router.get("/", getAllVariant);
-
-// GETTING ALL THE DATA
-router.get("/paginate", getPaginateVariant);
+router.get("/all", isAuth, getAllVariant);
+router.get("/", isAuth, getPaginateVariant);
 
 // GET A SPECIFIC DATA
-router.get("/:id", getVariantById);
+router.get("/:id", isAuth, getVariantById);
 
 // CREATE NEW DATA
-router.post("/", addVariant);
+router.post("/", isAuth, addVariant);
 
 // UPDATE A SPECIFIC DATA
-router.patch("/:id", editVariant);
+router.patch("/:id", isAuth, editVariant);
 
 // DELETE A SPECIFIC DATA
 router.delete("/:id", isAuth, deleteVariant);

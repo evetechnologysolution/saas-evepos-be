@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
-import { capitalizeFirstLetter } from "../lib/textSetting.js";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
+import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
 const DataSchema = mongoose.Schema({
     name: {
@@ -22,12 +23,15 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Outlets",
-        default: null,
-    },
+        type: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Outlets",
+        }],
+        default: []
+    }
 }, { timestamps: true });
 
 DataSchema.pre("save", function (next) {
@@ -53,6 +57,8 @@ DataSchema.pre("findOneAndUpdate", function (next) {
     next();
 });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("Subcategories", DataSchema);

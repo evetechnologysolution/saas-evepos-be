@@ -41,7 +41,7 @@ export const saveReceipt = async (req, res) => {
                 });
                 if (cloud.public_id) {
                     const exist = await Receipt.findOne({ _id: { $ne: null } });
-                    if (exist.imageId) {
+                    if (exist?.imageId) {
                         await cloudinary.uploader.destroy(exist.imageId); // delete old
                     }
 

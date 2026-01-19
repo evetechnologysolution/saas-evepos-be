@@ -1,6 +1,6 @@
 import multer from "multer";
 import Voucher from "../models/voucher.js";
-import Product from "../models/product.js";
+import Product from "../models/library/product.js";
 import Member from "../models/member.js";
 import MemberVoucher from "../models/voucherMember.js";
 import { cloudinary, imageUpload } from "../lib/cloudinary.js";
@@ -296,7 +296,7 @@ export const deleteVoucher = async (req, res) => {
     try {
         // Check image & delete image
         const exist = await Voucher.findById(req.params.id);
-        if (exist.imageId) {
+        if (exist?.imageId) {
             await cloudinary.uploader.destroy(exist.imageId);
         }
 

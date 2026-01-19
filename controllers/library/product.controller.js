@@ -1,14 +1,20 @@
 import multer from "multer";
-import Product from "../models/product.js";
-import Category from "../models/category.js";
-import Subcategory from "../models/subcategory.js";
-import { cloudinary, imageUpload } from "../lib/cloudinary.js";
+import Product from "../../models/library/product.js";
+import Category from "../../models/library/category.js";
+import Subcategory from "../../models/library/subcategory.js";
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllProduct = async (req, res) => {
     try {
         const { category, subcategory } = req.query;
-        let query = {};
+        let qMatch = {};
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
 
         if (category) {
             let categoryName = category.replace(":ne", "").trim();
@@ -19,9 +25,9 @@ export const getAllProduct = async (req, res) => {
             const filteredCategory = categories.map((item) => item._id);
 
             if (category.includes(":ne")) {
-                query.category = { $nin: filteredCategory };
+                qMatch.category = { $nin: filteredCategory };
             } else {
-                query.category = { $in: filteredCategory };
+                qMatch.category = { $in: filteredCategory };
             }
         }
 
@@ -34,9 +40,9 @@ export const getAllProduct = async (req, res) => {
             const filteredSub = subs.map((item) => item._id);
 
             if (subcategory.includes(":ne")) {
-                query.subcategory = { $nin: filteredSub };
+                qMatch.subcategory = { $nin: filteredSub };
             } else {
-                query.subcategory = { $in: filteredSub };
+                qMatch.subcategory = { $in: filteredSub };
             }
         }
 
@@ -44,7 +50,7 @@ export const getAllProduct = async (req, res) => {
         var currDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
         const listofData = await Product.aggregate([
-            { $match: query },
+            { $match: qMatch },
             {
                 $lookup: {
                     from: "categories",
@@ -282,21 +288,41 @@ export const getAllProduct = async (req, res) => {
 
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
 // GETTING ALL THE DATA
 export const getPaginateProduct = async (req, res) => {
     try {
-        const { page, perPage, search } = req.query;
-        let query = {};
+        const { page, perPage, search, sort } = req.query;
+        let qMatch = {};
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
         };
+
+        let sortObj = { name: 1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
         const options = {
             populate: [
                 {
@@ -310,41 +336,60 @@ export const getPaginateProduct = async (req, res) => {
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { name: 1 },
+            sort: sortObj,
         }
-        const listofData = await Product.paginate(query, options);
+        const listofData = await Product.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
 export const getProductById = async (req, res) => {
     try {
-        const spesificData = await Product.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const spesificData = await Product.findOne(qMatch).lean();
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };
 
 // CREATE NEW DATA
 export const addProduct = async (req, res) => {
-    try {
-        imageUpload.single("image")(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.single("image")(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err.message.message,
+            });
+        }
 
+        try {
             let objData = req.body;
+            if (req.userData) {
+                objData.tenantRef = req.userData?.tenantRef;
+                if (req.userData?.outletRef) {
+                    objData.outletRef = [req.userData.outletRef];
+                }
+            }
 
             if (req.body.variantString) {
                 const objVariant = {
@@ -368,28 +413,50 @@ export const addProduct = async (req, res) => {
             const data = new Product(objData);
             const newData = await data.save();
             return res.json(newData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            if (err.name === "ValidationError") {
+                const errors = {};
+                Object.keys(err.errors).forEach((key) => {
+                    errors[key] = err.errors[key].message;
+                });
+
+                return errorResponse(res, {
+                    code: "VALIDATION_ERROR",
+                    message: "Validasi gagal",
+                    errors
+                });
+            }
+
+            return errorResponse(res, {
+                statusCode: 500,
+                code: "SERVER_ERROR",
+                message: err.message || "Terjadi kesalahan pada server"
+            });
+        }
+    });
 };
 
 // UPDATE A SPECIFIC DATA
 export const editProduct = async (req, res) => {
-    try {
-        imageUpload.single("image")(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.single("image")(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err.message.message,
+            });
+        }
 
+        try {
+            let qMatch = { _id: req.params.id };
+            if (req.userData) {
+                qMatch.tenantRef = req.userData?.tenantRef;
+                qMatch.outletRef = req.userData?.outletRef;
+            }
             let objData = req.body;
 
             if (req.body.variantString) {
@@ -401,7 +468,7 @@ export const editProduct = async (req, res) => {
 
             if (req.file) {
                 // Chek product image & delete image
-                const productExist = await Product.findById(req.params.id);
+                const productExist = await Product.findOne(qMatch).lean();
                 if (productExist.imageId) {
                     await cloudinary.uploader.destroy(productExist.imageId);
                 }
@@ -419,30 +486,43 @@ export const editProduct = async (req, res) => {
 
 
             const updatedData = await Product.updateOne(
-                { _id: req.params.id },
+                qMatch,
                 {
                     $set: objData
                 }
             );
             return res.json(updatedData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            return errorResponse(res, {
+                statusCode: 500,
+                code: "SERVER_ERROR",
+                message: err.message || "Terjadi kesalahan pada server"
+            });
+        }
+    });
 };
 
 // DELETE A SPECIFIC DATA
 export const deleteProduct = async (req, res) => {
     try {
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
         // Check image & delete image
-        const exist = await Product.findById(req.params.id);
-        if (exist.imageId) {
+        const exist = await Product.findOne(qMatch).lean();
+        if (exist?.imageId) {
             await cloudinary.uploader.destroy(exist.imageId);
         }
 
-        const deletedData = await Product.deleteOne({ _id: req.params.id });
+        const deletedData = await Product.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server"
+        });
     }
 };

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 
 const DataSchema = mongoose.Schema({
     startDate: {
@@ -111,15 +112,17 @@ const DataSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Tenants",
         default: null,
+        set: val => val === "" ? null : val
     },
     outletRef: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Outlets",
         default: null,
+        set: val => val === "" ? null : val
     },
 }, { timestamps: true });
 
-DataSchema.post('findOneAndUpdate', function (result, next) {
+DataSchema.post("findOneAndUpdate", function (result, next) {
     if (result) {
         result.total = (result.cashIn + result.sales) - result.cashOut;
         result.save();
@@ -127,7 +130,8 @@ DataSchema.post('findOneAndUpdate', function (result, next) {
     next();
 });
 
+DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(mongooseLeanVirtuals);
 
-//'CashBalances' is the table thats gonna show up in Mongo DB
-export default mongoose.model('CashBalances', DataSchema);
+export default mongoose.model("CashBalances", DataSchema);
