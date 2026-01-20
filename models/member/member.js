@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import bcrypt from "bcrypt";
-import { capitalizeFirstLetter, convertToE164, splitName } from "../lib/textSetting.js";
-import { generateRandomId } from "../lib/generateRandom.js";
+import { capitalizeFirstLetter, convertToE164, splitName } from "../../lib/textSetting.js";
+import { generateRandomId } from "../../lib/generateRandom.js";
 
 const defaultPass = "123456";
 

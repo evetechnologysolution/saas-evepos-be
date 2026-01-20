@@ -1,5 +1,5 @@
 import express from "express";
-import { isAuth, isAuthMember } from "../middleware/auth.js";
+import { isAuth, isAuthMember } from "../../middleware/auth.js";
 import {
     getAllMember,
     getAllMemberPending,
@@ -9,22 +9,22 @@ import {
     addMember,
     editMember,
     changeMemberPassword,
-    deleteMember
-} from "../controllers/member.controller.js";
+    deleteMember,
+} from "../../controllers/member/member.controller.js";
 
 const router = express.Router();
 
 // GETTING ALL THE DATA
-router.get("/", getAllMember);
-router.get("/pending", getAllMemberPending);
-router.get("/track", getMemberBySearch);
+router.get("/", isAuth, getAllMember);
+router.get("/pending", isAuth, getAllMemberPending);
+router.get("/track", isAuth, getMemberBySearch);
 
 // GET A SPECIFIC DATA
-router.get("/:id", getMemberById);
+router.get("/:id", isAuth, getMemberById);
 
 // CREATE NEW DATA
-router.post("/", addMember);
-router.post("/check", checkMember);
+router.post("/", isAuth, addMember);
+router.post("/check", isAuth, checkMember);
 
 // UPDATE A SPECIFIC DATA
 router.patch("/:id", isAuthMember, editMember);

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import aggregatePaginate from "mongoose-aggregate-paginate-v2";
-import { capitalizeFirstLetter } from "../lib/textSetting.js";
+import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
 const oneMonthFromNow = () => {
     const now = new Date();

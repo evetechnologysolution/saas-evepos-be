@@ -1,79 +1,107 @@
 import mongoose from "mongoose";
 import multer from "multer";
-import Order from "../models/order.js";
-import Member from "../models/member.js";
-import MemberVoucher from "../models/voucherMember.js";
-import Balance from "../models/cashBalance.js"
-import PointHistory from "../models/pointHistory.js"
-import { generateRandomId } from "../lib/generateRandom.js";
-// import { generatePayment } from "../lib/xendit.js"
-// import { generatePaymentMidtrans } from "../lib/midtrans.js"
-import { cloudinary, imageUpload } from "../lib/cloudinary.js"
-import { checkPoint, adjustPointHistories, createPointHistory } from "../lib/handlePoint.js"
-import { convertToE164 } from "../lib/textSetting.js";
+import Order from "../../models/pos/order.js";
+import Member from "../../models/member/member.js";
+// import MemberVoucher from "../../models/voucherMember.js";
+import Balance from "../../models/cashBalance.js";
+import { generateRandomId } from "../../lib/generateRandom.js";
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
+import { convertToE164 } from "../../lib/textSetting.js";
 
 // GETTING ALL THE DATA
 export const getAllOrder = async (req, res) => {
     try {
-        const { page, perPage, search, printCount, printLaundry, status, progressStatus, pickup, orderType, start, end, paidStart, paidEnd, sortBy, sortType } = req.query;
+        const {
+            page,
+            perPage,
+            search,
+            printCount,
+            printLaundry,
+            status,
+            progressStatus,
+            pickup,
+            orderType,
+            start,
+            end,
+            paidStart,
+            paidEnd,
+            sortBy,
+            sortType,
+        } = req.query;
 
-        let query = { status: { $ne: "backlog" } };
+        let qMatch = { status: { $ne: "backlog" } };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
 
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 $or: [
                     { _id: { $regex: search, $options: "i" } },
                     { orderId: { $regex: search, $options: "i" } },
                     { "customer.memberId": { $regex: search, $options: "i" } },
                     { "customer.name": { $regex: search, $options: "i" } },
-                    { "customer.phone": { $regex: isNaN(search) ? search : convertToE164(search), $options: "i" } },
-                    { "customer.email": { $regex: search, $options: "i" } }
-                ],  // option i for case insensitivity to match upper and lower cases.
+                    {
+                        "customer.phone": {
+                            $regex: isNaN(search)
+                                ? search
+                                : convertToE164(search),
+                            $options: "i",
+                        },
+                    },
+                    { "customer.email": { $regex: search, $options: "i" } },
+                ], // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
         if (printCount) {
             const printCountNumber = Number(printCount);
             if (!isNaN(printCountNumber)) {
-                query.printCount = { $gt: printCountNumber };
+                qMatch.printCount = { $gt: printCountNumber };
             }
         }
         if (printLaundry) {
             const printLaundryNumber = Number(printLaundry);
             if (!isNaN(printLaundryNumber)) {
-                query.printLaundry = { $gt: printLaundryNumber };
+                qMatch.printLaundry = { $gt: printLaundryNumber };
             }
         }
         if (status) {
             const fixStatus = status.replace(":ne", "").trim();
             if (fixStatus) {
-                const fixStatusArray = fixStatus.split(",").map(s => s.trim()).filter(Boolean); // Pastikan array dan bersih
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
 
                 if (status.includes(":ne")) {
-                    query.status = { $nin: [...fixStatusArray, "backlog"] };
+                    qMatch.status = { $nin: [...fixStatusArray, "backlog"] };
                 } else {
-                    query.status = { $in: fixStatusArray };
+                    qMatch.status = { $in: fixStatusArray };
                 }
             }
         }
         if (progressStatus) {
             const fixProgressStatus = progressStatus.replace(":ne", "").trim();
             if (fixProgressStatus) {
-                const fixProgressStatusArray = fixProgressStatus.split(",").map(s => s.trim()).filter(Boolean); // Pastikan array dan bersih
+                const fixProgressStatusArray = fixProgressStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
                 if (progressStatus.includes(":ne")) {
-                    query.progressStatus = { $nin: fixProgressStatusArray };
+                    qMatch.progressStatus = { $nin: fixProgressStatusArray };
                 } else {
-                    query.progressStatus = { $in: fixProgressStatusArray };
+                    qMatch.progressStatus = { $in: fixProgressStatusArray };
                 }
             }
         }
-        if (pickup === "yes") {
-            query.isPickedUp = { $eq: true };
-        } else if (pickup === "no") {
-            query.isPickedUp = { $ne: true };
+        if (pickup) {
+            qMatch.pickUpStatus = pickup;
         }
         if (orderType) {
-            query.orderType = orderType;
+            qMatch.orderType = orderType;
         }
         if (start) {
             const dStart = new Date(start);
@@ -84,13 +112,13 @@ export const getAllOrder = async (req, res) => {
             dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixEnd = new Date(dEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 date: {
                     $gte: fixStart,
-                    $lte: fixEnd
-                }
-            }
+                    $lte: fixEnd,
+                },
+            };
         }
         if (paidStart) {
             const pStart = new Date(paidStart);
@@ -101,13 +129,13 @@ export const getAllOrder = async (req, res) => {
             pEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixPaidEnd = new Date(pEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 paymentDate: {
                     $gte: fixPaidStart,
-                    $lte: fixPaidEnd
-                }
-            }
+                    $lte: fixPaidEnd,
+                },
+            };
         }
 
         const sortField = sortBy || "date";
@@ -123,8 +151,8 @@ export const getAllOrder = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
-        }
-        const listofData = await Order.paginate(query, options);
+        };
+        const listofData = await Order.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -133,61 +161,92 @@ export const getAllOrder = async (req, res) => {
 
 export const getDeliveryOrder = async (req, res) => {
     try {
-        const { page, perPage, search, printCount, printLaundry, status, progressStatus, pickup, start, end, paidStart, paidEnd, sortBy, sortType } = req.query;
+        const {
+            page,
+            perPage,
+            search,
+            printCount,
+            printLaundry,
+            status,
+            progressStatus,
+            pickup,
+            start,
+            end,
+            paidStart,
+            paidEnd,
+            sortBy,
+            sortType,
+        } = req.query;
 
-        let query = { orderType: "delivery" };
+        let qMatch = { orderType: "delivery" };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
 
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 $or: [
                     { _id: { $regex: search, $options: "i" } },
                     { orderId: { $regex: search, $options: "i" } },
                     { "customer.memberId": { $regex: search, $options: "i" } },
                     { "customer.name": { $regex: search, $options: "i" } },
-                    { "customer.phone": { $regex: isNaN(search) ? search : convertToE164(search), $options: "i" } },
-                    { "customer.email": { $regex: search, $options: "i" } }
-                ],  // option i for case insensitivity to match upper and lower cases.
+                    {
+                        "customer.phone": {
+                            $regex: isNaN(search)
+                                ? search
+                                : convertToE164(search),
+                            $options: "i",
+                        },
+                    },
+                    { "customer.email": { $regex: search, $options: "i" } },
+                ], // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
         if (printCount) {
             const printCountNumber = Number(printCount);
             if (!isNaN(printCountNumber)) {
-                query.printCount = { $gt: printCountNumber };
+                qMatch.printCount = { $gt: printCountNumber };
             }
         }
         if (printLaundry) {
             const printLaundryNumber = Number(printLaundry);
             if (!isNaN(printLaundryNumber)) {
-                query.printLaundry = { $gt: printLaundryNumber };
+                qMatch.printLaundry = { $gt: printLaundryNumber };
             }
         }
         if (status) {
             const fixStatus = status.replace(":ne", "").trim();
             if (fixStatus) {
-                const fixStatusArray = fixStatus.split(",").map(s => s.trim()).filter(Boolean); // Pastikan array dan bersih
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
                 if (status.includes(":ne")) {
-                    query.status = { $nin: fixStatusArray };
+                    qMatch.status = { $nin: fixStatusArray };
                 } else {
-                    query.status = { $in: fixStatusArray };
+                    qMatch.status = { $in: fixStatusArray };
                 }
             }
         }
         if (progressStatus) {
             const fixProgressStatus = progressStatus.replace(":ne", "").trim();
             if (fixProgressStatus) {
-                const fixProgressStatusArray = fixProgressStatus.split(",").map(s => s.trim()).filter(Boolean); // Pastikan array dan bersih
+                const fixProgressStatusArray = fixProgressStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
                 if (progressStatus.includes(":ne")) {
-                    query.progressStatus = { $nin: fixProgressStatusArray };
+                    qMatch.progressStatus = { $nin: fixProgressStatusArray };
                 } else {
-                    query.progressStatus = { $in: fixProgressStatusArray };
+                    qMatch.progressStatus = { $in: fixProgressStatusArray };
                 }
             }
         }
-        if (pickup === "yes") {
-            query.isPickedUp = { $eq: true };
-        } else if (pickup === "no") {
-            query.isPickedUp = { $ne: true };
+        if (pickup) {
+            qMatch.pickUpStatus = pickup;
         }
         if (start) {
             const dStart = new Date(start);
@@ -198,13 +257,13 @@ export const getDeliveryOrder = async (req, res) => {
             dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixEnd = new Date(dEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 date: {
                     $gte: fixStart,
-                    $lte: fixEnd
-                }
-            }
+                    $lte: fixEnd,
+                },
+            };
         }
         if (paidStart) {
             const pStart = new Date(paidStart);
@@ -215,13 +274,13 @@ export const getDeliveryOrder = async (req, res) => {
             pEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixPaidEnd = new Date(pEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 paymentDate: {
                     $gte: fixPaidStart,
-                    $lte: fixPaidEnd
-                }
-            }
+                    $lte: fixPaidEnd,
+                },
+            };
         }
 
         const sortField = sortBy || "date";
@@ -231,9 +290,9 @@ export const getDeliveryOrder = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
-        }
+        };
 
-        const listofData = await Order.paginate(query, options);
+        const listofData = await Order.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -242,49 +301,78 @@ export const getDeliveryOrder = async (req, res) => {
 
 export const getTrackOrder = async (req, res) => {
     try {
-        const { page, perPage, search, status, progressStatus, pickup, start, end, paidStart, paidEnd, sortBy, sortType } = req.query;
+        const {
+            page,
+            perPage,
+            search,
+            status,
+            progressStatus,
+            pickup,
+            start,
+            end,
+            paidStart,
+            paidEnd,
+            sortBy,
+            sortType,
+        } = req.query;
 
-        let query = {};
+        let qMatch = {};
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
 
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 $or: [
                     { _id: { $regex: search, $options: "i" } },
                     { orderId: { $regex: search, $options: "i" } },
                     { "customer.memberId": { $regex: search, $options: "i" } },
                     { "customer.name": { $regex: search, $options: "i" } },
-                    { "customer.phone": { $regex: isNaN(search) ? search : convertToE164(search), $options: "i" } },
-                    { "customer.email": { $regex: search, $options: "i" } }
-                ],  // option i for case insensitivity to match upper and lower cases.
+                    {
+                        "customer.phone": {
+                            $regex: isNaN(search)
+                                ? search
+                                : convertToE164(search),
+                            $options: "i",
+                        },
+                    },
+                    { "customer.email": { $regex: search, $options: "i" } },
+                ], // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
         if (status) {
             const fixStatus = status.replace(":ne", "").trim();
             if (fixStatus) {
-                const fixStatusArray = fixStatus.split(",").map(s => s.trim()).filter(Boolean); // Pastikan array dan bersih
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
                 if (status.includes(":ne")) {
-                    query.status = { $nin: fixStatusArray };
+                    qMatch.status = { $nin: fixStatusArray };
                 } else {
-                    query.status = { $in: fixStatusArray };
+                    qMatch.status = { $in: fixStatusArray };
                 }
             }
         }
         if (progressStatus) {
             const fixProgressStatus = progressStatus.replace(":ne", "").trim();
             if (fixProgressStatus) {
-                const fixProgressStatusArray = fixProgressStatus.split(",").map(s => s.trim()).filter(Boolean); // Pastikan array dan bersih
+                const fixProgressStatusArray = fixProgressStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
                 if (progressStatus.includes(":ne")) {
-                    query.progressStatus = { $nin: fixProgressStatusArray };
+                    qMatch.progressStatus = { $nin: fixProgressStatusArray };
                 } else {
-                    query.progressStatus = { $in: fixProgressStatusArray };
+                    qMatch.progressStatus = { $in: fixProgressStatusArray };
                 }
             }
         }
-        if (pickup === "yes") {
-            query.isPickedUp = { $eq: true };
-        } else if (pickup === "no") {
-            query.isPickedUp = { $ne: true };
+        if (pickup) {
+            qMatch.pickUpStatus = pickup;
         }
         if (start) {
             const dStart = new Date(start);
@@ -295,13 +383,13 @@ export const getTrackOrder = async (req, res) => {
             dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixEnd = new Date(dEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 date: {
                     $gte: fixStart,
-                    $lte: fixEnd
-                }
-            }
+                    $lte: fixEnd,
+                },
+            };
         }
         if (paidStart) {
             const pStart = new Date(paidStart);
@@ -312,13 +400,13 @@ export const getTrackOrder = async (req, res) => {
             pEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixPaidEnd = new Date(pEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 paymentDate: {
                     $gte: fixPaidStart,
-                    $lte: fixPaidEnd
-                }
-            }
+                    $lte: fixPaidEnd,
+                },
+            };
         }
 
         const sortField = sortBy || "date";
@@ -328,9 +416,9 @@ export const getTrackOrder = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
-        }
+        };
 
-        const listofData = await Order.paginate(query, options);
+        const listofData = await Order.paginate(qMatch, options);
 
         return res.json(listofData);
     } catch (err) {
@@ -355,47 +443,46 @@ export const getCountTrackOrder = async (req, res) => {
                 $match: {
                     date: {
                         $gte: fixStart,
-                        $lte: fixEnd
-                    }
-                }
+                        $lte: fixEnd,
+                    },
+                },
             },
             {
                 $group: {
                     _id: {
-                        $cond: [
-                            { $eq: ["$firstOrder", true] }, "new", "old"
-                        ]
+                        $cond: [{ $eq: ["$firstOrder", true] }, "new", "old"],
                     },
-                    count: { $sum: 1 }
-                }
+                    count: { $sum: 1 },
+                },
             },
             {
                 $group: {
                     _id: null,
                     new: {
                         $sum: {
-                            $cond: [{ $eq: ["$_id", "new"] }, "$count", 0]
-                        }
+                            $cond: [{ $eq: ["$_id", "new"] }, "$count", 0],
+                        },
                     },
                     old: {
                         $sum: {
-                            $cond: [{ $eq: ["$_id", "old"] }, "$count", 0]
-                        }
-                    }
-                }
+                            $cond: [{ $eq: ["$_id", "old"] }, "$count", 0],
+                        },
+                    },
+                },
             },
             {
                 $project: {
                     _id: 0,
                     new: 1,
-                    old: 1
-                }
-            }
+                    old: 1,
+                },
+            },
         ]);
 
         // Send response
-        res.status(200).json(result?.length > 0 ? result[0] : { new: 0, old: 0 });
-
+        res.status(200).json(
+            result?.length > 0 ? result[0] : { new: 0, old: 0 },
+        );
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }
@@ -404,59 +491,76 @@ export const getCountTrackOrder = async (req, res) => {
 // GETTING ORDER BY MEMBER
 export const getOrderByMember = async (req, res) => {
     try {
-        const { page, perPage, search, status, progressStatus, pickup, orderType } = req.query;
+        const {
+            page,
+            perPage,
+            search,
+            status,
+            progressStatus,
+            pickup,
+            orderType,
+        } = req.query;
 
-        let query = {
+        let qMatch = {
             "customer.memberId": req.params.id,
             // status: { $ne: "backlog" }
         };
 
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 $or: [
                     { _id: { $regex: search, $options: "i" } },
-                    { orderId: { $regex: search, $options: "i" } }
-                ],  // option i for case insensitivity to match upper and lower cases.
+                    { orderId: { $regex: search, $options: "i" } },
+                ], // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
         if (status) {
             const fixStatus = status.replace(":ne", "").trim();
             if (fixStatus) {
-                const fixStatusArray = fixStatus.split(",").map(s => s.trim()).filter(Boolean); // Pastikan array dan bersih
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
                 if (status.includes(":ne")) {
-                    query.status = { $nin: fixStatusArray };
+                    qMatch.status = { $nin: fixStatusArray };
                 } else {
-                    query.status = { $in: fixStatusArray };
+                    qMatch.status = { $in: fixStatusArray };
                 }
             }
         }
         if (progressStatus) {
             const fixProgressStatus = progressStatus.replace(":ne", "").trim();
             if (fixProgressStatus) {
-                const fixProgressStatusArray = fixProgressStatus.split(",").map(s => s.trim()).filter(Boolean); // Pastikan array dan bersih
+                const fixProgressStatusArray = fixProgressStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
                 if (progressStatus.includes(":ne")) {
-                    query.progressStatus = { $nin: fixProgressStatusArray };
+                    qMatch.progressStatus = { $nin: fixProgressStatusArray };
                 } else {
-                    query.progressStatus = { $in: fixProgressStatusArray };
+                    qMatch.progressStatus = { $in: fixProgressStatusArray };
                 }
             }
         }
-        if (pickup === "yes") {
-            query.isPickedUp = { $eq: true };
-        } else if (pickup === "no") {
-            query.isPickedUp = { $ne: true };
+        if (pickup) {
+            qMatch.pickUpStatus = pickup;
         }
         if (orderType) {
-            query.orderType = orderType;
+            qMatch.orderType = orderType;
         }
 
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { date: -1 },
-        }
-        const listofData = await Order.paginate(query, options);
+        };
+        const listofData = await Order.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -466,23 +570,39 @@ export const getOrderByMember = async (req, res) => {
 // GETTING PAID DATA
 export const getPaidOrder = async (req, res) => {
     try {
-        const { page, perPage, search, start, end, paidStart, paidEnd, sortBy, sortType } = req.query;
-        let query = {
+        const {
+            page,
+            perPage,
+            search,
+            start,
+            end,
+            paidStart,
+            paidEnd,
+            sortBy,
+            sortType,
+        } = req.query;
+
+        let qMatch = {
             $or: [
                 { status: { $regex: "paid", $options: "i" } },
-                { status: { $regex: "refund", $options: "i" } }
-            ]
+                { status: { $regex: "refund", $options: "i" } },
+            ],
         };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 $or: [
                     { _id: { $regex: search, $options: "i" } },
                     { orderId: { $regex: search, $options: "i" } },
-                    { tableName: { $regex: search, $options: "i" } }
-                ],  // option i for case insensitivity to match upper and lower cases.
+                    { tableName: { $regex: search, $options: "i" } },
+                ], // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
         if (start) {
             const dStart = new Date(start);
             dStart.setHours(0, 0, 0, 0);
@@ -492,13 +612,13 @@ export const getPaidOrder = async (req, res) => {
             dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixEnd = new Date(dEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 date: {
                     $gte: fixStart,
-                    $lte: fixEnd
-                }
-            }
+                    $lte: fixEnd,
+                },
+            };
         }
         if (paidStart) {
             const pStart = new Date(paidStart);
@@ -509,13 +629,13 @@ export const getPaidOrder = async (req, res) => {
             pEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixPaidEnd = new Date(pEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 paymentDate: {
                     $gte: fixPaidStart,
-                    $lte: fixPaidEnd
-                }
-            }
+                    $lte: fixPaidEnd,
+                },
+            };
         }
 
         const sortField = sortBy || "date";
@@ -525,9 +645,9 @@ export const getPaidOrder = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
-        }
+        };
 
-        const listofData = await Order.paginate(query, options);
+        const listofData = await Order.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -538,25 +658,38 @@ export const getPaidOrder = async (req, res) => {
 export const getCloseCashierOrder = async (req, res) => {
     try {
         const { start, end } = req.query;
-        let query = {
+        let qMatch = {
             $or: [
                 { status: { $regex: "paid", $options: "i" } },
-                { status: { $regex: "refund", $options: "i" } }
-            ]
+                { status: { $regex: "refund", $options: "i" } },
+            ],
         };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
         if (start && end) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 date: {
                     $gte: start,
-                    $lte: end
-                }
-            }
+                    $lte: end,
+                },
+            };
         }
-        const listofData = await Order.find(query)
+        const listofData = await Order.find(qMatch)
             .select([
-                "date", "orderId", "orders", "taxPercentage", "tax", "serviceChargePercentage",
-                "serviceCharge", "discount", "discountPrice", "billedAmount", "status"
+                "date",
+                "orderId",
+                "orders",
+                "taxPercentage",
+                "tax",
+                "serviceChargePercentage",
+                "serviceCharge",
+                "discount",
+                "discountPrice",
+                "billedAmount",
+                "status",
             ])
             .sort({ date: 1 });
 
@@ -564,12 +697,15 @@ export const getCloseCashierOrder = async (req, res) => {
         const totalDocuments = listofData.length;
 
         // Hitung jumlah billedAmount
-        const totalBilledAmount = listofData.reduce((total, order) => total + order.billedAmount, 0);
+        const totalBilledAmount = listofData.reduce(
+            (total, order) => total + order.billedAmount,
+            0,
+        );
 
         return res.json({
             docs: listofData,
             totalDocs: totalDocuments,
-            totalBilledAmount: totalBilledAmount
+            totalBilledAmount: totalBilledAmount,
         });
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -579,23 +715,28 @@ export const getCloseCashierOrder = async (req, res) => {
 // GETTING EXPORT ORDER
 export const getExportOrder = async (req, res) => {
     try {
-        const { search, start, end, paidStart, paidEnd, sortBy, sortType } = req.query;
-        let query = {
+        const { search, start, end, paidStart, paidEnd, sortBy, sortType } =
+            req.query;
+        let qMatch = {
             $or: [
                 { status: { $regex: "paid", $options: "i" } },
-                { status: { $regex: "refund", $options: "i" } }
-            ]
+                { status: { $regex: "refund", $options: "i" } },
+            ],
         };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 $or: [
                     { _id: { $regex: search, $options: "i" } },
                     { orderId: { $regex: search, $options: "i" } },
-                    { tableName: { $regex: search, $options: "i" } }
-                ],  // option i for case insensitivity to match upper and lower cases.
+                    { tableName: { $regex: search, $options: "i" } },
+                ], // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
         if (start) {
             const dStart = new Date(start);
             dStart.setHours(0, 0, 0, 0);
@@ -605,13 +746,13 @@ export const getExportOrder = async (req, res) => {
             dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixEnd = new Date(dEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 date: {
                     $gte: fixStart,
-                    $lte: fixEnd
-                }
-            }
+                    $lte: fixEnd,
+                },
+            };
         }
         if (paidStart) {
             const pStart = new Date(paidStart);
@@ -622,19 +763,21 @@ export const getExportOrder = async (req, res) => {
             pEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixPaidEnd = new Date(pEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 paymentDate: {
                     $gte: fixPaidStart,
-                    $lte: fixPaidEnd
-                }
-            }
+                    $lte: fixPaidEnd,
+                },
+            };
         }
 
         const sortField = sortBy || "date";
         const sortDirection = sortType === "asc" ? 1 : -1;
 
-        const listofData = await Order.find(query).sort({ [sortField]: sortDirection });
+        const listofData = await Order.find(qMatch).sort({
+            [sortField]: sortDirection,
+        });
 
         return res.json(listofData);
     } catch (err) {
@@ -655,7 +798,9 @@ export const getSavedBill = async (req, res) => {
 // GETTING UNFINISHED ORDER
 export const getUnfinishedOrder = async (req, res) => {
     try {
-        const data = await Order.findOne({ $or: [{ status: "pending" }, { status: "half paid" }] });
+        const data = await Order.findOne({
+            $or: [{ status: "pending" }, { status: "half paid" }],
+        });
         return res.json(data);
     } catch (err) {
         res.json({ message: err.message });
@@ -666,24 +811,23 @@ export const getUnfinishedOrder = async (req, res) => {
 export const getOrderById = async (req, res) => {
     try {
         const spesificData = await Order.findOne({
-            $or: [
-                { _id: req.params.id },
-                { orderId: req.params.id }
-            ]
-        }).populate([
-            {
-                path: "customerRef",
-                select: "memberId name firstName lastName phone notes point",
-            },
-            {
-                path: "progressRef",
-                select: "latestStatus log",
-                populate: {
-                    path: "log.staff",
-                    select: "fullname"
-                }
-            }
-        ]).lean();
+            $or: [{ _id: req.params.id }, { orderId: req.params.id }],
+        })
+            .populate([
+                {
+                    path: "customerRef",
+                    select: "memberId name firstName lastName phone notes point",
+                },
+                {
+                    path: "progressRef",
+                    select: "latestStatus log",
+                    populate: {
+                        path: "log.staff",
+                        select: "fullname",
+                    },
+                },
+            ])
+            .lean();
 
         if (!spesificData) {
             return res.status(404).json({ message: "Data not found" });
@@ -698,10 +842,7 @@ export const getOrderById = async (req, res) => {
 export const getOrderProgressById = async (req, res) => {
     try {
         const spesificData = await Order.findOne({
-            $or: [
-                { _id: req.params.id },
-                { orderId: req.params.id }
-            ]
+            $or: [{ _id: req.params.id }, { orderId: req.params.id }],
         })
             .select("orderId date customer orders progressRef")
             .populate([
@@ -710,10 +851,11 @@ export const getOrderProgressById = async (req, res) => {
                     select: "latestStatus log",
                     populate: {
                         path: "log.staff",
-                        select: "fullname"
-                    }
-                }
-            ]).lean();
+                        select: "fullname",
+                    },
+                },
+            ])
+            .lean();
 
         if (!spesificData) {
             return res.status(404).json({ message: "Data not found" });
@@ -743,32 +885,31 @@ export const addOrder = async (req, res) => {
 
             let objData = req.body;
 
-            const isDailyPromotion = objData?.orders?.some(field => field?.isDailyPromotion === true);
+            if (req.userData) {
+                objData.tenantRef = req.userData?.tenantRef;
+                if (req.userData?.outletRef) {
+                    objData.outletRef = req.userData.outletRef;
+                }
+            }
 
             if (req.file) {
                 const cloud = await cloudinary.uploader.upload(req.file.path, {
                     folder: process.env.FOLDER_PRODUCT,
                     format: "webp",
                     transformation: [
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
                 objData = Object.assign(objData, {
                     invoiceImg: {
-                        image: cloud.secure_url, imageId: cloud.public_id
-                    }
+                        image: cloud.secure_url,
+                        imageId: cloud.public_id,
+                    },
                 });
             }
 
             if (!req.body?._id) {
                 objData._id = new mongoose.Types.ObjectId().toString();
-            }
-
-            if (!req.body?.orderId) {
-                const currYear = new Date().getFullYear();
-                const number = generateRandomId(6);
-
-                objData = Object.assign(objData, { orderId: `ORD${currYear}${number}` });
             }
 
             if (req.body?.customerString) {
@@ -787,30 +928,46 @@ export const addOrder = async (req, res) => {
 
             if (objData?.customer?.phone) {
                 objData.customer.phone = convertToE164(objData.customer.phone);
+                let qMember = { phone: objData.customer.phone };
+                if (req.userData) {
+                    qMember.tenantRef = req.userData?.tenantRef;
+                }
 
                 checkMember = await Member.findOneAndUpdate(
-                    { phone: objData.customer.phone },
+                    qMember,
                     { $set: objData.customer },
-                    { new: true, upsert: false }
+                    { new: true, upsert: false },
                 );
 
                 if (checkMember) {
+                    let qFirstOrder = {
+                        "customer.memberId": checkMember.memberId,
+                    };
+                    if (req.userData) {
+                        qFirstOrder.tenantRef = req.userData?.tenantRef;
+                    }
                     objData.customer.memberId = checkMember.memberId;
 
-                    const hasPreviousOrder = await Order.exists({ "customer.memberId": checkMember.memberId });
+                    const hasPreviousOrder = await Order.exists(qFirstOrder);
                     if (!hasPreviousOrder) {
                         objData.firstOrder = true; // pertama order
                     }
                 }
 
-                if (!checkMember && objData?.customer?.isNew) { // jika member baru
+                if (!checkMember && objData?.customer?.isNew) {
+                    // jika member baru
                     const currYear = new Date().getFullYear();
                     const memId = `EM${currYear}${generateRandomId()}`;
                     objData.customer = {
                         ...objData.customer,
                         memberId: memId,
-                        phone: objData.customer.phone === "62" || objData.customer.phone === "0" ? memId : objData.customer.phone
-                    }
+                        phone:
+                            objData.customer.phone === "62" ||
+                            objData.customer.phone === "0"
+                                ? memId
+                                : objData.customer.phone,
+                        tenantRef: req?.userData?.tenantRef || null,
+                    };
                     const custData = new Member(objData.customer);
                     checkMember = await custData.save();
 
@@ -819,20 +976,23 @@ export const addOrder = async (req, res) => {
             }
 
             if (objData.voucherCode) {
-                if (typeof objData.voucherCode === "string" && objData.voucherCode.trim() !== "") {
+                if (
+                    typeof objData.voucherCode === "string" &&
+                    objData.voucherCode.trim() !== ""
+                ) {
                     objData.voucherCode = [objData.voucherCode];
                 } else if (!Array.isArray(objData.voucherCode)) {
                     objData.voucherCode = [];
                 }
             }
 
-            // Cek dan simpan penggunaan voucher jika ada
-            if (checkMember && Array.isArray(objData.voucherCode) && objData.voucherCode.length > 0) {
-                await MemberVoucher.updateMany(
-                    { voucherCode: { $in: objData.voucherCode } },
-                    { $set: { isUsed: true, usedAt: new Date() } }
-                );
-            }
+            // // Cek dan simpan penggunaan voucher jika ada
+            // if (checkMember && Array.isArray(objData.voucherCode) && objData.voucherCode.length > 0) {
+            //     await MemberVoucher.updateMany(
+            //         { voucherCode: { $in: objData.voucherCode } },
+            //         { $set: { isUsed: true, usedAt: new Date() } }
+            //     );
+            // }
 
             if (objData?.status && objData?.billedAmount) {
                 const statusPay = ["paid", "refund"];
@@ -843,165 +1003,119 @@ export const addOrder = async (req, res) => {
                 }
                 if (statusPay.includes(objData.status)) {
                     let increase = {
-                        sales: objData.billedAmount
-                    }
+                        sales: objData.billedAmount,
+                    };
 
                     if (objData.serviceCharge) {
                         increase = {
                             ...increase,
-                            serviceCharge: objData.serviceCharge
-                        }
+                            serviceCharge: objData.serviceCharge,
+                        };
                     }
                     if (objData.tax) {
                         increase = {
                             ...increase,
-                            tax: objData.tax
-                        }
+                            tax: objData.tax,
+                        };
                     }
-                    if (objData.status === "refund" || objData.status === "refund") {
+                    if (
+                        objData.status === "refund" ||
+                        objData.status === "refund"
+                    ) {
                         increase = {
                             ...increase,
-                            refund: objData.billedAmount * (-1)
-                        }
+                            refund: objData.billedAmount * -1,
+                        };
                     }
                     if (objData.payment === "Cash") {
                         increase = {
                             ...increase,
-                            "detail.cash": objData.billedAmount
-                        }
+                            "detail.cash": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "Dana") {
                         increase = {
                             ...increase,
-                            "detail.dana": objData.billedAmount
-                        }
+                            "detail.dana": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "Shopee Pay") {
                         increase = {
                             ...increase,
-                            "detail.shopeePay": objData.billedAmount
-                        }
+                            "detail.shopeePay": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "OVO") {
                         increase = {
                             ...increase,
-                            "detail.ovo": objData.billedAmount
-                        }
+                            "detail.ovo": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "QRIS") {
                         increase = {
                             ...increase,
-                            "detail.qris": objData.billedAmount
-                        }
+                            "detail.qris": objData.billedAmount,
+                        };
                     }
-                    if (objData.payment === "Card" && objData.cardBankName === "BRI") {
+                    if (
+                        objData.payment === "Card" &&
+                        objData.cardBankName === "BRI"
+                    ) {
                         increase = {
                             ...increase,
-                            "detail.bri": objData.billedAmount
-                        }
+                            "detail.bri": objData.billedAmount,
+                        };
                     }
-                    if (objData.payment === "Card" && objData.cardBankName === "BNI") {
+                    if (
+                        objData.payment === "Card" &&
+                        objData.cardBankName === "BNI"
+                    ) {
                         increase = {
                             ...increase,
-                            "detail.bni": objData.billedAmount
-                        }
+                            "detail.bni": objData.billedAmount,
+                        };
                     }
-                    if (objData.payment === "Card" && objData.cardBankName === "BCA") {
+                    if (
+                        objData.payment === "Card" &&
+                        objData.cardBankName === "BCA"
+                    ) {
                         increase = {
                             ...increase,
-                            "detail.bca": objData.billedAmount
-                        }
+                            "detail.bca": objData.billedAmount,
+                        };
                     }
-                    if (objData.payment === "Card" && objData.cardBankName === "MANDIRI") {
+                    if (
+                        objData.payment === "Card" &&
+                        objData.cardBankName === "MANDIRI"
+                    ) {
                         increase = {
                             ...increase,
-                            "detail.mandiri": objData.billedAmount
-                        }
+                            "detail.mandiri": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "Bank Transfer") {
                         increase = {
                             ...increase,
-                            "detail.bankTransfer": objData.billedAmount
-                        }
+                            "detail.bankTransfer": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "Online Payment") {
                         increase = {
                             ...increase,
-                            "detail.onlinePayment": objData.billedAmount
-                        }
+                            "detail.onlinePayment": objData.billedAmount,
+                        };
                     }
 
                     await Balance.findOneAndUpdate(
                         { isOpen: true },
                         { $inc: increase },
-                        { new: true, upsert: false }
+                        { new: true, upsert: false },
                     );
                 }
             }
 
             const data = new Order(objData);
             const newData = await data.save();
-
-            // generate point
-            if (checkMember && !isDailyPromotion) {
-                if (objData?.isOnline || objData?.isScan) {
-                    const isPaid = objData.status === "paid";
-
-                    if (isPaid) {
-                        const spendMoneyIncrement = objData.billedAmount > 0 ? objData.billedAmount : 0;
-                        const pointsIncrement = checkPoint(objData.billedAmount);
-
-                        const updatedMember = await Member.findOneAndUpdate(
-                            { _id: checkMember._id },
-                            {
-                                $inc: {
-                                    spendMoney: spendMoneyIncrement,
-                                    point: pointsIncrement
-                                }
-                            },
-                            { new: true } // Opsi new: true untuk mendapatkan dokumen yang diperbarui
-                        );
-
-                        // if (updatedMember.spendMoney >= 80000000) {
-                        //     let level = "silver";
-                        //     if (updatedMember.spendMoney >= 200000000) {
-                        //         level = "gold";
-                        //     }
-                        //     await Member.findOneAndUpdate(
-                        //         { _id: checkMember._id },
-                        //         {
-                        //             $set: {
-                        //                 memberLevel: level,
-                        //             }
-                        //         }
-                        //     );
-                        // }
-
-                        // update member point
-                        if (objData.usedPoint) {
-                            await adjustPointHistories(checkMember._id, objData.usedPoint, newData._id, "reduce");
-                        }
-
-                        // create point history
-                        if (pointsIncrement > 0) {
-                            await createPointHistory(checkMember._id, newData._id, pointsIncrement, "in");
-                        }
-                    }
-
-                    if (objData.usedPoint) {
-                        if (!isPaid) {
-                            await adjustPointHistories(checkMember._id, objData.usedPoint, newData._id, "reserve");
-                        }
-                        await Member.findOneAndUpdate(
-                            { _id: checkMember._id },
-                            {
-                                $inc: { point: -Number(objData.usedPoint) },
-                            }
-                        );
-                        await createPointHistory(checkMember._id, req.params.id, objData.usedPoint, "out");
-                    }
-                }
-            }
 
             return res.json(newData);
         });
@@ -1028,13 +1142,17 @@ export const editOrder = async (req, res) => {
 
             let objData = req.body;
 
-            const exist = await Order.findById(req.params.id);
+            let qMatch = { _id: req.params.id };
+            if (req.userData) {
+                qMatch.tenantRef = req.userData?.tenantRef;
+                qMatch.outletRef = req.userData?.outletRef;
+            }
+
+            const exist = await Order.findOne(qMatch);
 
             if (!exist) {
                 return res.status(400).json({ message: "Data not found." });
             }
-
-            const isDailyPromotion = objData?.orders?.some(field => field?.isDailyPromotion === true);
 
             if (req.file) {
                 // Chek image & delete image
@@ -1046,13 +1164,14 @@ export const editOrder = async (req, res) => {
                     folder: process.env.FOLDER_PRODUCT,
                     format: "webp",
                     transformation: [
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
                 objData = Object.assign(objData, {
                     invoiceImg: {
-                        image: cloud.secure_url, imageId: cloud.public_id
-                    }
+                        image: cloud.secure_url,
+                        imageId: cloud.public_id,
+                    },
                 });
             }
 
@@ -1072,30 +1191,46 @@ export const editOrder = async (req, res) => {
 
             if (objData?.customer?.phone) {
                 objData.customer.phone = convertToE164(objData.customer.phone);
+                let qMember = { phone: objData.customer.phone };
+                if (req.userData) {
+                    qMember.tenantRef = req.userData?.tenantRef;
+                }
 
                 checkMember = await Member.findOneAndUpdate(
-                    { phone: objData.customer.phone },
+                    qMember,
                     { $set: objData.customer },
-                    { new: true, upsert: false }
+                    { new: true, upsert: false },
                 );
 
                 if (checkMember) {
+                    let qFirstOrder = {
+                        "customer.memberId": checkMember.memberId,
+                    };
+                    if (req.userData) {
+                        qFirstOrder.tenantRef = req.userData?.tenantRef;
+                    }
                     objData.customer.memberId = checkMember.memberId;
 
-                    const hasPreviousOrder = await Order.exists({ "customer.memberId": checkMember.memberId });
+                    const hasPreviousOrder = await Order.exists(qFirstOrder);
                     if (!hasPreviousOrder) {
                         objData.firstOrder = true; // pertama order
                     }
                 }
 
-                if (!checkMember && objData?.customer?.isNew) { // jika member baru
+                if (!checkMember && objData?.customer?.isNew) {
+                    // jika member baru
                     const currYear = new Date().getFullYear();
                     const memId = `EM${currYear}${generateRandomId()}`;
                     objData.customer = {
                         ...objData.customer,
                         memberId: memId,
-                        phone: objData.customer.phone === "62" || objData.customer.phone === "0" ? memId : objData.customer.phone
-                    }
+                        phone:
+                            objData.customer.phone === "62" ||
+                            objData.customer.phone === "0"
+                                ? memId
+                                : objData.customer.phone,
+                        tenantRef: req?.userData?.tenantRef || null,
+                    };
                     const custData = new Member(objData.customer);
                     checkMember = await custData.save();
 
@@ -1105,7 +1240,10 @@ export const editOrder = async (req, res) => {
 
             if (objData.voucherCode) {
                 if (!exist.voucherCode.includes(objData.voucherCode)) {
-                    if (typeof objData.voucherCode === "string" && objData.voucherCode.trim() !== "") {
+                    if (
+                        typeof objData.voucherCode === "string" &&
+                        objData.voucherCode.trim() !== ""
+                    ) {
                         objData.voucherCode = [objData.voucherCode];
                     } else if (!Array.isArray(objData.voucherCode)) {
                         objData.voucherCode = [];
@@ -1113,185 +1251,146 @@ export const editOrder = async (req, res) => {
                 }
             }
 
-            // Cek dan simpan penggunaan voucher jika ada
-            if (checkMember && Array.isArray(objData.voucherCode) && objData.voucherCode.length > 0) {
-                await MemberVoucher.updateMany(
-                    { voucherCode: { $in: objData.voucherCode } },
-                    { $set: { isUsed: true, usedAt: new Date() } }
-                );
-            }
+            // // Cek dan simpan penggunaan voucher jika ada
+            // if (checkMember && Array.isArray(objData.voucherCode) && objData.voucherCode.length > 0) {
+            //     await MemberVoucher.updateMany(
+            //         { voucherCode: { $in: objData.voucherCode } },
+            //         { $set: { isUsed: true, usedAt: new Date() } }
+            //     );
+            // }
 
             if (objData?.status && objData?.billedAmount) {
                 const statusPay = ["paid", "refund"];
                 // const settings = await Setting.findOne();
                 // if (settings.cashBalance && statusPay.includes(objData.status)) {
-                if (objData?.status === "paid" && exist.status !== "paid" && !objData.paymentDate) {
+                if (
+                    objData?.status === "paid" &&
+                    exist.status !== "paid" &&
+                    !objData.paymentDate
+                ) {
                     objData.paymentDate = new Date();
                 }
-                if (statusPay.includes(objData.status) && !statusPay.includes(exist.status)) {
+                if (
+                    statusPay.includes(objData.status) &&
+                    !statusPay.includes(exist.status)
+                ) {
                     let increase = {
-                        sales: objData.billedAmount
-                    }
+                        sales: objData.billedAmount,
+                    };
 
                     if (objData.serviceCharge) {
                         increase = {
                             ...increase,
-                            serviceCharge: objData.serviceCharge
-                        }
+                            serviceCharge: objData.serviceCharge,
+                        };
                     }
                     if (objData.tax) {
                         increase = {
                             ...increase,
-                            tax: objData.tax
-                        }
+                            tax: objData.tax,
+                        };
                     }
-                    if (objData.status === "refund" || objData.status === "refund") {
+                    if (
+                        objData.status === "refund" ||
+                        objData.status === "refund"
+                    ) {
                         increase = {
                             ...increase,
-                            refund: objData.billedAmount * (-1)
-                        }
+                            refund: objData.billedAmount * -1,
+                        };
                     }
                     if (objData.payment === "Cash") {
                         increase = {
                             ...increase,
-                            "detail.cash": objData.billedAmount
-                        }
+                            "detail.cash": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "Dana") {
                         increase = {
                             ...increase,
-                            "detail.dana": objData.billedAmount
-                        }
+                            "detail.dana": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "Shopee Pay") {
                         increase = {
                             ...increase,
-                            "detail.shopeePay": objData.billedAmount
-                        }
+                            "detail.shopeePay": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "OVO") {
                         increase = {
                             ...increase,
-                            "detail.ovo": objData.billedAmount
-                        }
+                            "detail.ovo": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "QRIS") {
                         increase = {
                             ...increase,
-                            "detail.qris": objData.billedAmount
-                        }
+                            "detail.qris": objData.billedAmount,
+                        };
                     }
-                    if (objData.payment === "Card" && objData.cardBankName === "BRI") {
+                    if (
+                        objData.payment === "Card" &&
+                        objData.cardBankName === "BRI"
+                    ) {
                         increase = {
                             ...increase,
-                            "detail.bri": objData.billedAmount
-                        }
+                            "detail.bri": objData.billedAmount,
+                        };
                     }
-                    if (objData.payment === "Card" && objData.cardBankName === "BNI") {
+                    if (
+                        objData.payment === "Card" &&
+                        objData.cardBankName === "BNI"
+                    ) {
                         increase = {
                             ...increase,
-                            "detail.bni": objData.billedAmount
-                        }
+                            "detail.bni": objData.billedAmount,
+                        };
                     }
-                    if (objData.payment === "Card" && objData.cardBankName === "BCA") {
+                    if (
+                        objData.payment === "Card" &&
+                        objData.cardBankName === "BCA"
+                    ) {
                         increase = {
                             ...increase,
-                            "detail.bca": objData.billedAmount
-                        }
+                            "detail.bca": objData.billedAmount,
+                        };
                     }
-                    if (objData.payment === "Card" && objData.cardBankName === "MANDIRI") {
+                    if (
+                        objData.payment === "Card" &&
+                        objData.cardBankName === "MANDIRI"
+                    ) {
                         increase = {
                             ...increase,
-                            "detail.mandiri": objData.billedAmount
-                        }
+                            "detail.mandiri": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "Bank Transfer") {
                         increase = {
                             ...increase,
-                            "detail.bankTransfer": objData.billedAmount
-                        }
+                            "detail.bankTransfer": objData.billedAmount,
+                        };
                     }
                     if (objData.payment === "Online Payment") {
                         increase = {
                             ...increase,
-                            "detail.onlinePayment": objData.billedAmount
-                        }
+                            "detail.onlinePayment": objData.billedAmount,
+                        };
                     }
 
                     await Balance.findOneAndUpdate(
                         { isOpen: true },
                         { $inc: increase },
-                        { new: true, upsert: false }
+                        { new: true, upsert: false },
                     );
-                }
-            }
-
-            // generate point
-            if (checkMember && !isDailyPromotion) {
-                if (objData?.isOnline || objData?.isScan) {
-                    const isPaid = objData.status === "paid";
-
-                    if (isPaid) {
-                        const spendMoneyIncrement = objData.billedAmount > 0 ? objData.billedAmount : 0;
-                        const pointsIncrement = checkPoint(objData.billedAmount);
-
-                        const updatedMember = await Member.findOneAndUpdate(
-                            { _id: checkMember._id },
-                            {
-                                $inc: {
-                                    spendMoney: spendMoneyIncrement,
-                                    point: pointsIncrement
-                                }
-                            },
-                            { new: true } // Opsi new: true untuk mendapatkan dokumen yang diperbarui
-                        );
-
-                        // if (updatedMember.spendMoney >= 80000000) {
-                        //     let level = "silver";
-                        //     if (updatedMember.spendMoney >= 200000000) {
-                        //         level = "gold";
-                        //     }
-                        //     await Member.findOneAndUpdate(
-                        //         { _id: checkMember._id },
-                        //         {
-                        //             $set: {
-                        //                 memberLevel: level,
-                        //             }
-                        //         }
-                        //     );
-                        // }
-
-                        // update member point
-                        if (objData.usedPoint) {
-                            await adjustPointHistories(checkMember._id, objData.usedPoint, req.params.id, "reduce");
-                        }
-
-                        // create point history
-                        if (pointsIncrement > 0) {
-                            await createPointHistory(checkMember._id, req.params.id, pointsIncrement, "in");
-                        }
-                    }
-
-                    if (objData.usedPoint) {
-                        if (!isPaid) {
-                            await adjustPointHistories(checkMember._id, objData.usedPoint, req.params.id, "reserve");
-                        }
-                        await Member.findOneAndUpdate(
-                            { _id: checkMember._id },
-                            {
-                                $inc: { point: -Number(objData.usedPoint) },
-                            }
-                        );
-                        await createPointHistory(checkMember._id, req.params.id, objData.usedPoint, "out");
-                    }
                 }
             }
 
             const updatedData = await Order.updateOne(
                 { _id: req.params.id },
                 {
-                    $set: objData
-                }
+                    $set: objData,
+                },
             );
             return res.json(updatedData);
         });
@@ -1300,68 +1399,16 @@ export const editOrder = async (req, res) => {
     }
 };
 
-export const generatePoint = async (req, res) => {
-    try {
-        const check = await Order.findOne({ $or: [{ _id: req.params.id }, { orderId: req.params.id }] });
-        if (!check) {
-            return res.status(404).json({ message: "Data not found" });
-        }
-        if (check?.isScan || check?.status !== "paid") {
-            return res.status(400).json({ message: "Failed generate point." });
-        }
-
-        const checkMember = await Member.findOne({ phone: check.customer.phone });
-        if (!checkMember) {
-            return res.status(404).json({ message: "Member not found" });
-        }
-
-        const pointsIncrement = checkPoint(check.billedAmount);
-
-        await Order.updateOne(
-            { _id: check._id },
-            { $set: { isScan: true } },
-        );
-
-        const updatedMember = await Member.findOneAndUpdate(
-            { _id: checkMember._id },
-            { $inc: { point: pointsIncrement } },
-            { new: true } // Opsi new: true untuk mendapatkan dokumen yang diperbarui
-        );
-
-        // create point history
-        if (pointsIncrement > 0) {
-            const expiryDate = check?.paymentDate ? new Date(check?.paymentDate) : new Date();
-            expiryDate.setFullYear(expiryDate.getFullYear() + 1); // Add 1 year
-            expiryDate.setHours(0, 0, 0, 0);
-
-            const objHistory = {
-                member: checkMember._id,
-                order: check._id,
-                point: pointsIncrement,
-                pointRemaining: pointsIncrement,
-                date: check?.paymentDate || new Date(),
-                pointExpiry: expiryDate,
-                status: "in"
-            };
-
-            await PointHistory.create(objHistory);
-        }
-
-        return res.json(updatedMember);
-
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
-};
-
 export const editOrderRaw = async (req, res) => {
     try {
-        const updatedData = await Order.updateOne(
-            { _id: req.params.id },
-            {
-                $set: req.body
-            }
-        );
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const updatedData = await Order.updateOne(qMatch, {
+            $set: req.body,
+        });
         return res.json(updatedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -1370,17 +1417,19 @@ export const editOrderRaw = async (req, res) => {
 
 export const editPrintCount = async (req, res) => {
     try {
-        const updatedData = await Order.updateOne(
-            { _id: req.params.id },
-            {
-                $inc: { printCount: 1 },
-                $push: {
-                    printHistory: {
-                        staff: req.body.staff
-                    }
-                }
-            }
-        );
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const updatedData = await Order.updateOne(qMatch, {
+            $inc: { printCount: 1 },
+            $push: {
+                printHistory: {
+                    staff: req.body.staff,
+                },
+            },
+        });
         return res.json(updatedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -1389,18 +1438,20 @@ export const editPrintCount = async (req, res) => {
 
 export const editPrintLaundry = async (req, res) => {
     try {
-        const updatedData = await Order.updateOne(
-            { _id: req.params.id },
-            {
-                $inc: { printLaundry: 1 },
-                $push: {
-                    printHistory: {
-                        staff: req.body.staff,
-                        isLaundry: true
-                    }
-                }
-            }
-        );
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const updatedData = await Order.updateOne(qMatch, {
+            $inc: { printLaundry: 1 },
+            $push: {
+                printHistory: {
+                    staff: req.body.staff,
+                    isLaundry: true,
+                },
+            },
+        });
         return res.json(updatedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -1410,12 +1461,17 @@ export const editPrintLaundry = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteOrder = async (req, res) => {
     try {
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
         // Chek image & delete image
-        const check = await Order.findById(req.params.id);
+        const check = await Order.findOne(qMatch);
         if (check.invoiceImg.imageId) {
             await cloudinary.uploader.destroy(check.invoiceImg.imageId);
         }
-        const deletedData = await Order.deleteOne({ _id: req.params.id });
+        const deletedData = await Order.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
-import { capitalizeFirstLetter, convertToE164 } from "../lib/textSetting.js";
+import { capitalizeFirstLetter, convertToE164 } from "../../lib/textSetting.js";
 
 const DataSchema = new mongoose.Schema({
     name: {

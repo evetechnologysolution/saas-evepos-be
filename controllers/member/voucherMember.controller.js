@@ -1,12 +1,21 @@
 import mongoose from "mongoose";
-import MemberVoucher from "../models/voucherMember.js";
-import MemberData from "../models/member.js";
-import Product from "../models/library/product.js";
+import MemberVoucher from "../../models/member/voucherMember.js";
+import MemberData from "../../models/member/member.js";
+import Product from "../../models/library/product.js";
 
 // GETTING ALL THE DATA
 export const getAllVoucher = async (req, res) => {
     try {
-        const { page, perPage, search, voucherType, status, member, sortBy, sortType } = req.query;
+        const {
+            page,
+            perPage,
+            search,
+            voucherType,
+            status,
+            member,
+            sortBy,
+            sortType,
+        } = req.query;
 
         const today = new Date();
 
@@ -16,65 +25,85 @@ export const getAllVoucher = async (req, res) => {
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { [sortField]: sortDirection }
+            sort: { [sortField]: sortDirection },
+        };
+
+        let qMatch = {};
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
         }
 
-        let query = {};
-
         if (member) {
-            query.member = mongoose.Types.ObjectId(member);
+            qMatch.member = mongoose.Types.ObjectId(member);
         }
 
         if (voucherType) {
-            query.voucherType = Number(voucherType);
+            qMatch.voucherType = Number(voucherType);
         }
 
         if (status) {
             if (status === "open") {
-                query.isUsed = { $ne: true };
-                query.expiry = { $gt: today };
+                qMatch.isUsed = { $ne: true };
+                qMatch.expiry = { $gt: today };
             }
             if (status === "used") {
-                query.$and = [
+                qMatch.$and = [
                     {
                         $or: [
                             { isUsed: { $eq: true } },
-                            { expiry: { $lt: today } }
-                        ]
-                    }
+                            { expiry: { $lt: today } },
+                        ],
+                    },
                 ];
             }
             if (status === "used-log") {
-                query.isUsed = { $eq: true };
+                qMatch.isUsed = { $eq: true };
             }
             if (status === "expired") {
-                query.isUsed = { $ne: true };
-                query.expiry = { $lt: today };
+                qMatch.isUsed = { $ne: true };
+                qMatch.expiry = { $lt: today };
             }
         }
 
         if (search) {
-            const prod = await Product.find({ name: { $regex: search, $options: "i" } }).select("_id");
+            const prod = await Product.find({
+                name: { $regex: search, $options: "i" },
+            }).select("_id");
 
-            const mem = await MemberData.find({ name: { $regex: search, $options: "i" } }).select("_id");
+            const mem = await MemberData.find({
+                name: { $regex: search, $options: "i" },
+            }).select("_id");
 
             const searchConditions = [
                 { _id: { $regex: search, $options: "i" } },
                 { voucherCode: { $regex: search, $options: "i" } },
                 { name: { $regex: search, $options: "i" } },
-                { product: { $in: prod.map((item) => mongoose.Types.ObjectId(item._id)) } },
-                { memberRef: { $in: mem.map((item) => mongoose.Types.ObjectId(item._id)) } }
+                {
+                    product: {
+                        $in: prod.map((item) =>
+                            mongoose.Types.ObjectId(item._id),
+                        ),
+                    },
+                },
+                {
+                    memberRef: {
+                        $in: mem.map((item) =>
+                            mongoose.Types.ObjectId(item._id),
+                        ),
+                    },
+                },
             ];
 
-            if (query.$and && status === "used") {
-                query.$and.push({ $or: searchConditions });
+            if (qMatch.$and && status === "used") {
+                qMatch.$and.push({ $or: searchConditions });
             } else {
-                query.$or = searchConditions;
+                qMatch.$or = searchConditions;
             }
-        };
+        }
 
         const aggregationPipeline = [
-            { $match: query }, // Filter berdasarkan query
+            { $match: qMatch }, // Filter berdasarkan qMatch
             {
                 $addFields: {
                     isExpired: {
@@ -128,8 +157,8 @@ export const getAllVoucher = async (req, res) => {
                                         _id: "$$p._id",
                                         name: "$$p.name",
                                         price: "$$p.price",
-                                    }
-                                }
+                                    },
+                                },
                             },
                             else: null, // Jika tidak ada produk
                         },
@@ -144,12 +173,14 @@ export const getAllVoucher = async (req, res) => {
                     order: 1,
                     isExpired: 1,
                     isUsed: 1,
-                }
+                },
             },
         ];
 
-
-        const result = await MemberVoucher.aggregatePaginate(MemberVoucher.aggregate(aggregationPipeline), options);
+        const result = await MemberVoucher.aggregatePaginate(
+            MemberVoucher.aggregate(aggregationPipeline),
+            options,
+        );
 
         return res.json(result);
     } catch (err) {
@@ -159,7 +190,11 @@ export const getAllVoucher = async (req, res) => {
 
 export const getVoucherById = async (req, res) => {
     try {
-        const spesificData = await MemberVoucher.findById(req.params.id)
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const spesificData = await MemberVoucher.findOne(qMatch)
             .populate([
                 {
                     path: "product",
@@ -168,8 +203,9 @@ export const getVoucherById = async (req, res) => {
                 {
                     path: "member",
                     select: ["memberId", "cardId", "name", "phone"],
-                }
-            ]);
+                },
+            ])
+            .lean();
 
         if (!spesificData) {
             return res.status(404).json({ message: "Voucher not found!" });
@@ -177,9 +213,11 @@ export const getVoucherById = async (req, res) => {
 
         // Tambahkan isExpired berdasarkan today > expiry
         const today = new Date();
-        const isExpired = spesificData.expiry ? today > spesificData.expiry : false;
+        const isExpired = spesificData.expiry
+            ? today > spesificData.expiry
+            : false;
 
-        return res.json({ ...spesificData.toObject(), isExpired });
+        return res.json({ ...spesificData, isExpired });
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }
@@ -187,7 +225,11 @@ export const getVoucherById = async (req, res) => {
 
 export const getVoucherByScan = async (req, res) => {
     try {
-        const spesificData = await MemberVoucher.findOne({ voucherCode: req.params.id })
+        let qMatch = { voucherCode: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const spesificData = await MemberVoucher.findOne(qMatch)
             .populate([
                 {
                     path: "product",
@@ -196,8 +238,9 @@ export const getVoucherByScan = async (req, res) => {
                 {
                     path: "member",
                     select: ["memberId", "cardId", "name", "phone"],
-                }
-            ]);
+                },
+            ])
+            .lean();
 
         if (!spesificData) {
             return res.status(404).json({ message: "Voucher not found!" });
@@ -205,9 +248,11 @@ export const getVoucherByScan = async (req, res) => {
 
         // Tambahkan isExpired berdasarkan today > expiry
         const today = new Date();
-        const isExpired = spesificData.expiry ? today > spesificData.expiry : false;
+        const isExpired = spesificData.expiry
+            ? today > spesificData.expiry
+            : false;
 
-        return res.json({ ...spesificData.toObject(), isExpired });
+        return res.json({ ...spesificData, isExpired });
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }
@@ -216,12 +261,13 @@ export const getVoucherByScan = async (req, res) => {
 // UPDATE A SPECIFIC DATA
 export const editVoucher = async (req, res) => {
     try {
-        const updatedData = await MemberVoucher.updateOne(
-            { _id: req.params.id },
-            {
-                $set: req.body
-            }
-        );
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const updatedData = await MemberVoucher.updateOne(qMatch, {
+            $set: req.body,
+        });
         return res.json(updatedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -231,7 +277,11 @@ export const editVoucher = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteVoucher = async (req, res) => {
     try {
-        const deletedData = await MemberVoucher.deleteOne({ _id: req.params.id });
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const deletedData = await MemberVoucher.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });

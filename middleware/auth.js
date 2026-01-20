@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/core/user.js";
 import Outlet from "../models/core/outlet.js";
-import Member from "../models/member.js";
+import Member from "../models/member/member.js";
 import "dotenv/config.js";
 
 export const isAuth = async (req, res, next) => {
