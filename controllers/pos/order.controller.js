@@ -869,47 +869,42 @@ export const getOrderProgressById = async (req, res) => {
 
 // CREATE NEW DATA
 export const addOrder = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         imageUpload.single("invoiceImg")(req, res, async function (err) {
             if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ status: "Failed", message: "Failed to upload image" });
             } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ status: "Failed", message: err.message });
             }
 
             let objData = req.body;
 
             if (req.userData) {
-                objData.tenantRef = req.userData?.tenantRef;
+                objData.tenantRef = req.userData.tenantRef;
                 if (req.userData?.outletRef) {
                     objData.outletRef = req.userData.outletRef;
                 }
             }
 
+            // ===== Upload Image (di luar transaction DB) =====
             if (req.file) {
                 const cloud = await cloudinary.uploader.upload(req.file.path, {
                     folder: process.env.FOLDER_PRODUCT,
                     format: "webp",
-                    transformation: [
-                        { quality: "auto:low" }, // Adjust the compression level if desired
-                    ],
+                    transformation: [{ quality: "auto:low" }],
                 });
-                objData = Object.assign(objData, {
-                    invoiceImg: {
-                        image: cloud.secure_url,
-                        imageId: cloud.public_id,
-                    },
-                });
-            }
 
-            if (!req.body?._id) {
-                objData._id = new mongoose.Types.ObjectId().toString();
+                objData.invoiceImg = {
+                    image: cloud.secure_url,
+                    imageId: cloud.public_id,
+                };
             }
 
             if (req.body?.customerString) {
@@ -920,259 +915,168 @@ export const addOrder = async (req, res) => {
                 objData.orders = JSON.parse(req.body.ordersString);
             }
 
-            let checkMember = null;
-
             if (objData?.customer?.address) {
                 objData.isOnline = true;
             }
 
+            let checkMember = null;
+
+            // ================= MEMBER LOGIC =================
             if (objData?.customer?.phone) {
-                objData.customer.phone = convertToE164(objData.customer.phone);
-                let qMember = { phone: objData.customer.phone };
-                if (req.userData) {
-                    qMember.tenantRef = req.userData?.tenantRef;
-                }
+                const phoneE164 = convertToE164(objData.customer.phone);
+
+                const qMember = {
+                    phone: phoneE164,
+                    ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+                };
 
                 checkMember = await Member.findOneAndUpdate(
                     qMember,
-                    { $set: objData.customer },
-                    { new: true, upsert: false },
+                    { $set: { ...objData.customer, phone: phoneE164 } },
+                    { new: true, session }
                 );
 
                 if (checkMember) {
-                    let qFirstOrder = {
-                        "customer.memberId": checkMember.memberId,
-                    };
-                    if (req.userData) {
-                        qFirstOrder.tenantRef = req.userData?.tenantRef;
-                    }
                     objData.customer.memberId = checkMember.memberId;
 
-                    const hasPreviousOrder = await Order.exists(qFirstOrder);
+                    const hasPreviousOrder = await Order.exists(
+                        {
+                            "customer.memberId": checkMember.memberId,
+                            ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+                        },
+                        { session }
+                    );
+
                     if (!hasPreviousOrder) {
-                        objData.firstOrder = true; // pertama order
+                        objData.firstOrder = true;
                     }
                 }
 
-                if (!checkMember && objData?.customer?.isNew) {
-                    // jika member baru
+                if (!checkMember && objData.customer.isNew) {
                     const currYear = new Date().getFullYear();
-                    const memId = `EM${currYear}${generateRandomId()}`;
-                    objData.customer = {
+                    const memberId = `EM${currYear}${generateRandomId()}`;
+
+                    const newCustomer = {
                         ...objData.customer,
-                        memberId: memId,
-                        phone:
-                            objData.customer.phone === "62" ||
-                            objData.customer.phone === "0"
-                                ? memId
-                                : objData.customer.phone,
-                        tenantRef: req?.userData?.tenantRef || null,
+                        memberId,
+                        phone: phoneE164 === "62" || phoneE164 === "0" ? memberId : phoneE164,
+                        tenantRef: req.userData?.tenantRef || null,
                     };
-                    const custData = new Member(objData.customer);
-                    checkMember = await custData.save();
 
-                    objData.firstOrder = true; // pertama order
+                    const newMember = new Member(newCustomer);
+                    checkMember = await newMember.save({ session });
+
+                    objData.customer = newCustomer;
+                    objData.firstOrder = true;
                 }
             }
 
-            if (objData.voucherCode) {
-                if (
-                    typeof objData.voucherCode === "string" &&
-                    objData.voucherCode.trim() !== ""
-                ) {
-                    objData.voucherCode = [objData.voucherCode];
-                } else if (!Array.isArray(objData.voucherCode)) {
-                    objData.voucherCode = [];
-                }
-            }
-
-            // // Cek dan simpan penggunaan voucher jika ada
-            // if (checkMember && Array.isArray(objData.voucherCode) && objData.voucherCode.length > 0) {
-            //     await MemberVoucher.updateMany(
-            //         { voucherCode: { $in: objData.voucherCode } },
-            //         { $set: { isUsed: true, usedAt: new Date() } }
-            //     );
-            // }
-
+            // ================= BALANCE =================
             if (objData?.status && objData?.billedAmount) {
                 const statusPay = ["paid", "refund"];
-                // const settings = await Setting.findOne();
-                // if (settings.cashBalance && statusPay.includes(objData.status)) {
-                if (objData?.status === "paid" && !objData.paymentDate) {
+
+                if (objData.status === "paid" && !objData.paymentDate) {
                     objData.paymentDate = new Date();
                 }
+
                 if (statusPay.includes(objData.status)) {
-                    let increase = {
-                        sales: objData.billedAmount,
+                    let increase = { sales: objData.billedAmount };
+
+                    if (objData.serviceCharge) increase.serviceCharge = objData.serviceCharge;
+                    if (objData.tax) increase.tax = objData.tax;
+                    if (objData.status === "refund") increase.refund = objData.billedAmount * -1;
+
+                    const paymentMap = {
+                        Cash: "detail.cash",
+                        Dana: "detail.dana",
+                        "Shopee Pay": "detail.shopeePay",
+                        OVO: "detail.ovo",
+                        QRIS: "detail.qris",
+                        "Bank Transfer": "detail.bankTransfer",
+                        "Online Payment": "detail.onlinePayment",
                     };
 
-                    if (objData.serviceCharge) {
-                        increase = {
-                            ...increase,
-                            serviceCharge: objData.serviceCharge,
-                        };
+                    if (paymentMap[objData.payment]) {
+                        increase[paymentMap[objData.payment]] = objData.billedAmount;
                     }
-                    if (objData.tax) {
-                        increase = {
-                            ...increase,
-                            tax: objData.tax,
-                        };
-                    }
-                    if (
-                        objData.status === "refund" ||
-                        objData.status === "refund"
-                    ) {
-                        increase = {
-                            ...increase,
-                            refund: objData.billedAmount * -1,
-                        };
-                    }
-                    if (objData.payment === "Cash") {
-                        increase = {
-                            ...increase,
-                            "detail.cash": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "Dana") {
-                        increase = {
-                            ...increase,
-                            "detail.dana": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "Shopee Pay") {
-                        increase = {
-                            ...increase,
-                            "detail.shopeePay": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "OVO") {
-                        increase = {
-                            ...increase,
-                            "detail.ovo": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "QRIS") {
-                        increase = {
-                            ...increase,
-                            "detail.qris": objData.billedAmount,
-                        };
-                    }
-                    if (
-                        objData.payment === "Card" &&
-                        objData.cardBankName === "BRI"
-                    ) {
-                        increase = {
-                            ...increase,
-                            "detail.bri": objData.billedAmount,
-                        };
-                    }
-                    if (
-                        objData.payment === "Card" &&
-                        objData.cardBankName === "BNI"
-                    ) {
-                        increase = {
-                            ...increase,
-                            "detail.bni": objData.billedAmount,
-                        };
-                    }
-                    if (
-                        objData.payment === "Card" &&
-                        objData.cardBankName === "BCA"
-                    ) {
-                        increase = {
-                            ...increase,
-                            "detail.bca": objData.billedAmount,
-                        };
-                    }
-                    if (
-                        objData.payment === "Card" &&
-                        objData.cardBankName === "MANDIRI"
-                    ) {
-                        increase = {
-                            ...increase,
-                            "detail.mandiri": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "Bank Transfer") {
-                        increase = {
-                            ...increase,
-                            "detail.bankTransfer": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "Online Payment") {
-                        increase = {
-                            ...increase,
-                            "detail.onlinePayment": objData.billedAmount,
-                        };
+
+                    if (objData.payment === "Card" && objData.cardBankName) {
+                        increase[`detail.${objData.cardBankName.toLowerCase()}`] =
+                            objData.billedAmount;
                     }
 
                     await Balance.findOneAndUpdate(
                         { isOpen: true },
                         { $inc: increase },
-                        { new: true, upsert: false },
+                        { new: true, session }
                     );
                 }
             }
 
-            const data = new Order(objData);
-            const newData = await data.save();
+            // ================= SAVE ORDER =================
+            const order = new Order(objData);
+            const newData = await order.save({ session });
+
+            await session.commitTransaction();
+            session.endSession();
 
             return res.json(newData);
         });
     } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(500).json({ message: err.message });
     }
 };
 
 // UPDATE A SPECIFIC DATA
 export const editOrder = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         imageUpload.single("invoiceImg")(req, res, async function (err) {
             if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ status: "Failed", message: "Failed to upload image" });
             } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
+                await session.abortTransaction();
+                session.endSession();
+                return res.status(400).json({ status: "Failed", message: err.message });
             }
 
             let objData = req.body;
 
-            let qMatch = { _id: req.params.id };
-            if (req.userData) {
-                qMatch.tenantRef = req.userData?.tenantRef;
-                qMatch.outletRef = req.userData?.outletRef;
-            }
+            const qMatch = {
+                _id: req.params.id,
+                ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+                ...(req.userData?.outletRef && { outletRef: req.userData.outletRef }),
+            };
 
-            const exist = await Order.findOne(qMatch);
-
+            const exist = await Order.findOne(qMatch).session(session);
             if (!exist) {
+                await session.abortTransaction();
+                session.endSession();
                 return res.status(400).json({ message: "Data not found." });
             }
 
+            // ===== Upload image (external) =====
             if (req.file) {
-                // Chek image & delete image
-                if (exist.invoiceImg.imageId) {
+                if (exist.invoiceImg?.imageId) {
                     await cloudinary.uploader.destroy(exist.invoiceImg.imageId);
                 }
 
                 const cloud = await cloudinary.uploader.upload(req.file.path, {
                     folder: process.env.FOLDER_PRODUCT,
                     format: "webp",
-                    transformation: [
-                        { quality: "auto:low" }, // Adjust the compression level if desired
-                    ],
+                    transformation: [{ quality: "auto:low" }],
                 });
-                objData = Object.assign(objData, {
-                    invoiceImg: {
-                        image: cloud.secure_url,
-                        imageId: cloud.public_id,
-                    },
-                });
+
+                objData.invoiceImg = {
+                    image: cloud.secure_url,
+                    imageId: cloud.public_id,
+                };
             }
 
             if (req.body?.customerString) {
@@ -1183,67 +1087,66 @@ export const editOrder = async (req, res) => {
                 objData.orders = JSON.parse(req.body.ordersString);
             }
 
-            let checkMember = null;
-
             if (objData?.customer?.address) {
                 objData.isOnline = true;
             }
 
+            // ================= MEMBER =================
+            let checkMember = null;
+
             if (objData?.customer?.phone) {
-                objData.customer.phone = convertToE164(objData.customer.phone);
-                let qMember = { phone: objData.customer.phone };
-                if (req.userData) {
-                    qMember.tenantRef = req.userData?.tenantRef;
-                }
+                const phoneE164 = convertToE164(objData.customer.phone);
+
+                const qMember = {
+                    phone: phoneE164,
+                    ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+                };
 
                 checkMember = await Member.findOneAndUpdate(
                     qMember,
-                    { $set: objData.customer },
-                    { new: true, upsert: false },
+                    { $set: { ...objData.customer, phone: phoneE164 } },
+                    { new: true, session }
                 );
 
                 if (checkMember) {
-                    let qFirstOrder = {
-                        "customer.memberId": checkMember.memberId,
-                    };
-                    if (req.userData) {
-                        qFirstOrder.tenantRef = req.userData?.tenantRef;
-                    }
                     objData.customer.memberId = checkMember.memberId;
 
-                    const hasPreviousOrder = await Order.exists(qFirstOrder);
+                    const hasPreviousOrder = await Order.exists(
+                        {
+                            "customer.memberId": checkMember.memberId,
+                            ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+                        },
+                        { session }
+                    );
+
                     if (!hasPreviousOrder) {
-                        objData.firstOrder = true; // pertama order
+                        objData.firstOrder = true;
                     }
                 }
 
-                if (!checkMember && objData?.customer?.isNew) {
-                    // jika member baru
+                if (!checkMember && objData.customer.isNew) {
                     const currYear = new Date().getFullYear();
-                    const memId = `EM${currYear}${generateRandomId()}`;
-                    objData.customer = {
-                        ...objData.customer,
-                        memberId: memId,
-                        phone:
-                            objData.customer.phone === "62" ||
-                            objData.customer.phone === "0"
-                                ? memId
-                                : objData.customer.phone,
-                        tenantRef: req?.userData?.tenantRef || null,
-                    };
-                    const custData = new Member(objData.customer);
-                    checkMember = await custData.save();
+                    const memberId = `EM${currYear}${generateRandomId()}`;
 
-                    objData.firstOrder = true; // pertama order
+                    const newCustomer = {
+                        ...objData.customer,
+                        memberId,
+                        phone: phoneE164 === "62" || phoneE164 === "0" ? memberId : phoneE164,
+                        tenantRef: req.userData?.tenantRef || null,
+                    };
+
+                    const newMember = new Member(newCustomer);
+                    checkMember = await newMember.save({ session });
+
+                    objData.customer = newCustomer;
+                    objData.firstOrder = true;
                 }
             }
 
+            // ================= VOUCHER =================
             if (objData.voucherCode) {
                 if (!exist.voucherCode.includes(objData.voucherCode)) {
-                    if (
-                        typeof objData.voucherCode === "string" &&
-                        objData.voucherCode.trim() !== ""
-                    ) {
+                    if (typeof objData.voucherCode === "string" && objData.voucherCode.trim()) {
                         objData.voucherCode = [objData.voucherCode];
                     } else if (!Array.isArray(objData.voucherCode)) {
                         objData.voucherCode = [];
@@ -1251,150 +1154,70 @@ export const editOrder = async (req, res) => {
                 }
             }
 
-            // // Cek dan simpan penggunaan voucher jika ada
-            // if (checkMember && Array.isArray(objData.voucherCode) && objData.voucherCode.length > 0) {
-            //     await MemberVoucher.updateMany(
-            //         { voucherCode: { $in: objData.voucherCode } },
-            //         { $set: { isUsed: true, usedAt: new Date() } }
-            //     );
-            // }
-
+            // ================= BALANCE =================
             if (objData?.status && objData?.billedAmount) {
                 const statusPay = ["paid", "refund"];
-                // const settings = await Setting.findOne();
-                // if (settings.cashBalance && statusPay.includes(objData.status)) {
+
                 if (
-                    objData?.status === "paid" &&
+                    objData.status === "paid" &&
                     exist.status !== "paid" &&
                     !objData.paymentDate
                 ) {
                     objData.paymentDate = new Date();
                 }
+
                 if (
                     statusPay.includes(objData.status) &&
                     !statusPay.includes(exist.status)
                 ) {
-                    let increase = {
-                        sales: objData.billedAmount,
+                    let increase = { sales: objData.billedAmount };
+
+                    if (objData.serviceCharge) increase.serviceCharge = objData.serviceCharge;
+                    if (objData.tax) increase.tax = objData.tax;
+                    if (objData.status === "refund") increase.refund = objData.billedAmount * -1;
+
+                    const paymentMap = {
+                        Cash: "detail.cash",
+                        Dana: "detail.dana",
+                        "Shopee Pay": "detail.shopeePay",
+                        OVO: "detail.ovo",
+                        QRIS: "detail.qris",
+                        "Bank Transfer": "detail.bankTransfer",
+                        "Online Payment": "detail.onlinePayment",
                     };
 
-                    if (objData.serviceCharge) {
-                        increase = {
-                            ...increase,
-                            serviceCharge: objData.serviceCharge,
-                        };
+                    if (paymentMap[objData.payment]) {
+                        increase[paymentMap[objData.payment]] = objData.billedAmount;
                     }
-                    if (objData.tax) {
-                        increase = {
-                            ...increase,
-                            tax: objData.tax,
-                        };
-                    }
-                    if (
-                        objData.status === "refund" ||
-                        objData.status === "refund"
-                    ) {
-                        increase = {
-                            ...increase,
-                            refund: objData.billedAmount * -1,
-                        };
-                    }
-                    if (objData.payment === "Cash") {
-                        increase = {
-                            ...increase,
-                            "detail.cash": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "Dana") {
-                        increase = {
-                            ...increase,
-                            "detail.dana": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "Shopee Pay") {
-                        increase = {
-                            ...increase,
-                            "detail.shopeePay": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "OVO") {
-                        increase = {
-                            ...increase,
-                            "detail.ovo": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "QRIS") {
-                        increase = {
-                            ...increase,
-                            "detail.qris": objData.billedAmount,
-                        };
-                    }
-                    if (
-                        objData.payment === "Card" &&
-                        objData.cardBankName === "BRI"
-                    ) {
-                        increase = {
-                            ...increase,
-                            "detail.bri": objData.billedAmount,
-                        };
-                    }
-                    if (
-                        objData.payment === "Card" &&
-                        objData.cardBankName === "BNI"
-                    ) {
-                        increase = {
-                            ...increase,
-                            "detail.bni": objData.billedAmount,
-                        };
-                    }
-                    if (
-                        objData.payment === "Card" &&
-                        objData.cardBankName === "BCA"
-                    ) {
-                        increase = {
-                            ...increase,
-                            "detail.bca": objData.billedAmount,
-                        };
-                    }
-                    if (
-                        objData.payment === "Card" &&
-                        objData.cardBankName === "MANDIRI"
-                    ) {
-                        increase = {
-                            ...increase,
-                            "detail.mandiri": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "Bank Transfer") {
-                        increase = {
-                            ...increase,
-                            "detail.bankTransfer": objData.billedAmount,
-                        };
-                    }
-                    if (objData.payment === "Online Payment") {
-                        increase = {
-                            ...increase,
-                            "detail.onlinePayment": objData.billedAmount,
-                        };
+
+                    if (objData.payment === "Card" && objData.cardBankName) {
+                        increase[`detail.${objData.cardBankName.toLowerCase()}`] =
+                            objData.billedAmount;
                     }
 
                     await Balance.findOneAndUpdate(
                         { isOpen: true },
                         { $inc: increase },
-                        { new: true, upsert: false },
+                        { new: true, session }
                     );
                 }
             }
 
+            // ================= UPDATE ORDER =================
             const updatedData = await Order.updateOne(
                 { _id: req.params.id },
-                {
-                    $set: objData,
-                },
+                { $set: objData },
+                { session }
             );
+
+            await session.commitTransaction();
+            session.endSession();
+
             return res.json(updatedData);
         });
     } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(500).json({ message: err.message });
     }
 };
