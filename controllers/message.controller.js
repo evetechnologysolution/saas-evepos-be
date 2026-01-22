@@ -83,7 +83,7 @@ export const getAllConversByMember = async (req, res) => {
     try {
         const { page, perPage, search, start, end } = req.query;
 
-        let query = { member: req.params.id };
+        let query = { memberRef: req.params.id };
 
 
         if (search) {
@@ -209,7 +209,7 @@ export const getAllMessagesByMember = async (req, res) => {
     try {
         const { page, perPage, search, start, end, latestId } = req.query;
 
-        let query = { member: req.params.id };
+        let query = { memberRef: req.params.id };
 
         if (search) {
             query = {
@@ -326,7 +326,7 @@ export const createMessage = async (req, res) => {
             }
 
             const dataConvers = await Convers.findOneAndUpdate(
-                { member: req.body.member },
+                { memberRef: req.body.member },
                 {
                     $set: {
                         lastMessage: _messageId
@@ -373,7 +373,7 @@ export const editMessage = async (req, res) => {
 export const editMessageStatusForAdmin = async (req, res) => {
     try {
         const updatedData = await Message.updateMany(
-            { member: req.params.id, isAdmin: false, isRead: false }, // update status pesan yang dikirim member
+            { memberRef: req.params.id, isAdmin: false, isRead: false }, // update status pesan yang dikirim member
             {
                 $set: { isRead: true }
             }
@@ -388,7 +388,7 @@ export const editMessageStatusForAdmin = async (req, res) => {
 export const editMessageStatusForMember = async (req, res) => {
     try {
         const updatedData = await Message.updateMany(
-            { member: req.params.id, isAdmin: true, isRead: false }, // update status pesan yang dikirim admin
+            { memberRef: req.params.id, isAdmin: true, isRead: false }, // update status pesan yang dikirim admin
             {
                 $set: { isRead: true }
             }

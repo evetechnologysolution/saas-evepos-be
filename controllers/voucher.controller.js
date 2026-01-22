@@ -164,7 +164,7 @@ export const redeemVoucher = async (req, res) => {
         const newObj = new MemberVoucher({
             voucherCode: randCode,
             voucherRef: checkVoucher._id,
-            member: checkMember._id,
+            memberRef: checkMember._id,
             name: checkVoucher.name,
             image: checkVoucher.image,
             description: checkVoucher.description,

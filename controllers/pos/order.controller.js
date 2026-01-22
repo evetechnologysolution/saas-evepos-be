@@ -788,7 +788,12 @@ export const getExportOrder = async (req, res) => {
 // GETTING SAVED BILL
 export const getSavedBill = async (req, res) => {
     try {
-        const listofData = await Order.find().where("status").equals("pending");
+        let qMatch = { status: "unpaid" };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const listofData = await Order.find(qMatch).lean();
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -798,9 +803,14 @@ export const getSavedBill = async (req, res) => {
 // GETTING UNFINISHED ORDER
 export const getUnfinishedOrder = async (req, res) => {
     try {
-        const data = await Order.findOne({
+        let qMatch = {
             $or: [{ status: "pending" }, { status: "half paid" }],
-        });
+        };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const data = await Order.findOne(qMatch).lean();
         return res.json(data);
     } catch (err) {
         res.json({ message: err.message });
@@ -810,9 +820,14 @@ export const getUnfinishedOrder = async (req, res) => {
 // GETTING A SPECIFIC DATA BY ID
 export const getOrderById = async (req, res) => {
     try {
-        const spesificData = await Order.findOne({
+        let qMatch = {
             $or: [{ _id: req.params.id }, { orderId: req.params.id }],
-        })
+        };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const spesificData = await Order.findOne(qMatch)
             .populate([
                 {
                     path: "customerRef",
@@ -820,7 +835,7 @@ export const getOrderById = async (req, res) => {
                 },
                 {
                     path: "progressRef",
-                    select: "latestStatus log",
+                    select: "latestStatus latestNotes log",
                     populate: {
                         path: "log.staff",
                         select: "fullname",
@@ -841,14 +856,19 @@ export const getOrderById = async (req, res) => {
 
 export const getOrderProgressById = async (req, res) => {
     try {
-        const spesificData = await Order.findOne({
+        let qMatch = {
             $or: [{ _id: req.params.id }, { orderId: req.params.id }],
-        })
+        };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+        const spesificData = await Order.findOne(qMatch)
             .select("orderId date customer orders progressRef")
             .populate([
                 {
                     path: "progressRef",
-                    select: "latestStatus log",
+                    select: "latestStatus latestNotes log",
                     populate: {
                         path: "log.staff",
                         select: "fullname",
@@ -877,11 +897,16 @@ export const addOrder = async (req, res) => {
             if (err instanceof multer.MulterError) {
                 await session.abortTransaction();
                 session.endSession();
-                return res.status(400).json({ status: "Failed", message: "Failed to upload image" });
+                return res.status(400).json({
+                    status: "Failed",
+                    message: "Failed to upload image",
+                });
             } else if (err) {
                 await session.abortTransaction();
                 session.endSession();
-                return res.status(400).json({ status: "Failed", message: err.message });
+                return res
+                    .status(400)
+                    .json({ status: "Failed", message: err.message });
             }
 
             let objData = req.body;
@@ -927,13 +952,15 @@ export const addOrder = async (req, res) => {
 
                 const qMember = {
                     phone: phoneE164,
-                    ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+                    ...(req.userData?.tenantRef && {
+                        tenantRef: req.userData.tenantRef,
+                    }),
                 };
 
                 checkMember = await Member.findOneAndUpdate(
                     qMember,
                     { $set: { ...objData.customer, phone: phoneE164 } },
-                    { new: true, session }
+                    { new: true, session },
                 );
 
                 if (checkMember) {
@@ -942,9 +969,11 @@ export const addOrder = async (req, res) => {
                     const hasPreviousOrder = await Order.exists(
                         {
                             "customer.memberId": checkMember.memberId,
-                            ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+                            ...(req.userData?.tenantRef && {
+                                tenantRef: req.userData.tenantRef,
+                            }),
                         },
-                        { session }
+                        { session },
                     );
 
                     if (!hasPreviousOrder) {
@@ -959,7 +988,10 @@ export const addOrder = async (req, res) => {
                     const newCustomer = {
                         ...objData.customer,
                         memberId,
-                        phone: phoneE164 === "62" || phoneE164 === "0" ? memberId : phoneE164,
+                        phone:
+                            phoneE164 === "62" || phoneE164 === "0"
+                                ? memberId
+                                : phoneE164,
                         tenantRef: req.userData?.tenantRef || null,
                     };
 
@@ -982,9 +1014,11 @@ export const addOrder = async (req, res) => {
                 if (statusPay.includes(objData.status)) {
                     let increase = { sales: objData.billedAmount };
 
-                    if (objData.serviceCharge) increase.serviceCharge = objData.serviceCharge;
+                    if (objData.serviceCharge)
+                        increase.serviceCharge = objData.serviceCharge;
                     if (objData.tax) increase.tax = objData.tax;
-                    if (objData.status === "refund") increase.refund = objData.billedAmount * -1;
+                    if (objData.status === "refund")
+                        increase.refund = objData.billedAmount * -1;
 
                     const paymentMap = {
                         Cash: "detail.cash",
@@ -997,18 +1031,20 @@ export const addOrder = async (req, res) => {
                     };
 
                     if (paymentMap[objData.payment]) {
-                        increase[paymentMap[objData.payment]] = objData.billedAmount;
+                        increase[paymentMap[objData.payment]] =
+                            objData.billedAmount;
                     }
 
                     if (objData.payment === "Card" && objData.cardBankName) {
-                        increase[`detail.${objData.cardBankName.toLowerCase()}`] =
-                            objData.billedAmount;
+                        increase[
+                            `detail.${objData.cardBankName.toLowerCase()}`
+                        ] = objData.billedAmount;
                     }
 
                     await Balance.findOneAndUpdate(
                         { isOpen: true },
                         { $inc: increase },
-                        { new: true, session }
+                        { new: true, session },
                     );
                 }
             }
@@ -1039,19 +1075,28 @@ export const editOrder = async (req, res) => {
             if (err instanceof multer.MulterError) {
                 await session.abortTransaction();
                 session.endSession();
-                return res.status(400).json({ status: "Failed", message: "Failed to upload image" });
+                return res.status(400).json({
+                    status: "Failed",
+                    message: "Failed to upload image",
+                });
             } else if (err) {
                 await session.abortTransaction();
                 session.endSession();
-                return res.status(400).json({ status: "Failed", message: err.message });
+                return res
+                    .status(400)
+                    .json({ status: "Failed", message: err.message });
             }
 
             let objData = req.body;
 
             const qMatch = {
                 _id: req.params.id,
-                ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
-                ...(req.userData?.outletRef && { outletRef: req.userData.outletRef }),
+                ...(req.userData?.tenantRef && {
+                    tenantRef: req.userData.tenantRef,
+                }),
+                ...(req.userData?.outletRef && {
+                    outletRef: req.userData.outletRef,
+                }),
             };
 
             const exist = await Order.findOne(qMatch).session(session);
@@ -1099,13 +1144,15 @@ export const editOrder = async (req, res) => {
 
                 const qMember = {
                     phone: phoneE164,
-                    ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+                    ...(req.userData?.tenantRef && {
+                        tenantRef: req.userData.tenantRef,
+                    }),
                 };
 
                 checkMember = await Member.findOneAndUpdate(
                     qMember,
                     { $set: { ...objData.customer, phone: phoneE164 } },
-                    { new: true, session }
+                    { new: true, session },
                 );
 
                 if (checkMember) {
@@ -1114,9 +1161,11 @@ export const editOrder = async (req, res) => {
                     const hasPreviousOrder = await Order.exists(
                         {
                             "customer.memberId": checkMember.memberId,
-                            ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+                            ...(req.userData?.tenantRef && {
+                                tenantRef: req.userData.tenantRef,
+                            }),
                         },
-                        { session }
+                        { session },
                     );
 
                     if (!hasPreviousOrder) {
@@ -1131,7 +1180,10 @@ export const editOrder = async (req, res) => {
                     const newCustomer = {
                         ...objData.customer,
                         memberId,
-                        phone: phoneE164 === "62" || phoneE164 === "0" ? memberId : phoneE164,
+                        phone:
+                            phoneE164 === "62" || phoneE164 === "0"
+                                ? memberId
+                                : phoneE164,
                         tenantRef: req.userData?.tenantRef || null,
                     };
 
@@ -1146,7 +1198,10 @@ export const editOrder = async (req, res) => {
             // ================= VOUCHER =================
             if (objData.voucherCode) {
                 if (!exist.voucherCode.includes(objData.voucherCode)) {
-                    if (typeof objData.voucherCode === "string" && objData.voucherCode.trim()) {
+                    if (
+                        typeof objData.voucherCode === "string" &&
+                        objData.voucherCode.trim()
+                    ) {
                         objData.voucherCode = [objData.voucherCode];
                     } else if (!Array.isArray(objData.voucherCode)) {
                         objData.voucherCode = [];
@@ -1172,9 +1227,11 @@ export const editOrder = async (req, res) => {
                 ) {
                     let increase = { sales: objData.billedAmount };
 
-                    if (objData.serviceCharge) increase.serviceCharge = objData.serviceCharge;
+                    if (objData.serviceCharge)
+                        increase.serviceCharge = objData.serviceCharge;
                     if (objData.tax) increase.tax = objData.tax;
-                    if (objData.status === "refund") increase.refund = objData.billedAmount * -1;
+                    if (objData.status === "refund")
+                        increase.refund = objData.billedAmount * -1;
 
                     const paymentMap = {
                         Cash: "detail.cash",
@@ -1187,18 +1244,20 @@ export const editOrder = async (req, res) => {
                     };
 
                     if (paymentMap[objData.payment]) {
-                        increase[paymentMap[objData.payment]] = objData.billedAmount;
+                        increase[paymentMap[objData.payment]] =
+                            objData.billedAmount;
                     }
 
                     if (objData.payment === "Card" && objData.cardBankName) {
-                        increase[`detail.${objData.cardBankName.toLowerCase()}`] =
-                            objData.billedAmount;
+                        increase[
+                            `detail.${objData.cardBankName.toLowerCase()}`
+                        ] = objData.billedAmount;
                     }
 
                     await Balance.findOneAndUpdate(
                         { isOpen: true },
                         { $inc: increase },
-                        { new: true, session }
+                        { new: true, session },
                     );
                 }
             }
@@ -1207,7 +1266,7 @@ export const editOrder = async (req, res) => {
             const updatedData = await Order.updateOne(
                 { _id: req.params.id },
                 { $set: objData },
-                { session }
+                { session },
             );
 
             await session.commitTransaction();

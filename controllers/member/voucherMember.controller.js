@@ -131,7 +131,7 @@ export const getAllVoucher = async (req, res) => {
                     as: "member",
                 },
             },
-            { $unwind: { path: "$member", preserveNullAndEmptyArrays: true } },
+            { $unwind: { path: "$memberRef", preserveNullAndEmptyArrays: true } },
             {
                 $project: {
                     _id: 1,
@@ -170,7 +170,7 @@ export const getAllVoucher = async (req, res) => {
                         name: 1,
                         phone: 1,
                     },
-                    order: 1,
+                    orderRef: 1,
                     isExpired: 1,
                     isUsed: 1,
                 },

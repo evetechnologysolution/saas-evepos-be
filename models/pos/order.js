@@ -237,11 +237,6 @@ const DataSchema = mongoose.Schema(
         refundReason: {
             type: String,
         },
-        progressStatus: {
-            type: String,
-            default: "menunggu konfirmasi",
-            lowercase: true,
-        },
         voucherCode: {
             type: [String],
             default: [],
@@ -270,12 +265,6 @@ const DataSchema = mongoose.Schema(
                 },
             ],
             default: [],
-        },
-        lockerName: {
-            type: String,
-            trim: true,
-            uppercase: true,
-            default: "",
         },
         invoiceUrl: {
             type: String,
