@@ -7,6 +7,7 @@ import Balance from "../../models/cashBalance.js";
 import { generateRandomId } from "../../lib/generateRandom.js";
 import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 import { convertToE164 } from "../../lib/textSetting.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllOrder = async (req, res) => {
@@ -37,10 +38,14 @@ export const getAllOrder = async (req, res) => {
         }
 
         if (search) {
+            const fixedId = mongoose.Types.ObjectId.isValid(search)
+                ? new mongoose.Types.ObjectId(search)
+                : null;
+
             qMatch = {
                 ...qMatch,
                 $or: [
-                    { _id: { $regex: search, $options: "i" } },
+                    ...(fixedId ? [{ _id: fixedId }] : []),
                     { orderId: { $regex: search, $options: "i" } },
                     { "customer.memberId": { $regex: search, $options: "i" } },
                     { "customer.name": { $regex: search, $options: "i" } },
@@ -151,11 +156,17 @@ export const getAllOrder = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
+            lean: true,
+            leanWithId: false
         };
         const listofData = await Order.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -290,12 +301,18 @@ export const getDeliveryOrder = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
+            lean: true,
+            leanWithId: false
         };
 
         const listofData = await Order.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -416,13 +433,19 @@ export const getTrackOrder = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
+            lean: true,
+            leanWithId: false
         };
 
         const listofData = await Order.paginate(qMatch, options);
 
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -484,7 +507,11 @@ export const getCountTrackOrder = async (req, res) => {
             result?.length > 0 ? result[0] : { new: 0, old: 0 },
         );
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -563,7 +590,11 @@ export const getOrderByMember = async (req, res) => {
         const listofData = await Order.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -645,12 +676,18 @@ export const getPaidOrder = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
+            lean: true,
+            leanWithId: false
         };
 
         const listofData = await Order.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -708,7 +745,11 @@ export const getCloseCashierOrder = async (req, res) => {
             totalBilledAmount: totalBilledAmount,
         });
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -781,7 +822,11 @@ export const getExportOrder = async (req, res) => {
 
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -796,7 +841,11 @@ export const getSavedBill = async (req, res) => {
         const listofData = await Order.find(qMatch).lean();
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -850,7 +899,11 @@ export const getOrderById = async (req, res) => {
 
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -883,7 +936,11 @@ export const getOrderProgressById = async (req, res) => {
 
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -1061,7 +1118,11 @@ export const addOrder = async (req, res) => {
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -1277,7 +1338,11 @@ export const editOrder = async (req, res) => {
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -1293,7 +1358,11 @@ export const editOrderRaw = async (req, res) => {
         });
         return res.json(updatedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -1314,7 +1383,11 @@ export const editPrintCount = async (req, res) => {
         });
         return res.json(updatedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -1336,7 +1409,11 @@ export const editPrintLaundry = async (req, res) => {
         });
         return res.json(updatedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -1356,6 +1433,10 @@ export const deleteOrder = async (req, res) => {
         const deletedData = await Order.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };

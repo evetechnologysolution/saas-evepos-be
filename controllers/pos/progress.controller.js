@@ -2,11 +2,12 @@ import mongoose from "mongoose";
 import Progress from "../../models/pos/progress.js";
 import Order from "../../models/pos/order.js";
 import { convertToE164 } from "../../lib/textSetting.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllData = async (req, res) => {
     try {
-        const { page, perPage, search } = req.query;
+        const { page, perPage, search, sort } = req.query;
         let qMatch = {};
 
         if (req.userData) {
@@ -45,10 +46,20 @@ export const getAllData = async (req, res) => {
                 ], // option i for case insensitivity to match upper and lower cases.
             };
         }
+
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { name: 1 },
+            sort: sortObj,
             populate: [
                 { path: "orderRef", select: "orderId" },
                 { path: "log.staff", select: "fullname" },
@@ -59,7 +70,11 @@ export const getAllData = async (req, res) => {
         const listofData = await Progress.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -78,7 +93,11 @@ export const getDataById = async (req, res) => {
             .lean();
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -119,7 +138,11 @@ export const addData = async (req, res) => {
         const newData = await data.save();
         return res.json(newData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -218,7 +241,11 @@ export const addDataByOrder = async (req, res) => {
 
         return res.json(updatedProgress);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -284,7 +311,11 @@ export const editData = async (req, res) => {
 
         return res.json(updatedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -322,6 +353,10 @@ export const deleteData = async (req, res) => {
 
         return res.json(deletedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };

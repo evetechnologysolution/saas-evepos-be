@@ -6,8 +6,8 @@ import logger from "morgan";
 import "dotenv/config.js";
 import dbConnect from "./utils/dbConnect.js";
 import {
-  // skipSleepServer,
-  resetPointHistory,
+    // skipSleepServer,
+    resetPointHistory,
 } from "./lib/cron.js";
 
 process.env.TZ = "Asia/Jakarta";
@@ -27,10 +27,10 @@ app.use(cors({ origin: "*" }));
 
 // Error handling middleware untuk menangani error CORS
 app.use((err, req, res, next) => {
-  if (err instanceof Error && err.message.includes("CORS")) {
-    return res.status(403).json({ error: err.message });
-  }
-  next(err); // Lanjutkan ke middleware error lainnya jika bukan error CORS
+    if (err instanceof Error && err.message.includes("CORS")) {
+        return res.status(403).json({ error: err.message });
+    }
+    next(err); // Lanjutkan ke middleware error lainnya jika bukan error CORS
 });
 
 // app.use(express.json({ limit: "50mb" }));
@@ -42,13 +42,13 @@ app.use(logger("dev"));
 
 // koneksi database tiap request, hanya 1x per instance
 app.use(async (req, res, next) => {
-  try {
-    await dbConnect();
-    next();
-  } catch (err) {
-    console.error("❌ DB Connect failed:", err.message);
-    res.status(500).json({ error: "Database connection failed" });
-  }
+    try {
+        await dbConnect();
+        next();
+    } catch (err) {
+        console.error("❌ DB Connect failed:", err.message);
+        res.status(500).json({ error: "Database connection failed" });
+    }
 });
 
 // ROUTES
@@ -64,6 +64,8 @@ import variantRoute from "./routes/library/variant.route.js";
 import productRoute from "./routes/library/product.route.js";
 import promotionRoute from "./routes/library/promotion.route.js";
 import orderRoute from "./routes/pos/order.route.js";
+import progressLabelRoute from "./routes/pos/progressLabel.route.js";
+import progressRoute from "./routes/pos/progress.route.js";
 // import pusherRoute from "./routes/pusher.route.js";
 // import informationRoute from "./routes/information.route.js";
 // import receiptRoute from "./routes/receipt.route.js";
@@ -86,7 +88,6 @@ import orderRoute from "./routes/pos/order.route.js";
 // import voucherMemberRoute from "./routes/voucherMember.route.js";
 // import helpRoute from "./routes/help.route.js";
 // import messageRoute from "./routes/message.route.js";
-// import progressRoute from "./routes/progress.route.js";
 
 app.use("/api/service", serviceRoutes);
 app.use("/api/tenant", tenantRoute);
@@ -100,6 +101,8 @@ app.use("/api/variant", variantRoute);
 app.use("/api/product", productRoute);
 app.use("/api/promotion", promotionRoute);
 app.use("/api/order", orderRoute);
+app.use("/api/progress-label", progressLabelRoute);
+app.use("/api/progress", progressRoute);
 // app.use("/api/pusher", pusherRoute);
 // app.use("/api/informations", informationRoute);
 // app.use("/api/receipt-setting", receiptRoute);
@@ -122,23 +125,22 @@ app.use("/api/order", orderRoute);
 // app.use("/api/member-vouchers", voucherMemberRoute);
 // app.use("/api/help", helpRoute);
 // app.use("/api/messages", messageRoute);
-// app.use("/api/progress", progressRoute);
 
 app.get("/", (_, res) => {
-  res.send("We are on home");
+    res.send("We are on home");
 });
 
 app.get("/healthz", (_, res) => {
-  res.status(200).send("Ok");
+    res.status(200).send("Ok");
 });
 
 // === HANYA LISTEN DI LOCAL ===
 if (process.env.NODE_ENV !== "production") {
-  app.listen(port, () => {
-    console.log(`🚀 Server running locally on http://localhost:${port}`);
-  });
+    app.listen(port, () => {
+        console.log(`🚀 Server running locally on http://localhost:${port}`);
+    });
 } else {
-  console.log("🟢 Running in server");
+    console.log("🟢 Running in server");
 }
 
 // running cron job

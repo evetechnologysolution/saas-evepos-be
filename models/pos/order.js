@@ -313,9 +313,6 @@ DataSchema.pre("save", function (next) {
         const number = generateRandomId(6);
         this.orderId = `ORD${currYear}${number}`;
     }
-    if (this.isPickedUp) {
-        this.pickUpStatus = "completed";
-    }
     if (this.pickupData?.by) {
         this.pickupData.by = capitalizeFirstLetter(this.pickupData.by);
         if (!this.pickupData?.date) {
@@ -349,9 +346,6 @@ DataSchema.pre("save", function (next) {
         const set = update.$set;
 
         if (set.pickupData) {
-            if (set.isPickedUp) {
-                set.pickUpStatus = "completed";
-            }
             if (set.pickupData?.by) {
                 set.pickupData.by = capitalizeFirstLetter(set.pickupData.by);
             }

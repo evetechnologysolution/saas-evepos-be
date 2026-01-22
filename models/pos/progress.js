@@ -29,7 +29,6 @@ function extractLastPushedLog(update) {
     };
 }
 
-
 const DataSchema = mongoose.Schema(
     {
         orderRef: {
