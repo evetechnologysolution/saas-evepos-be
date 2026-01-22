@@ -99,7 +99,7 @@ export const addData = async (req, res) => {
                 // Jika log adalah array, pastikan setiap item punya staff
                 objData.log = objData.log.map((item) => ({
                     ...item,
-                    staff: item?.staff || req.userData._id,
+                    staffRef: item?.staff || req.userData._id,
                 }));
             } else if (
                 typeof objData.log === "object" &&
@@ -109,7 +109,7 @@ export const addData = async (req, res) => {
                 objData.log = [
                     {
                         ...objData.log,
-                        staff: objData.log.staff || req.userData._id,
+                        staffRef: objData.log.staff || req.userData._id,
                     },
                 ];
             }
@@ -146,7 +146,7 @@ export const addDataByOrder = async (req, res) => {
                 // Array: tambahkan staff jika belum ada
                 processedLog = objData.log.map((item) => ({
                     ...item,
-                    staff: item?.staff || staffId,
+                    staffRef: item?.staff || staffId,
                 }));
             } else if (
                 typeof objData.log === "object" &&
@@ -156,7 +156,7 @@ export const addDataByOrder = async (req, res) => {
                 processedLog = [
                     {
                         ...objData.log,
-                        staff: objData.log.staff || staffId,
+                        staffRef: objData.log.staff || staffId,
                     },
                 ];
             }
@@ -245,7 +245,7 @@ export const editData = async (req, res) => {
                 // Array: tambahkan staff jika belum ada
                 processedLog = objData.log.map((item) => ({
                     ...item,
-                    staff: item?.staff || staffId,
+                    staffRef: item?.staff || staffId,
                 }));
             } else if (
                 typeof objData.log === "object" &&
@@ -255,7 +255,7 @@ export const editData = async (req, res) => {
                 processedLog = [
                     {
                         ...objData.log,
-                        staff: objData.log.staff || staffId,
+                        staffRef: objData.log.staff || staffId,
                     },
                 ];
             }

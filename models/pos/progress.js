@@ -77,7 +77,7 @@ const DataSchema = mongoose.Schema(
                         trim: true,
                         default: "",
                     },
-                    staff: {
+                    staffRef: {
                         type: mongoose.Schema.Types.ObjectId,
                         ref: "Users",
                         default: null,
