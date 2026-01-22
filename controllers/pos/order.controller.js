@@ -886,7 +886,7 @@ export const getOrderById = async (req, res) => {
                     path: "progressRef",
                     select: "latestStatus latestNotes log",
                     populate: {
-                        path: "log.staff",
+                        path: "log.staffRef",
                         select: "fullname",
                     },
                 },
@@ -923,7 +923,7 @@ export const getOrderProgressById = async (req, res) => {
                     path: "progressRef",
                     select: "latestStatus latestNotes log",
                     populate: {
-                        path: "log.staff",
+                        path: "log.staffRef",
                         select: "fullname",
                     },
                 },

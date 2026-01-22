@@ -62,7 +62,7 @@ export const getAllData = async (req, res) => {
             sort: sortObj,
             populate: [
                 { path: "orderRef", select: "orderId" },
-                { path: "log.staff", select: "fullname" },
+                { path: "log.staffRef", select: "fullname" },
             ],
             lean: true,
             leanWithId: false,
@@ -88,7 +88,7 @@ export const getDataById = async (req, res) => {
         const spesificData = await Progress.findOne(qMatch)
             .populate([
                 { path: "orderRef", select: "orderId" },
-                { path: "log.staff", select: "fullname" },
+                { path: "log.staffRef", select: "fullname" },
             ])
             .lean();
         return res.json(spesificData);
@@ -128,7 +128,7 @@ export const addData = async (req, res) => {
                 objData.log = [
                     {
                         ...objData.log,
-                        staffRef: objData.log.staff || req.userData._id,
+                        staffRef: objData.log.staffRef || req.userData._id,
                     },
                 ];
             }
@@ -179,7 +179,7 @@ export const addDataByOrder = async (req, res) => {
                 processedLog = [
                     {
                         ...objData.log,
-                        staffRef: objData.log.staff || staffId,
+                        staffRef: objData.log.staffRef || staffId,
                     },
                 ];
             }
@@ -282,7 +282,7 @@ export const editData = async (req, res) => {
                 processedLog = [
                     {
                         ...objData.log,
-                        staffRef: objData.log.staff || staffId,
+                        staffRef: objData.log.staffRef || staffId,
                     },
                 ];
             }

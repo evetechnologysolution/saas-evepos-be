@@ -373,7 +373,7 @@ DataSchema.virtual("customerRef", {
 DataSchema.virtual("progressRef", {
     ref: "Progress", // model tujuan
     localField: "_id", // field di schema ini
-    foreignField: "order", // field di model tujuan
+    foreignField: "orderRef", // field di model tujuan
     justOne: true, // karena 1:1
 });
 
