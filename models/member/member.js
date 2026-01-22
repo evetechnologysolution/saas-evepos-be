@@ -30,7 +30,7 @@ const DataSchema = new mongoose.Schema({
   name: { type: String, required: false, trim: true },
   firstName: { type: String, required: false, trim: true },
   lastName: { type: String, required: false, trim: true },
-  phone: { type: String, required: true, unique: true, trim: true },
+  phone: { type: String, required: true, unique: false, trim: true },
   email: { type: String, required: false, unique: false, trim: true },
   password: { type: String, required: false },
 
