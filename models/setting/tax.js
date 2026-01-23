@@ -15,6 +15,7 @@ const DataSchema = mongoose.Schema(
                 type: [String],
                 lowercase: true,
                 enum: ["onsite", "delivery"],
+                default: [],
             },
         },
         serviceCharge: {
@@ -30,6 +31,7 @@ const DataSchema = mongoose.Schema(
                 type: [String],
                 lowercase: true,
                 enum: ["onsite", "delivery"],
+                default: [],
             },
         },
         tenantRef: {
