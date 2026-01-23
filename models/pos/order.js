@@ -150,7 +150,6 @@ const DataSchema = mongoose.Schema(
                 "backlog",
                 "awaiting payment",
                 "unpaid",
-                "unpaid",
                 "paid",
                 "half paid",
                 "refund",
@@ -268,10 +267,6 @@ const DataSchema = mongoose.Schema(
         },
         invoiceUrl: {
             type: String,
-        },
-        invoiceImg: {
-            image: String,
-            imageId: String,
         },
         pickUpStatus: {
             type: String,

@@ -230,12 +230,12 @@ export const addPromotion = async (req, res) => {
         if (err instanceof multer.MulterError) {
             return res.status(400).json({
                 status: "Failed",
-                message: "Failed to upload image",
+                message: err?.message || "Failed to upload image",
             });
         } else if (err) {
             return res.status(400).json({
                 status: "Failed",
-                message: err.message.message,
+                message: err?.message || "Failed to upload image",
             });
         }
 
@@ -359,12 +359,12 @@ export const editPromotion = async (req, res) => {
         if (err instanceof multer.MulterError) {
             return res.status(400).json({
                 status: "Failed",
-                message: "Failed to upload image",
+                message: err?.message || "Failed to upload image",
             });
         } else if (err) {
             return res.status(400).json({
                 status: "Failed",
-                message: err.message.message,
+                message: err?.message || "Failed to upload image",
             });
         }
 

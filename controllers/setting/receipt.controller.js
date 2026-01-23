@@ -26,20 +26,20 @@ export const getAllReceipt = async (req, res) => {
 
 // CREATE NEW DATA
 export const saveReceipt = async (req, res) => {
-    try {
-        imageUpload.single("image")(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.single("image")(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        }
 
+        try {
             let objData = req.body;
 
             if (req.userData) {
@@ -78,12 +78,12 @@ export const saveReceipt = async (req, res) => {
                 { new: true, upsert: true },
             );
             return res.json(data);
-        });
-    } catch (err) {
-        return errorResponse(res, {
-            statusCode: 500,
-            code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server",
-        });
-    }
+        } catch (err) {
+            return errorResponse(res, {
+                statusCode: 500,
+                code: "SERVER_ERROR",
+                message: err.message || "Terjadi kesalahan pada server",
+            });
+        }
+    });
 };

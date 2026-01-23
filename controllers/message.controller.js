@@ -21,7 +21,7 @@ export const getAllConvers = async (req, res) => {
                     { name: { $regex: search, $options: "i" } },
                     { phone: { $regex: search, $options: "i" } },
                     { email: { $regex: search, $options: "i" } },
-                ]
+                ],
             });
             const filteredMember = members.map((item) => item._id);
 
@@ -33,11 +33,11 @@ export const getAllConvers = async (req, res) => {
             query = {
                 ...query,
                 $or: [
-                    { memberRef: { $in: filteredMember }, },
-                    { lastMessage: { $in: filteredMessages }, },
-                ],  // option i for case insensitivity to match upper and lower cases.
+                    { memberRef: { $in: filteredMember } },
+                    { lastMessage: { $in: filteredMessages } },
+                ], // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
 
         if (start) {
             const dStart = new Date(start);
@@ -52,9 +52,9 @@ export const getAllConvers = async (req, res) => {
                 ...query,
                 updatedAt: {
                     $gte: fixStart,
-                    $lte: fixEnd
-                }
-            }
+                    $lte: fixEnd,
+                },
+            };
         }
 
         const options = {
@@ -71,7 +71,7 @@ export const getAllConvers = async (req, res) => {
                     select: "date text image isRead isAdmin",
                 },
             ],
-        }
+        };
         const listofData = await Convers.paginate(query, options);
         return res.json(listofData);
     } catch (err) {
@@ -85,7 +85,6 @@ export const getAllConversByMember = async (req, res) => {
 
         let query = { memberRef: req.params.id };
 
-
         if (search) {
             const messages = await Message.find({
                 text: { $regex: search, $options: "i" },
@@ -96,7 +95,7 @@ export const getAllConversByMember = async (req, res) => {
                 ...query,
                 lastMessage: { $in: filteredMessages },
             };
-        };
+        }
 
         if (start) {
             const dStart = new Date(start);
@@ -111,9 +110,9 @@ export const getAllConversByMember = async (req, res) => {
                 ...query,
                 updatedAt: {
                     $gte: fixStart,
-                    $lte: fixEnd
-                }
-            }
+                    $lte: fixEnd,
+                },
+            };
         }
 
         const options = {
@@ -130,7 +129,7 @@ export const getAllConversByMember = async (req, res) => {
                     select: "date text image isRead isAdmin",
                 },
             ],
-        }
+        };
         const listofData = await Convers.paginate(query, options);
         return res.json(listofData);
     } catch (err) {
@@ -142,7 +141,7 @@ export const getAllMessages = async (req, res) => {
     try {
         const { page, perPage, search, start, end } = req.query;
 
-        let query = {}
+        let query = {};
 
         if (search) {
             const members = await Member.find({
@@ -152,18 +151,18 @@ export const getAllMessages = async (req, res) => {
                     { name: { $regex: search, $options: "i" } },
                     { phone: { $regex: search, $options: "i" } },
                     { email: { $regex: search, $options: "i" } },
-                ]
+                ],
             });
             const filteredMember = members.map((item) => item._id);
 
             query = {
                 ...query,
                 $or: [
-                    { memberRef: { $in: filteredMember }, },
-                    { text: { $regex: search, $options: "i" } }
-                ]// option i for case insensitivity to match upper and lower cases.
+                    { memberRef: { $in: filteredMember } },
+                    { text: { $regex: search, $options: "i" } },
+                ], // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
 
         if (start) {
             const dStart = new Date(start);
@@ -178,9 +177,9 @@ export const getAllMessages = async (req, res) => {
                 ...query,
                 updatedAt: {
                     $gte: fixStart,
-                    $lte: fixEnd
-                }
-            }
+                    $lte: fixEnd,
+                },
+            };
         }
 
         const options = {
@@ -197,7 +196,7 @@ export const getAllMessages = async (req, res) => {
                     select: "text isRead",
                 },
             ],
-        }
+        };
         const listofData = await Message.paginate(query, options);
         return res.json(listofData);
     } catch (err) {
@@ -216,7 +215,7 @@ export const getAllMessagesByMember = async (req, res) => {
                 ...query,
                 text: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
 
         if (start) {
             const dStart = new Date(start);
@@ -231,20 +230,22 @@ export const getAllMessagesByMember = async (req, res) => {
                 ...query,
                 updatedAt: {
                     $gte: fixStart,
-                    $lte: fixEnd
-                }
-            }
+                    $lte: fixEnd,
+                },
+            };
         }
 
         if (latestId) {
-            const objectId = mongoose.Types.ObjectId.isValid(latestId) ? new mongoose.Types.ObjectId(latestId) : null;
+            const objectId = mongoose.Types.ObjectId.isValid(latestId)
+                ? new mongoose.Types.ObjectId(latestId)
+                : null;
             if (objectId) {
                 query = {
                     ...query,
                     _id: {
-                        $lt: objectId
-                    }
-                }
+                        $lt: objectId,
+                    },
+                };
             }
         }
 
@@ -262,7 +263,7 @@ export const getAllMessagesByMember = async (req, res) => {
                     select: "text isRead",
                 },
             ],
-        }
+        };
         const listofData = await Message.paginate(query, options);
         return res.json(listofData);
     } catch (err) {
@@ -292,20 +293,20 @@ export const getMessageById = async (req, res) => {
 
 // CREATE MESSAGE
 export const createMessage = async (req, res) => {
-    try {
-        imageUpload.single("image")(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.single("image")(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        }
 
+        try {
             const _messageId = new mongoose.Types.ObjectId();
 
             let objData = { _id: _messageId, ...req.body };
@@ -319,20 +320,24 @@ export const createMessage = async (req, res) => {
                     folder: process.env.FOLDER_PRODUCT,
                     format: "webp",
                     transformation: [
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
-                objData = { ...objData, image: cloud.secure_url, imageId: cloud.public_id };
+                objData = {
+                    ...objData,
+                    image: cloud.secure_url,
+                    imageId: cloud.public_id,
+                };
             }
 
             const dataConvers = await Convers.findOneAndUpdate(
                 { memberRef: req.body.member },
                 {
                     $set: {
-                        lastMessage: _messageId
-                    }
+                        lastMessage: _messageId,
+                    },
                 },
-                { new: true, upsert: true }
+                { new: true, upsert: true },
             );
 
             if (dataConvers) {
@@ -343,16 +348,21 @@ export const createMessage = async (req, res) => {
             const newData = await data.save();
 
             if (newData) {
-                const channel = newData.isAdmin ? `chat-${newData.member}` : "chat-admin";
+                const channel = newData.isAdmin
+                    ? `chat-${newData.member}`
+                    : "chat-admin";
                 const event = "chat-received";
-                await messageNotif(channel, event, { ...newData.toObject(), message: "Pesan Baru!" });
+                await messageNotif(channel, event, {
+                    ...newData.toObject(),
+                    message: "Pesan Baru!",
+                });
             }
 
             return res.json(newData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            return res.status(500).json({ message: err.message });
+        }
+    });
 };
 
 // UPDATE MESSAGE
@@ -361,7 +371,7 @@ export const editMessage = async (req, res) => {
         const updatedData = await Message.findOneAndUpdate(
             { _id: req.params.id },
             { $set: req.body },
-            { new: true, upsert: false }
+            { new: true, upsert: false },
         );
         return res.json(updatedData);
     } catch (err) {
@@ -375,8 +385,8 @@ export const editMessageStatusForAdmin = async (req, res) => {
         const updatedData = await Message.updateMany(
             { memberRef: req.params.id, isAdmin: false, isRead: false }, // update status pesan yang dikirim member
             {
-                $set: { isRead: true }
-            }
+                $set: { isRead: true },
+            },
         );
         return res.json(updatedData);
     } catch (err) {
@@ -390,8 +400,8 @@ export const editMessageStatusForMember = async (req, res) => {
         const updatedData = await Message.updateMany(
             { memberRef: req.params.id, isAdmin: true, isRead: false }, // update status pesan yang dikirim admin
             {
-                $set: { isRead: true }
-            }
+                $set: { isRead: true },
+            },
         );
         return res.json(updatedData);
     } catch (err) {

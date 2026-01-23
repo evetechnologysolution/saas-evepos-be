@@ -5,7 +5,6 @@ import Member from "../../models/member/member.js";
 // import MemberVoucher from "../../models/voucherMember.js";
 import Balance from "../../models/cashBalance/cashBalance.js";
 import { generateRandomId } from "../../lib/generateRandom.js";
-import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 import { convertToE164 } from "../../lib/textSetting.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
@@ -950,181 +949,149 @@ export const addOrder = async (req, res) => {
     session.startTransaction();
 
     try {
-        imageUpload.single("invoiceImg")(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                await session.abortTransaction();
-                session.endSession();
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                await session.abortTransaction();
-                session.endSession();
-                return res
-                    .status(400)
-                    .json({ status: "Failed", message: err.message });
+        let objData = req.body;
+
+        if (req.userData) {
+            objData.tenantRef = req.userData.tenantRef;
+            if (req.userData?.outletRef) {
+                objData.outletRef = req.userData.outletRef;
             }
+        }
 
-            let objData = req.body;
+        if (req.body?.customerString) {
+            objData.customer = JSON.parse(req.body.customerString);
+        }
 
-            if (req.userData) {
-                objData.tenantRef = req.userData.tenantRef;
-                if (req.userData?.outletRef) {
-                    objData.outletRef = req.userData.outletRef;
-                }
-            }
+        if (req.body?.ordersString) {
+            objData.orders = JSON.parse(req.body.ordersString);
+        }
 
-            // ===== Upload Image (di luar transaction DB) =====
-            if (req.file) {
-                const cloud = await cloudinary.uploader.upload(req.file.path, {
-                    folder: process.env.FOLDER_PRODUCT,
-                    format: "webp",
-                    transformation: [{ quality: "auto:low" }],
-                });
+        if (objData?.customer?.address) {
+            objData.isOnline = true;
+        }
 
-                objData.invoiceImg = {
-                    image: cloud.secure_url,
-                    imageId: cloud.public_id,
-                };
-            }
+        let checkMember = null;
 
-            if (req.body?.customerString) {
-                objData.customer = JSON.parse(req.body.customerString);
-            }
+        // ================= MEMBER LOGIC =================
+        if (objData?.customer?.phone) {
+            const phoneE164 = convertToE164(objData.customer.phone);
 
-            if (req.body?.ordersString) {
-                objData.orders = JSON.parse(req.body.ordersString);
-            }
+            const qMember = {
+                phone: phoneE164,
+                ...(req.userData?.tenantRef && {
+                    tenantRef: req.userData.tenantRef,
+                }),
+            };
 
-            if (objData?.customer?.address) {
-                objData.isOnline = true;
-            }
+            checkMember = await Member.findOneAndUpdate(
+                qMember,
+                { $set: { ...objData.customer, phone: phoneE164 } },
+                { new: true, session },
+            );
 
-            let checkMember = null;
+            if (checkMember) {
+                objData.customer.memberId = checkMember.memberId;
 
-            // ================= MEMBER LOGIC =================
-            if (objData?.customer?.phone) {
-                const phoneE164 = convertToE164(objData.customer.phone);
-
-                const qMember = {
-                    phone: phoneE164,
-                    ...(req.userData?.tenantRef && {
-                        tenantRef: req.userData.tenantRef,
-                    }),
-                };
-
-                checkMember = await Member.findOneAndUpdate(
-                    qMember,
-                    { $set: { ...objData.customer, phone: phoneE164 } },
-                    { new: true, session },
+                const hasPreviousOrder = await Order.exists(
+                    {
+                        "customer.memberId": checkMember.memberId,
+                        ...(req.userData?.tenantRef && {
+                            tenantRef: req.userData.tenantRef,
+                        }),
+                    },
+                    { session },
                 );
 
-                if (checkMember) {
-                    objData.customer.memberId = checkMember.memberId;
-
-                    const hasPreviousOrder = await Order.exists(
-                        {
-                            "customer.memberId": checkMember.memberId,
-                            ...(req.userData?.tenantRef && {
-                                tenantRef: req.userData.tenantRef,
-                            }),
-                        },
-                        { session },
-                    );
-
-                    if (!hasPreviousOrder) {
-                        objData.firstOrder = true;
-                    }
-                }
-
-                if (!checkMember && objData.customer.isNew) {
-                    const currYear = new Date().getFullYear();
-                    const memberId = `EM${currYear}${generateRandomId()}`;
-
-                    const newCustomer = {
-                        ...objData.customer,
-                        memberId,
-                        phone:
-                            phoneE164 === "62" || phoneE164 === "0"
-                                ? memberId
-                                : phoneE164,
-                        tenantRef: req.userData?.tenantRef || null,
-                    };
-
-                    const newMember = new Member(newCustomer);
-                    checkMember = await newMember.save({ session });
-
-                    objData.customer = newCustomer;
+                if (!hasPreviousOrder) {
                     objData.firstOrder = true;
                 }
             }
 
-            // ================= BALANCE =================
-            if (objData?.status && objData?.billedAmount) {
-                const statusPay = ["paid", "refund"];
+            if (!checkMember && objData.customer.isNew) {
+                const currYear = new Date().getFullYear();
+                const memberId = `EM${currYear}${generateRandomId()}`;
 
-                if (objData.status === "paid" && !objData.paymentDate) {
-                    objData.paymentDate = new Date();
-                }
+                const newCustomer = {
+                    ...objData.customer,
+                    memberId,
+                    phone:
+                        phoneE164 === "62" || phoneE164 === "0"
+                            ? memberId
+                            : phoneE164,
+                    tenantRef: req.userData?.tenantRef || null,
+                };
 
-                if (statusPay.includes(objData.status)) {
-                    let increase = { sales: objData.billedAmount };
+                const newMember = new Member(newCustomer);
+                checkMember = await newMember.save({ session });
 
-                    if (objData.serviceCharge)
-                        increase.serviceCharge = objData.serviceCharge;
-                    if (objData.tax) increase.tax = objData.tax;
-                    if (objData.status === "refund")
-                        increase.refund = objData.billedAmount * -1;
+                objData.customer = newCustomer;
+                objData.firstOrder = true;
+            }
+        }
 
-                    const paymentMap = {
-                        Cash: "detail.cash",
-                        Dana: "detail.dana",
-                        "Shopee Pay": "detail.shopeePay",
-                        OVO: "detail.ovo",
-                        QRIS: "detail.qris",
-                        "Bank Transfer": "detail.bankTransfer",
-                        "Online Payment": "detail.onlinePayment",
-                    };
+        // ================= BALANCE =================
+        if (objData?.status && objData?.billedAmount) {
+            const statusPay = ["paid", "refund"];
 
-                    if (paymentMap[objData.payment]) {
-                        increase[paymentMap[objData.payment]] =
-                            objData.billedAmount;
-                    }
-
-                    if (objData.payment === "Card" && objData.cardBankName) {
-                        increase[
-                            `detail.${objData.cardBankName.toLowerCase()}`
-                        ] = objData.billedAmount;
-                    }
-
-                    const qBal = {
-                        isOpen: true,
-                        ...(req.userData?.tenantRef && {
-                            tenantRef: req.userData.tenantRef,
-                        }),
-                        ...(req.userData?.outletRef && {
-                            outletRef: req.userData.outletRef,
-                        }),
-                    };
-
-                    await Balance.findOneAndUpdate(
-                        qBal,
-                        { $inc: increase },
-                        { new: true, session },
-                    );
-                }
+            if (objData.status === "paid" && !objData.paymentDate) {
+                objData.paymentDate = new Date();
             }
 
-            // ================= SAVE ORDER =================
-            const order = new Order(objData);
-            const newData = await order.save({ session });
+            if (statusPay.includes(objData.status)) {
+                let increase = { sales: objData.billedAmount };
 
-            await session.commitTransaction();
-            session.endSession();
+                if (objData.serviceCharge)
+                    increase.serviceCharge = objData.serviceCharge;
+                if (objData.tax) increase.tax = objData.tax;
+                if (objData.status === "refund")
+                    increase.refund = objData.billedAmount * -1;
 
-            return res.json(newData);
-        });
+                const paymentMap = {
+                    Cash: "detail.cash",
+                    Dana: "detail.dana",
+                    "Shopee Pay": "detail.shopeePay",
+                    OVO: "detail.ovo",
+                    QRIS: "detail.qris",
+                    "Bank Transfer": "detail.bankTransfer",
+                    "Online Payment": "detail.onlinePayment",
+                };
+
+                if (paymentMap[objData.payment]) {
+                    increase[paymentMap[objData.payment]] =
+                        objData.billedAmount;
+                }
+
+                if (objData.payment === "Card" && objData.cardBankName) {
+                    increase[`detail.${objData.cardBankName.toLowerCase()}`] =
+                        objData.billedAmount;
+                }
+
+                const qBal = {
+                    isOpen: true,
+                    ...(req.userData?.tenantRef && {
+                        tenantRef: req.userData.tenantRef,
+                    }),
+                    ...(req.userData?.outletRef && {
+                        outletRef: req.userData.outletRef,
+                    }),
+                };
+
+                await Balance.findOneAndUpdate(
+                    qBal,
+                    { $inc: increase },
+                    { new: true, session },
+                );
+            }
+        }
+
+        // ================= SAVE ORDER =================
+        const order = new Order(objData);
+        const newData = await order.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.json(newData);
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
@@ -1142,219 +1109,183 @@ export const editOrder = async (req, res) => {
     session.startTransaction();
 
     try {
-        imageUpload.single("invoiceImg")(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                await session.abortTransaction();
-                session.endSession();
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                await session.abortTransaction();
-                session.endSession();
-                return res
-                    .status(400)
-                    .json({ status: "Failed", message: err.message });
-            }
+        let objData = req.body;
 
-            let objData = req.body;
+        const qMatch = {
+            _id: req.params.id,
+            ...(req.userData?.tenantRef && {
+                tenantRef: req.userData.tenantRef,
+            }),
+            ...(req.userData?.outletRef && {
+                outletRef: req.userData.outletRef,
+            }),
+        };
 
-            const qMatch = {
-                _id: req.params.id,
+        const exist = await Order.findOne(qMatch).session(session);
+        if (!exist) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({ message: "Data not found." });
+        }
+
+        if (req.body?.customerString) {
+            objData.customer = JSON.parse(req.body.customerString);
+        }
+
+        if (req.body?.ordersString) {
+            objData.orders = JSON.parse(req.body.ordersString);
+        }
+
+        if (objData?.customer?.address) {
+            objData.isOnline = true;
+        }
+
+        // ================= MEMBER =================
+        let checkMember = null;
+
+        if (objData?.customer?.phone) {
+            const phoneE164 = convertToE164(objData.customer.phone);
+
+            const qMember = {
+                phone: phoneE164,
                 ...(req.userData?.tenantRef && {
                     tenantRef: req.userData.tenantRef,
                 }),
-                ...(req.userData?.outletRef && {
-                    outletRef: req.userData.outletRef,
-                }),
             };
 
-            const exist = await Order.findOne(qMatch).session(session);
-            if (!exist) {
-                await session.abortTransaction();
-                session.endSession();
-                return res.status(400).json({ message: "Data not found." });
-            }
+            checkMember = await Member.findOneAndUpdate(
+                qMember,
+                { $set: { ...objData.customer, phone: phoneE164 } },
+                { new: true, session },
+            );
 
-            // ===== Upload image (external) =====
-            if (req.file) {
-                if (exist.invoiceImg?.imageId) {
-                    await cloudinary.uploader.destroy(exist.invoiceImg.imageId);
-                }
+            if (checkMember) {
+                objData.customer.memberId = checkMember.memberId;
 
-                const cloud = await cloudinary.uploader.upload(req.file.path, {
-                    folder: process.env.FOLDER_PRODUCT,
-                    format: "webp",
-                    transformation: [{ quality: "auto:low" }],
-                });
-
-                objData.invoiceImg = {
-                    image: cloud.secure_url,
-                    imageId: cloud.public_id,
-                };
-            }
-
-            if (req.body?.customerString) {
-                objData.customer = JSON.parse(req.body.customerString);
-            }
-
-            if (req.body?.ordersString) {
-                objData.orders = JSON.parse(req.body.ordersString);
-            }
-
-            if (objData?.customer?.address) {
-                objData.isOnline = true;
-            }
-
-            // ================= MEMBER =================
-            let checkMember = null;
-
-            if (objData?.customer?.phone) {
-                const phoneE164 = convertToE164(objData.customer.phone);
-
-                const qMember = {
-                    phone: phoneE164,
-                    ...(req.userData?.tenantRef && {
-                        tenantRef: req.userData.tenantRef,
-                    }),
-                };
-
-                checkMember = await Member.findOneAndUpdate(
-                    qMember,
-                    { $set: { ...objData.customer, phone: phoneE164 } },
-                    { new: true, session },
+                const hasPreviousOrder = await Order.exists(
+                    {
+                        "customer.memberId": checkMember.memberId,
+                        ...(req.userData?.tenantRef && {
+                            tenantRef: req.userData.tenantRef,
+                        }),
+                    },
+                    { session },
                 );
 
-                if (checkMember) {
-                    objData.customer.memberId = checkMember.memberId;
-
-                    const hasPreviousOrder = await Order.exists(
-                        {
-                            "customer.memberId": checkMember.memberId,
-                            ...(req.userData?.tenantRef && {
-                                tenantRef: req.userData.tenantRef,
-                            }),
-                        },
-                        { session },
-                    );
-
-                    if (!hasPreviousOrder) {
-                        objData.firstOrder = true;
-                    }
-                }
-
-                if (!checkMember && objData.customer.isNew) {
-                    const currYear = new Date().getFullYear();
-                    const memberId = `EM${currYear}${generateRandomId()}`;
-
-                    const newCustomer = {
-                        ...objData.customer,
-                        memberId,
-                        phone:
-                            phoneE164 === "62" || phoneE164 === "0"
-                                ? memberId
-                                : phoneE164,
-                        tenantRef: req.userData?.tenantRef || null,
-                    };
-
-                    const newMember = new Member(newCustomer);
-                    checkMember = await newMember.save({ session });
-
-                    objData.customer = newCustomer;
+                if (!hasPreviousOrder) {
                     objData.firstOrder = true;
                 }
             }
 
-            // ================= VOUCHER =================
-            if (objData.voucherCode) {
-                if (!exist.voucherCode.includes(objData.voucherCode)) {
-                    if (
-                        typeof objData.voucherCode === "string" &&
-                        objData.voucherCode.trim()
-                    ) {
-                        objData.voucherCode = [objData.voucherCode];
-                    } else if (!Array.isArray(objData.voucherCode)) {
-                        objData.voucherCode = [];
-                    }
+            if (!checkMember && objData.customer.isNew) {
+                const currYear = new Date().getFullYear();
+                const memberId = `EM${currYear}${generateRandomId()}`;
+
+                const newCustomer = {
+                    ...objData.customer,
+                    memberId,
+                    phone:
+                        phoneE164 === "62" || phoneE164 === "0"
+                            ? memberId
+                            : phoneE164,
+                    tenantRef: req.userData?.tenantRef || null,
+                };
+
+                const newMember = new Member(newCustomer);
+                checkMember = await newMember.save({ session });
+
+                objData.customer = newCustomer;
+                objData.firstOrder = true;
+            }
+        }
+
+        // ================= VOUCHER =================
+        if (objData.voucherCode) {
+            if (!exist.voucherCode.includes(objData.voucherCode)) {
+                if (
+                    typeof objData.voucherCode === "string" &&
+                    objData.voucherCode.trim()
+                ) {
+                    objData.voucherCode = [objData.voucherCode];
+                } else if (!Array.isArray(objData.voucherCode)) {
+                    objData.voucherCode = [];
                 }
             }
+        }
 
-            // ================= BALANCE =================
-            if (objData?.status && objData?.billedAmount) {
-                const statusPay = ["paid", "refund"];
+        // ================= BALANCE =================
+        if (objData?.status && objData?.billedAmount) {
+            const statusPay = ["paid", "refund"];
 
-                if (
-                    objData.status === "paid" &&
-                    exist.status !== "paid" &&
-                    !objData.paymentDate
-                ) {
-                    objData.paymentDate = new Date();
-                }
-
-                if (
-                    statusPay.includes(objData.status) &&
-                    !statusPay.includes(exist.status)
-                ) {
-                    let increase = { sales: objData.billedAmount };
-
-                    if (objData.serviceCharge)
-                        increase.serviceCharge = objData.serviceCharge;
-                    if (objData.tax) increase.tax = objData.tax;
-                    if (objData.status === "refund")
-                        increase.refund = objData.billedAmount * -1;
-
-                    const paymentMap = {
-                        Cash: "detail.cash",
-                        Dana: "detail.dana",
-                        "Shopee Pay": "detail.shopeePay",
-                        OVO: "detail.ovo",
-                        QRIS: "detail.qris",
-                        "Bank Transfer": "detail.bankTransfer",
-                        "Online Payment": "detail.onlinePayment",
-                    };
-
-                    if (paymentMap[objData.payment]) {
-                        increase[paymentMap[objData.payment]] =
-                            objData.billedAmount;
-                    }
-
-                    if (objData.payment === "Card" && objData.cardBankName) {
-                        increase[
-                            `detail.${objData.cardBankName.toLowerCase()}`
-                        ] = objData.billedAmount;
-                    }
-
-                    const qBal = {
-                        isOpen: true,
-                        ...(req.userData?.tenantRef && {
-                            tenantRef: req.userData.tenantRef,
-                        }),
-                        ...(req.userData?.outletRef && {
-                            outletRef: req.userData.outletRef,
-                        }),
-                    };
-
-                    await Balance.findOneAndUpdate(
-                        qBal,
-                        { $inc: increase },
-                        { new: true, session },
-                    );
-                }
+            if (
+                objData.status === "paid" &&
+                exist.status !== "paid" &&
+                !objData.paymentDate
+            ) {
+                objData.paymentDate = new Date();
             }
 
-            // ================= UPDATE ORDER =================
-            const updatedData = await Order.updateOne(
-                { _id: req.params.id },
-                { $set: objData },
-                { session },
-            );
+            if (
+                statusPay.includes(objData.status) &&
+                !statusPay.includes(exist.status)
+            ) {
+                let increase = { sales: objData.billedAmount };
 
-            await session.commitTransaction();
-            session.endSession();
+                if (objData.serviceCharge)
+                    increase.serviceCharge = objData.serviceCharge;
+                if (objData.tax) increase.tax = objData.tax;
+                if (objData.status === "refund")
+                    increase.refund = objData.billedAmount * -1;
 
-            return res.json(updatedData);
-        });
+                const paymentMap = {
+                    Cash: "detail.cash",
+                    Dana: "detail.dana",
+                    "Shopee Pay": "detail.shopeePay",
+                    OVO: "detail.ovo",
+                    QRIS: "detail.qris",
+                    "Bank Transfer": "detail.bankTransfer",
+                    "Online Payment": "detail.onlinePayment",
+                };
+
+                if (paymentMap[objData.payment]) {
+                    increase[paymentMap[objData.payment]] =
+                        objData.billedAmount;
+                }
+
+                if (objData.payment === "Card" && objData.cardBankName) {
+                    increase[`detail.${objData.cardBankName.toLowerCase()}`] =
+                        objData.billedAmount;
+                }
+
+                const qBal = {
+                    isOpen: true,
+                    ...(req.userData?.tenantRef && {
+                        tenantRef: req.userData.tenantRef,
+                    }),
+                    ...(req.userData?.outletRef && {
+                        outletRef: req.userData.outletRef,
+                    }),
+                };
+
+                await Balance.findOneAndUpdate(
+                    qBal,
+                    { $inc: increase },
+                    { new: true, session },
+                );
+            }
+        }
+
+        // ================= UPDATE ORDER =================
+        const updatedData = await Order.updateOne(
+            { _id: req.params.id },
+            { $set: objData },
+            { session },
+        );
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.json(updatedData);
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
@@ -1444,11 +1375,6 @@ export const deleteOrder = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
-        }
-        // Chek image & delete image
-        const check = await Order.findOne(qMatch);
-        if (check.invoiceImg.imageId) {
-            await cloudinary.uploader.destroy(check.invoiceImg.imageId);
         }
         const deletedData = await Order.deleteOne(qMatch);
         return res.json(deletedData);
