@@ -3,7 +3,7 @@ import multer from "multer";
 import Order from "../../models/pos/order.js";
 import Member from "../../models/member/member.js";
 // import MemberVoucher from "../../models/voucherMember.js";
-import Balance from "../../models/cashBalance.js";
+import Balance from "../../models/cashBalance/cashBalance.js";
 import { generateRandomId } from "../../lib/generateRandom.js";
 import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 import { convertToE164 } from "../../lib/textSetting.js";
@@ -157,7 +157,7 @@ export const getAllOrder = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
             lean: true,
-            leanWithId: false
+            leanWithId: false,
         };
         const listofData = await Order.paginate(qMatch, options);
         return res.json(listofData);
@@ -302,7 +302,7 @@ export const getDeliveryOrder = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
             lean: true,
-            leanWithId: false
+            leanWithId: false,
         };
 
         const listofData = await Order.paginate(qMatch, options);
@@ -434,7 +434,7 @@ export const getTrackOrder = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
             lean: true,
-            leanWithId: false
+            leanWithId: false,
         };
 
         const listofData = await Order.paginate(qMatch, options);
@@ -677,7 +677,7 @@ export const getPaidOrder = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: { [sortField]: sortDirection },
             lean: true,
-            leanWithId: false
+            leanWithId: false,
         };
 
         const listofData = await Order.paginate(qMatch, options);
@@ -1098,8 +1098,18 @@ export const addOrder = async (req, res) => {
                         ] = objData.billedAmount;
                     }
 
+                    const qBal = {
+                        isOpen: true,
+                        ...(req.userData?.tenantRef && {
+                            tenantRef: req.userData.tenantRef,
+                        }),
+                        ...(req.userData?.outletRef && {
+                            outletRef: req.userData.outletRef,
+                        }),
+                    };
+
                     await Balance.findOneAndUpdate(
-                        { isOpen: true },
+                        qBal,
                         { $inc: increase },
                         { new: true, session },
                     );
@@ -1315,8 +1325,18 @@ export const editOrder = async (req, res) => {
                         ] = objData.billedAmount;
                     }
 
+                    const qBal = {
+                        isOpen: true,
+                        ...(req.userData?.tenantRef && {
+                            tenantRef: req.userData.tenantRef,
+                        }),
+                        ...(req.userData?.outletRef && {
+                            outletRef: req.userData.outletRef,
+                        }),
+                    };
+
                     await Balance.findOneAndUpdate(
-                        { isOpen: true },
+                        qBal,
                         { $inc: increase },
                         { new: true, session },
                     );

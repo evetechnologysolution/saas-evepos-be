@@ -1,14 +1,26 @@
 import multer from "multer";
-import Receipt from "../models/receipt.js";
-import { cloudinary, imageUpload } from "../lib/cloudinary.js";
+import Receipt from "../../models/setting/receipt.js";
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllReceipt = async (req, res) => {
     try {
-        const listofData = await Receipt.findOne();
+        let qMatch = {};
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        const listofData = await Receipt.findOne(qMatch);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -30,14 +42,19 @@ export const saveReceipt = async (req, res) => {
 
             let objData = req.body;
 
+            if (req.userData) {
+                objData.tenantRef = req.userData?.tenantRef;
+                objData.outletRef = req.userData?.outletRef;
+            }
+
             if (req.file) {
                 const cloud = await cloudinary.uploader.upload(req.file.path, {
                     folder: process.env.FOLDER_PRODUCT,
                     format: "webp",
                     transformation: [
                         // { width: 100, height: 100, crop: "fit" }, // Adjust the width and height as needed
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
                 if (cloud.public_id) {
                     const exist = await Receipt.findOne({ _id: { $ne: null } });
@@ -48,21 +65,25 @@ export const saveReceipt = async (req, res) => {
                     objData = {
                         ...objData,
                         image: cloud.secure_url,
-                        imageId: cloud.public_id
+                        imageId: cloud.public_id,
                     };
                 }
             }
 
             const data = await Receipt.findOneAndUpdate(
                 {
-                    _id: { $ne: null }
+                    _id: { $ne: null },
                 },
                 objData,
-                { new: true, upsert: true }
+                { new: true, upsert: true },
             );
             return res.json(data);
         });
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };

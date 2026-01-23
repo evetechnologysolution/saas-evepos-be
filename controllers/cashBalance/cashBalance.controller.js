@@ -1,10 +1,17 @@
-import Balance from "../models/cashBalance.js";
+import Balance from "../../models/cashBalance/cashBalance.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllBalance = async (req, res) => {
     try {
         const { page, perPage, start, end } = req.query;
-        let query = {};
+        let qMatch = {};
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
         if (start && end) {
             const dStart = new Date(start);
             dStart.setHours(0, 0, 0, 0);
@@ -14,23 +21,27 @@ export const getAllBalance = async (req, res) => {
             dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixEnd = new Date(dEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 startDate: {
                     $gte: fixStart,
-                    $lte: fixEnd
-                }
-            }
+                    $lte: fixEnd,
+                },
+            };
         }
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { startDate: -1 },
-        }
-        const listofData = await Balance.paginate(query, options);
+        };
+        const listofData = await Balance.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -48,8 +59,7 @@ export const getCashFlow = async (req, res) => {
 
         const cashFlow = await Balance.aggregate([
             {
-                $match:
-                {
+                $match: {
                     $and: [
                         {
                             isOpen: { $ne: true },
@@ -57,11 +67,11 @@ export const getCashFlow = async (req, res) => {
                         {
                             startDate: {
                                 $gte: fixStart,
-                                $lte: fixEnd
-                            }
-                        }
-                    ]
-                }
+                                $lte: fixEnd,
+                            },
+                        },
+                    ],
+                },
             },
             {
                 $group: {
@@ -72,7 +82,7 @@ export const getCashFlow = async (req, res) => {
                     refund: { $sum: "$refund" },
                     serviceCharge: { $sum: "$serviceCharge" },
                     tax: { $sum: "$tax" },
-                }
+                },
             },
             {
                 $project: {
@@ -83,7 +93,7 @@ export const getCashFlow = async (req, res) => {
                     refund: 1,
                     serviceCharge: 1,
                     tax: 1,
-                }
+                },
             },
         ]);
 
@@ -96,29 +106,55 @@ export const getCashFlow = async (req, res) => {
             refund: cashFlow.length > 0 ? cashFlow[0].refund : 0,
             serviceCharge: cashFlow.length > 0 ? cashFlow[0].serviceCharge : 0,
             tax: cashFlow.length > 0 ? cashFlow[0].tax : 0,
-        }
+        };
 
         return res.json(data);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
 export const getBalanceById = async (req, res) => {
     try {
-        const spesificData = await Balance.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        const spesificData = await Balance.findOne(qMatch);
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
 export const getExistBalance = async (req, res) => {
     try {
-        const spesificData = await Balance.findOne({ isOpen: true });
+        let qMatch = { isOpen: true };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        const spesificData = await Balance.findOne(qMatch);
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -127,19 +163,24 @@ export const addBalance = async (req, res) => {
     try {
         let objData = {};
 
+        if (req.userData) {
+            objData.tenantRef = req.userData?.tenantRef;
+            objData.outletRef = req.userData?.outletRef;
+        }
+
         if (req.body.cashIn) {
             objData = {
                 ...objData,
                 $inc: { cashIn: req.body.cashIn },
                 $push: {
                     history: {
-                        title: req.body?.title || 'Kas Masuk',
+                        title: req.body?.title || "Kas Masuk",
                         isCashOut: false,
-                        amount: req.body.cashIn
-                    }
-                }
-            }
-        };
+                        amount: req.body.cashIn,
+                    },
+                },
+            };
+        }
 
         if (req.body.cashOut) {
             objData = {
@@ -147,25 +188,29 @@ export const addBalance = async (req, res) => {
                 $inc: { cashOut: req.body.cashOut },
                 $push: {
                     history: {
-                        title: req.body?.title || 'Kas Keluar',
+                        title: req.body?.title || "Kas Keluar",
                         isCashOut: true,
-                        amount: req.body.cashOut
-                    }
-                }
-            }
-        };
+                        amount: req.body.cashOut,
+                    },
+                },
+            };
+        }
 
         const data = await Balance.findOneAndUpdate(
             {
-                isOpen: true
+                isOpen: true,
             },
             objData,
-            { new: true, upsert: true }
+            { new: true, upsert: true },
         );
 
         return res.json(data);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -184,49 +229,76 @@ export const closeBalance = async (req, res) => {
                 $inc: { cashOut: req.body.cashOut },
                 $push: {
                     history: {
-                        title: 'Tutup Kas',
+                        title: "Tutup Kas",
                         isCashOut: true,
-                        amount: req.body.cashOut
-                    }
-                }
-            }
-        };
+                        amount: req.body.cashOut,
+                    },
+                },
+            };
+        }
 
-        const data = await Balance.findOneAndUpdate(
-            {
-                isOpen: true
-            },
-            objData,
-            { new: true, upsert: true }
-        );
+        let qMatch = { isOpen: true };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        const data = await Balance.findOneAndUpdate(qMatch, objData, {
+            new: true,
+            upsert: true,
+        });
 
         return res.json(data);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
 // UPDATE A SPECIFIC DATA
 export const editBalance = async (req, res) => {
     try {
-        const updatedData = await Balance.updateOne(
-            { _id: req.params.id },
-            {
-                $set: req.body
-            }
-        );
+        let qMatch = { _id: req.params.id };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        const updatedData = await Balance.updateOne(qMatch, {
+            $set: req.body,
+        });
         return res.json(updatedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
 // DELETE A SPECIFIC DATA
 export const deleteBalance = async (req, res) => {
     try {
-        const deletedData = await Balance.deleteOne({ _id: req.params.id });
+        let qMatch = { _id: req.params.id };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        const deletedData = await Balance.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
