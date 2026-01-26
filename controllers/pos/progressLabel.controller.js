@@ -114,7 +114,7 @@ export const editData = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
-            objData.tenantRef = req.userData?.tenantRef;
+            qMatch.tenantRef = req.userData?.tenantRef;
         }
         let objData = req.body;
         const updatedData = await Label.updateOne(qMatch, {
@@ -135,7 +135,7 @@ export const deleteData = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
-            objData.tenantRef = req.userData?.tenantRef;
+            qMatch.tenantRef = req.userData?.tenantRef;
         }
         const deletedData = await Label.deleteOne(qMatch);
         return res.json(deletedData);
