@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import multer from "multer";
 import Order from "../../models/pos/order.js";
 import Member from "../../models/member/member.js";
 // import MemberVoucher from "../../models/voucherMember.js";
@@ -38,7 +37,7 @@ export const getAllOrder = async (req, res) => {
 
         if (search) {
             const fixedId = mongoose.Types.ObjectId.isValid(search)
-                ? new mongoose.Types.ObjectId(search)
+                ? search
                 : null;
 
             qMatch = {
@@ -869,7 +868,12 @@ export const getUnfinishedOrder = async (req, res) => {
 export const getOrderById = async (req, res) => {
     try {
         let qMatch = {
-            $or: [{ _id: req.params.id }, { orderId: req.params.id }],
+            $or: [
+                { orderId: req.params.id },
+                ...(mongoose.Types.ObjectId.isValid(req.params.id)
+                    ? [{ _id: req.params.id }]
+                    : []),
+            ],
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
@@ -909,7 +913,12 @@ export const getOrderById = async (req, res) => {
 export const getOrderProgressById = async (req, res) => {
     try {
         let qMatch = {
-            $or: [{ _id: req.params.id }, { orderId: req.params.id }],
+            $or: [
+                { orderId: req.params.id },
+                ...(mongoose.Types.ObjectId.isValid(req.params.id)
+                    ? [{ _id: req.params.id }]
+                    : []),
+            ],
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
