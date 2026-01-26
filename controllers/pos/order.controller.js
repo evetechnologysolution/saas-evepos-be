@@ -150,6 +150,14 @@ export const getAllOrder = async (req, res) => {
                     path: "customerRef",
                     select: "memberId name firstName lastName phone notes point",
                 },
+                {
+                    path: "progressRef",
+                    select: "latestStatus latestNotes",
+                    populate: {
+                        path: "log.staffRef",
+                        select: "fullname",
+                    },
+                },
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
@@ -198,7 +206,7 @@ export const getDeliveryOrder = async (req, res) => {
             qMatch = {
                 ...qMatch,
                 $or: [
-                    { _id: { $regex: search, $options: "i" } },
+                    ...(fixedId ? [{ _id: fixedId }] : []),
                     { orderId: { $regex: search, $options: "i" } },
                     { "customer.memberId": { $regex: search, $options: "i" } },
                     { "customer.name": { $regex: search, $options: "i" } },
@@ -339,10 +347,14 @@ export const getTrackOrder = async (req, res) => {
         }
 
         if (search) {
+            const fixedId = mongoose.Types.ObjectId.isValid(search)
+                ? search
+                : null;
+
             qMatch = {
                 ...qMatch,
                 $or: [
-                    { _id: { $regex: search, $options: "i" } },
+                    ...(fixedId ? [{ _id: fixedId }] : []),
                     { orderId: { $regex: search, $options: "i" } },
                     { "customer.memberId": { $regex: search, $options: "i" } },
                     { "customer.name": { $regex: search, $options: "i" } },
@@ -537,10 +549,14 @@ export const getOrderByMember = async (req, res) => {
         }
 
         if (search) {
+            const fixedId = mongoose.Types.ObjectId.isValid(search)
+                ? search
+                : null;
+
             qMatch = {
                 ...qMatch,
                 $or: [
-                    { _id: { $regex: search, $options: "i" } },
+                    ...(fixedId ? [{ _id: fixedId }] : []),
                     { orderId: { $regex: search, $options: "i" } },
                 ], // option i for case insensitivity to match upper and lower cases.
             };
@@ -623,10 +639,14 @@ export const getPaidOrder = async (req, res) => {
             qMatch.outletRef = req.userData?.outletRef;
         }
         if (search) {
+            const fixedId = mongoose.Types.ObjectId.isValid(search)
+                ? search
+                : null;
+
             qMatch = {
                 ...qMatch,
                 $or: [
-                    { _id: { $regex: search, $options: "i" } },
+                    ...(fixedId ? [{ _id: fixedId }] : []),
                     { orderId: { $regex: search, $options: "i" } },
                     { tableName: { $regex: search, $options: "i" } },
                 ], // option i for case insensitivity to match upper and lower cases.
@@ -767,10 +787,14 @@ export const getExportOrder = async (req, res) => {
             qMatch.outletRef = req.userData?.outletRef;
         }
         if (search) {
+            const fixedId = mongoose.Types.ObjectId.isValid(search)
+                ? search
+                : null;
+
             qMatch = {
                 ...qMatch,
                 $or: [
-                    { _id: { $regex: search, $options: "i" } },
+                    ...(fixedId ? [{ _id: fixedId }] : []),
                     { orderId: { $regex: search, $options: "i" } },
                     { tableName: { $regex: search, $options: "i" } },
                 ], // option i for case insensitivity to match upper and lower cases.
