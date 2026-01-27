@@ -29,37 +29,11 @@ const DataSchema = mongoose.Schema(
             trim: true,
             default: "",
         },
-        discount: {
-            promotionRef: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Promotions",
-                default: null,
-                set: (val) => (val === "" ? null : val),
-            },
-            amount: {
-                type: Number,
-                default: 0,
-            },
-            qtyMin: {
-                type: Number,
-                default: 0,
-            },
-            qtyFree: {
-                type: Number,
-                default: 0,
-            },
-            startDate: {
-                type: Date,
-                default: null,
-            },
-            endDate: {
-                type: Date,
-                default: null,
-            },
-            selectedDay: {
-                type: Number,
-                default: null,
-            },
+        promotionRef: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Promotions",
+            default: null,
+            set: (val) => (val === "" ? null : val),
         },
         category: {
             type: mongoose.Schema.Types.ObjectId,

@@ -78,7 +78,7 @@ export const getAllProduct = async (req, res) => {
             {
                 $lookup: {
                     from: "promotions",
-                    localField: "discount.promotionRef",
+                    localField: "promotionRef",
                     foreignField: "_id",
                     as: "promo",
                 },
@@ -90,25 +90,25 @@ export const getAllProduct = async (req, res) => {
                             if: {
                                 $and: [
                                     { $eq: [{ $arrayElemAt: ["$promo.isAvailable", 0] }, true] },
-                                    { $or: [{ $gt: ["$discount.amount", 0] }, { $gt: ["$discount.qtyMin", 0] }] },
-                                    { $lte: ["$discount.startDate", currDate] },
+                                    { $or: [{ $gt: ["$promo.amount", 0] }, { $gt: ["$promo.qtyMin", 0] }] },
+                                    { $lte: ["$promo.startDate", currDate] },
                                     {
                                         $or: [
-                                            { $eq: ["$discount.endDate", null] },
-                                            { $not: { $ifNull: ["$discount.endDate", false] } },
-                                            { $gte: ["$discount.endDate", currDate] },
+                                            { $eq: ["$promo.endDate", null] },
+                                            { $not: { $ifNull: ["$promo.endDate", false] } },
+                                            { $gte: ["$promo.endDate", currDate] },
                                         ],
                                     },
                                     // Tambahkan kondisi untuk mencocokkan hari
                                     {
                                         $or: [
-                                            { $eq: ["$discount.selectedDay", null] },
-                                            { $eq: ["$discount.selectedDay", { $dayOfWeek: currDate }] },
+                                            { $eq: ["$promo.selectedDay", null] },
+                                            { $eq: ["$promo.selectedDay", { $dayOfWeek: currDate }] },
                                             {
                                                 $and: [
-                                                    { $isArray: "$discount.selectedDay" },
-                                                    { $gt: [{ $size: "$discount.selectedDay" }, 0] },
-                                                    { $in: [{ $dayOfWeek: currDate }, "$discount.selectedDay"] },
+                                                    { $isArray: "$promo.selectedDay" },
+                                                    { $gt: [{ $size: "$promo.selectedDay" }, 0] },
+                                                    { $in: [{ $dayOfWeek: currDate }, "$promo.selectedDay"] },
                                                 ],
                                             },
                                         ],
@@ -257,6 +257,10 @@ export const getPaginateProduct = async (req, res) => {
                 {
                     path: "subcategory",
                     select: ["name"],
+                },
+                {
+                    path: "promotionRef",
+                    select: ["name type amount qtyMin qtyFree startDate endDate selectedDay isAvailable"],
                 },
             ],
             page: parseInt(page, 10) || 1,

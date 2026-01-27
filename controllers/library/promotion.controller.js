@@ -24,9 +24,7 @@ export const getAllPromotion = async (req, res) => {
 
         if (req.userData?.outletRef) {
             matchQuery.outletRef = {
-                $in: Array.isArray(req.userData.outletRef)
-                    ? req.userData.outletRef
-                    : [req.userData.outletRef],
+                $in: Array.isArray(req.userData.outletRef) ? req.userData.outletRef : [req.userData.outletRef],
             };
         }
 
@@ -104,11 +102,7 @@ export const getAvailablePromotion = async (req, res) => {
                 { isAvailable: true },
                 { startDate: { $lte: currDate } },
                 {
-                    $or: [
-                        { endDate: { $exists: false } },
-                        { endDate: null },
-                        { endDate: { $gte: currDate } },
-                    ],
+                    $or: [{ endDate: { $exists: false } }, { endDate: null }, { endDate: { $gte: currDate } }],
                 },
             ],
         };
@@ -119,9 +113,7 @@ export const getAvailablePromotion = async (req, res) => {
 
         if (req.userData?.outletRef) {
             matchQuery.outletRef = {
-                $in: Array.isArray(req.userData.outletRef)
-                    ? req.userData.outletRef
-                    : [req.userData.outletRef],
+                $in: Array.isArray(req.userData.outletRef) ? req.userData.outletRef : [req.userData.outletRef],
             };
         }
 
@@ -175,26 +167,17 @@ export const getAvailablePromotion = async (req, res) => {
                                 const products = await Promise.all(
                                     field.products.map(async (item) => {
                                         const variants = await Promise.all(
-                                            item.variant.map(
-                                                async (row, index) => {
-                                                    const check =
-                                                        await Variant.findById(
-                                                            row.variantRef,
-                                                        ).select(
-                                                            "_id name options",
-                                                        );
-                                                    delete row.variantRef;
-                                                    return {
-                                                        ...row,
-                                                        variantRef: check,
-                                                    };
-                                                },
-                                            ),
+                                            item.variant.map(async (row, index) => {
+                                                const check = await Variant.findById(row.variantRef).select("_id name options");
+                                                delete row.variantRef;
+                                                return {
+                                                    ...row,
+                                                    variantRef: check,
+                                                };
+                                            }),
                                         );
 
-                                        const cate = await Category.findById(
-                                            item.category,
-                                        ).select("_id name");
+                                        const cate = await Category.findById(item.category).select("_id name");
 
                                         return {
                                             ...item,
@@ -211,9 +194,7 @@ export const getAvailablePromotion = async (req, res) => {
                                 const sortedProducts = products.sort((a, b) => {
                                     // Sort by isRecommended first
                                     if (b.isRecommended !== a.isRecommended) {
-                                        return (
-                                            b.isRecommended - a.isRecommended
-                                        );
+                                        return b.isRecommended - a.isRecommended;
                                     }
                                     // If isRecommended is the same, sort by name alphabetically
                                     return a.name.localeCompare(b.name);
@@ -225,9 +206,7 @@ export const getAvailablePromotion = async (req, res) => {
                         return res.json(data);
                     } catch (error) {
                         // console.error("Error:", error);
-                        return res
-                            .status(500)
-                            .json({ message: "Internal Server Error" });
+                        return res.status(500).json({ message: "Internal Server Error" });
                     }
                 }
 
@@ -293,28 +272,17 @@ export const addPromotion = async (req, res) => {
 
             let convertId = [];
             if (req.body.products) {
-                convertId =
-                    typeof req.body.products === "string"
-                        ? JSON.parse(req.body.products)
-                        : req.body.products;
+                convertId = typeof req.body.products === "string" ? JSON.parse(req.body.products) : req.body.products;
                 objData.products = convertId;
             }
 
             if (objData.startDate) {
                 const now = new Date(objData.startDate);
-                objData.startDate = new Date(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    now.getDate(),
-                );
+                objData.startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             }
             if (objData.endDate) {
                 const now = new Date(objData.endDate);
-                objData.endDate = new Date(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    now.getDate(),
-                );
+                objData.endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             }
 
             // Prepare bulk operations for updating products
@@ -323,21 +291,10 @@ export const addPromotion = async (req, res) => {
                 // discount 1 or bundle 3
                 if (Number(objData.type) === 1 || Number(objData.type) === 3) {
                     for (const prodId of convertId) {
-                        const newDiscount = {
-                            promotionRef: newObjectId,
-                            amount: objData?.amount,
-                            qtyMin: objData?.qtyMin,
-                            qtyFree: objData?.qtyFree,
-                            startDate: objData?.startDate || null,
-                            endDate: objData?.endDate || null,
-                            selectedDay: objData?.selectedDay ?? null, // karena bisa bernilai 0, maka menggunakan ??
-                            // isSpecial: objData?.isSpecial || false,
-                        };
-
                         bulkOps.push({
                             updateOne: {
                                 filter: { _id: prodId },
-                                update: { $set: { discount: newDiscount } },
+                                update: { $set: { promotionRef: newObjectId } },
                             },
                         });
                     }
@@ -420,10 +377,7 @@ export const editPromotion = async (req, res) => {
 
             let convertId = [];
             if (req.body.products) {
-                convertId =
-                    typeof req.body.products === "string"
-                        ? JSON.parse(req.body.products)
-                        : req.body.products;
+                convertId = typeof req.body.products === "string" ? JSON.parse(req.body.products) : req.body.products;
                 objData.products = convertId;
             }
 
@@ -435,19 +389,11 @@ export const editPromotion = async (req, res) => {
 
             if (objData.startDate) {
                 const now = new Date(objData.startDate);
-                objData.startDate = new Date(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    now.getDate(),
-                );
+                objData.startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             }
             if (objData.endDate) {
                 const now = new Date(objData.endDate);
-                objData.endDate = new Date(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    now.getDate(),
-                );
+                objData.endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             }
 
             // Prepare bulk operations
@@ -457,23 +403,9 @@ export const editPromotion = async (req, res) => {
                 productRemove.forEach((prodId) => {
                     bulkOps.push({
                         updateOne: {
-                            filter: {
-                                _id: prodId,
-                                "discount.promotionRef": req.params.id,
-                            },
+                            filter: { _id: prodId, promotionRef: req.params.id },
                             update: {
-                                $set: {
-                                    discount: {
-                                        promotionRef: null,
-                                        amount: 0,
-                                        qtyMin: 0,
-                                        qtyFree: 0,
-                                        startDate: null,
-                                        endDate: null,
-                                        selectedDay: null,
-                                        // isSpecial: false,
-                                    },
-                                },
+                                $set: { promotionRef: null },
                             },
                         },
                     });
@@ -484,21 +416,10 @@ export const editPromotion = async (req, res) => {
                 // discount 1 or bundle 3
                 if (Number(objData.type) === 1 || Number(objData.type) === 3) {
                     for (const prodId of convertId) {
-                        const newDiscount = {
-                            promotionRef: req.params.id,
-                            amount: objData?.amount,
-                            qtyMin: objData?.qtyMin,
-                            qtyFree: objData?.qtyFree,
-                            startDate: objData?.startDate || null,
-                            endDate: objData?.endDate || null,
-                            selectedDay: objData?.selectedDay ?? null, // karena bisa bernilai 0, maka menggunakan ??
-                            // isSpecial: objData?.isSpecial || false,
-                        };
-
                         bulkOps.push({
                             updateOne: {
                                 filter: { _id: prodId },
-                                update: { $set: { discount: newDiscount } },
+                                update: { $set: { promotionRef: req.params.id } },
                             },
                         });
                     }
@@ -519,10 +440,7 @@ export const editPromotion = async (req, res) => {
                 const cloud = await cloudinary.uploader.upload(req.file.path, {
                     folder: process.env.FOLDER_PRODUCT,
                     format: "webp",
-                    transformation: [
-                        { width: 800, height: 800, crop: "fit" },
-                        { quality: "auto:low" },
-                    ],
+                    transformation: [{ width: 800, height: 800, crop: "fit" }, { quality: "auto:low" }],
                 });
 
                 objData.image = cloud.secure_url;
@@ -530,11 +448,7 @@ export const editPromotion = async (req, res) => {
             }
 
             // Update the promotion with new data
-            const updatedData = await Promotion.findOneAndUpdate(
-                qMatch,
-                { $set: objData },
-                { new: true },
-            );
+            const updatedData = await Promotion.findOneAndUpdate(qMatch, { $set: objData }, { new: true });
             return res.json(updatedData);
         } catch (err) {
             return errorResponse(res, {
@@ -570,23 +484,9 @@ export const deletePromotion = async (req, res) => {
             for (const prodId of exist.products) {
                 bulkOps.push({
                     updateOne: {
-                        filter: {
-                            _id: prodId,
-                            "discount.promotionRef": req.params.id,
-                        },
+                        filter: { _id: prodId, promotionRef: req.params.id },
                         update: {
-                            $set: {
-                                discount: {
-                                    promotionRef: null,
-                                    amount: 0,
-                                    qtyMin: 0,
-                                    qtyFree: 0,
-                                    startDate: null,
-                                    endDate: null,
-                                    selectedDay: null,
-                                    // isSpecial: false,
-                                },
-                            },
+                            $set: { promotionRef: null },
                         },
                     },
                 });
