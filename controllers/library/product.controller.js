@@ -6,7 +6,7 @@ import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
-export const getAllProduct = async (req, res) => {
+export const getAllRawProduct = async (req, res) => {
     try {
         const { category, subcategory } = req.query;
         let qMatch = {};
@@ -234,7 +234,7 @@ export const getAllProduct = async (req, res) => {
 };
 
 // GETTING ALL THE DATA
-export const getPaginateProduct = async (req, res) => {
+export const getAllProduct = async (req, res) => {
     try {
         const { page, perPage, search, sort } = req.query;
         let qMatch = {};

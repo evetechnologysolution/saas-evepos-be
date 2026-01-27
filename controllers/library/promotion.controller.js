@@ -10,79 +10,49 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllPromotion = async (req, res) => {
     try {
-        const { page, perPage, search, promoType } = req.query;
-        const options = {
-            page: parseInt(page, 10) || 1,
-            limit: parseInt(perPage, 10) || 10,
-        };
+        const { page, perPage, search, promoType, sort } = req.query;
+        let qMatch = {};
 
-        const matchQuery = {};
-
-        if (req.userData?.tenantRef) {
-            matchQuery.tenantRef = req.userData.tenantRef;
-        }
-
-        if (req.userData?.outletRef) {
-            matchQuery.outletRef = {
-                $in: Array.isArray(req.userData.outletRef) ? req.userData.outletRef : [req.userData.outletRef],
-            };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            if(req.userData?.outletRef) {
+                qMatch.outletRef = req.userData?.outletRef;
+            }
         }
 
         if (search) {
-            matchQuery.name = { $regex: search, $options: "i" };
+            qMatch = {
+                ...qMatch,
+                name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
+            };
         }
 
         if (promoType) {
-            matchQuery.promoType = Number(promoType);
+            qMatch.promoType = Number(promoType);
         }
 
-        const pipeline = [
-            { $match: matchQuery },
-            {
-                $lookup: {
-                    from: "products",
-                    localField: "products",
-                    foreignField: "_id",
-                    as: "products",
-                },
-            },
-            { $sort: { date: -1 } },
-            {
-                $project: {
-                    _id: 1,
-                    createdAt: 1,
-                    updatedAt: 1,
-                    promotionId: 1,
-                    name: 1,
-                    image: 1,
-                    type: 1,
-                    amount: 1,
-                    qtyMin: 1,
-                    qtyFree: 1,
-                    startDate: 1,
-                    endDate: 1,
-                    validUntil: 1,
-                    selectedDay: 1,
-                    isAvailable: 1,
-                    products: {
-                        _id: 1,
-                        name: 1,
-                        price: 1,
-                    },
-                },
-            },
-        ];
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
 
-        const myAggregate = Promotion.aggregate(pipeline);
-
-        myAggregate.paginateExec(options, function (err, result) {
-            if (err) {
-                return res.json(err);
-            }
-            if (result) {
-                return res.json(result);
-            }
-        });
+        const options = {
+            populate: [
+                {
+                    path: "products",
+                    select: "name price",
+                },
+            ],
+            page: parseInt(page, 10) || 1,
+            limit: parseInt(perPage, 10) || 10,
+            sort: sortObj,
+        };
+        const listofData = await Promotion.paginate(qMatch, options);
+        return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
