@@ -13,14 +13,7 @@
         {
             "src": "/(.*)",
             "dest": "app.js",
-            "methods": [
-                "GET",
-                "POST",
-                "PUT",
-                "PATCH",
-                "OPTIONS",
-                "DELETE"
-            ],
+            "methods": ["GET", "POST", "PUT", "PATCH", "OPTIONS", "DELETE"],
             "headers": {
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Credentials": "true",

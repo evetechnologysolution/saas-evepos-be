@@ -78,7 +78,7 @@ export const getAllProduct = async (req, res) => {
             {
                 $lookup: {
                     from: "promotions",
-                    localField: "discount.promotion",
+                    localField: "discount.promotionRef",
                     foreignField: "_id",
                     as: "promo",
                 },
@@ -90,46 +90,52 @@ export const getAllProduct = async (req, res) => {
                             if: {
                                 $and: [
                                     { $eq: [{ $arrayElemAt: ["$promo.isAvailable", 0] }, true] },
-                                    {
-                                        $or: [
-                                            { $gt: ["$discount.amount", 0] },
-                                            { $gt: ["$discount.qtyMin", 0] }
-                                        ]
-                                    },
+                                    { $or: [{ $gt: ["$discount.amount", 0] }, { $gt: ["$discount.qtyMin", 0] }] },
                                     { $lte: ["$discount.startDate", currDate] },
                                     {
                                         $or: [
                                             { $eq: ["$discount.endDate", null] },
                                             { $not: { $ifNull: ["$discount.endDate", false] } },
-                                            { $gte: ["$discount.endDate", currDate] }
-                                        ]
+                                            { $gte: ["$discount.endDate", currDate] },
+                                        ],
                                     },
                                     // Tambahkan kondisi untuk mencocokkan hari
-                                    { $eq: ["$discountSpecial.selectedDay", { $dayOfWeek: currDate }] },
-                                    // { $in: [{ $dayOfWeek: currDate }, "$discountSpecial.selectedDay"] }, // jika array
-                                ]
+                                    {
+                                        $or: [
+                                            { $eq: ["$discount.selectedDay", null] },
+                                            { $eq: ["$discount.selectedDay", { $dayOfWeek: currDate }] },
+                                            {
+                                                $and: [
+                                                    { $isArray: "$discount.selectedDay" },
+                                                    { $gt: [{ $size: "$discount.selectedDay" }, 0] },
+                                                    { $in: [{ $dayOfWeek: currDate }, "$discount.selectedDay"] },
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                ],
                             },
                             then: true,
-                            else: false
-                        }
+                            else: false,
+                        },
                     },
                     // Tambahan nama
                     "discount.name": {
-                        $arrayElemAt: ["$promo.name", 0]
-                    }
-                }
+                        $arrayElemAt: ["$promo.name", 0],
+                    },
+                },
             },
             {
                 $addFields: {
                     category: { $arrayElemAt: ["$category", 0] },
-                    subcategory: { $arrayElemAt: ["$subcategory", 0] }
-                }
+                    subcategory: { $arrayElemAt: ["$subcategory", 0] },
+                },
             },
             {
                 $sort: {
-                    "isRecommended": -1,
-                    "listNumber": 1,
-                    "name": 1,
+                    isRecommended: -1,
+                    listNumber: 1,
+                    name: 1,
                 },
             },
             {
@@ -151,11 +157,11 @@ export const getAllProduct = async (req, res) => {
                     isAvailable: 1,
                     category: {
                         _id: "$category._id",
-                        name: "$category.name"
+                        name: "$category.name",
                     },
                     subcategory: {
                         _id: "$subcategory._id",
-                        name: "$subcategory.name"
+                        name: "$subcategory.name",
                     },
                     discount: {
                         name: "$discount.name",
@@ -163,7 +169,7 @@ export const getAllProduct = async (req, res) => {
                         qtyMin: "$discount.qtyMin",
                         qtyFree: "$discount.qtyFree",
                         isDailyPromotion: "$discount.isAvailable",
-                        isAvailable: "$discount.isAvailable"
+                        isAvailable: "$discount.isAvailable",
                     },
                     variant: {
                         $map: {
@@ -182,25 +188,25 @@ export const getAllProduct = async (req, res) => {
                                                             input: "$variantDetails",
                                                             as: "variantDetail",
                                                             cond: {
-                                                                $eq: ["$$variantDetail._id", "$$variantItem.variantRef"]
-                                                            }
-                                                        }
+                                                                $eq: ["$$variantDetail._id", "$$variantItem.variantRef"],
+                                                            },
+                                                        },
                                                     },
-                                                    0
-                                                ]
-                                            }
+                                                    0,
+                                                ],
+                                            },
                                         },
                                         in: {
                                             _id: "$$variantDetailsFiltered._id",
                                             name: "$$variantDetailsFiltered.name",
-                                            options: "$$variantDetailsFiltered.options"
+                                            options: "$$variantDetailsFiltered.options",
                                             // Explicitly avoid projecting date or any other unnecessary fields
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
                 },
             },
         ]);
@@ -210,7 +216,7 @@ export const getAllProduct = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -231,7 +237,7 @@ export const getPaginateProduct = async (req, res) => {
                 ...qMatch,
                 name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
 
         let sortObj = { name: 1 }; // default
         if (sort && sort.trim() !== "") {
@@ -256,14 +262,14 @@ export const getPaginateProduct = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
-        }
+        };
         const listofData = await Product.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -281,7 +287,7 @@ export const getProductById = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -312,8 +318,8 @@ export const addProduct = async (req, res) => {
 
             if (req.body.variantString) {
                 const objVariant = {
-                    variant: JSON.parse(req.body.variantString)
-                }
+                    variant: JSON.parse(req.body.variantString),
+                };
                 objData = Object.assign(objData, objVariant);
             }
 
@@ -323,10 +329,13 @@ export const addProduct = async (req, res) => {
                     format: "webp",
                     transformation: [
                         { width: 800, height: 800, crop: "fit" }, // Adjust the width and height as needed
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
-                objData = Object.assign(objData, { image: cloud.secure_url, imageId: cloud.public_id });
+                objData = Object.assign(objData, {
+                    image: cloud.secure_url,
+                    imageId: cloud.public_id,
+                });
             }
 
             const data = new Product(objData);
@@ -342,14 +351,14 @@ export const addProduct = async (req, res) => {
                 return errorResponse(res, {
                     code: "VALIDATION_ERROR",
                     message: "Validasi gagal",
-                    errors
+                    errors,
                 });
             }
 
             return errorResponse(res, {
                 statusCode: 500,
                 code: "SERVER_ERROR",
-                message: err.message || "Terjadi kesalahan pada server"
+                message: err.message || "Terjadi kesalahan pada server",
             });
         }
     });
@@ -380,8 +389,8 @@ export const editProduct = async (req, res) => {
 
             if (req.body.variantString) {
                 const objVariant = {
-                    variant: JSON.parse(req.body.variantString)
-                }
+                    variant: JSON.parse(req.body.variantString),
+                };
                 objData = Object.assign(objData, objVariant);
             }
 
@@ -397,25 +406,24 @@ export const editProduct = async (req, res) => {
                     format: "webp",
                     transformation: [
                         { width: 800, height: 800, crop: "fit" }, // Adjust the width and height as needed
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
-                objData = Object.assign(objData, { image: cloud.secure_url, imageId: cloud.public_id });
+                objData = Object.assign(objData, {
+                    image: cloud.secure_url,
+                    imageId: cloud.public_id,
+                });
             }
 
-
-            const updatedData = await Product.updateOne(
-                qMatch,
-                {
-                    $set: objData
-                }
-            );
+            const updatedData = await Product.updateOne(qMatch, {
+                $set: objData,
+            });
             return res.json(updatedData);
         } catch (err) {
             return errorResponse(res, {
                 statusCode: 500,
                 code: "SERVER_ERROR",
-                message: err.message || "Terjadi kesalahan pada server"
+                message: err.message || "Terjadi kesalahan pada server",
             });
         }
     });
@@ -441,7 +449,7 @@ export const deleteProduct = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
