@@ -253,7 +253,7 @@ export const addPromotion = async (req, res) => {
             const number = pad.substring(0, pad.length - str.length) + str;
 
             // Generate new ObjectId for _id
-            const newObjectId = mongoose.Types.ObjectId();
+            const newObjectId = new mongoose.Types.ObjectId();
             const objData = {
                 ...req.body,
                 _id: newObjectId,
@@ -262,7 +262,10 @@ export const addPromotion = async (req, res) => {
 
             let convertId = [];
             if (req.body.products) {
-                convertId = JSON.parse(req.body.products);
+                convertId =
+                    typeof req.body.products === "string"
+                        ? JSON.parse(req.body.products)
+                        : req.body.products;
                 objData.products = convertId;
             }
 
@@ -288,7 +291,7 @@ export const addPromotion = async (req, res) => {
             if (convertId.length > 0) {
                 for (const prodId of convertId) {
                     const newDiscount = {
-                        promotion: newObjectId,
+                        promotionRef: newObjectId,
                         amount: objData.amount,
                         qtyMin: objData.qtyMin,
                         qtyFree: objData.qtyFree,
@@ -361,7 +364,10 @@ export const editPromotion = async (req, res) => {
 
             let convertId = [];
             if (req.body.products) {
-                convertId = JSON.parse(req.body.products);
+                convertId =
+                    typeof req.body.products === "string"
+                        ? JSON.parse(req.body.products)
+                        : req.body.products;
                 objData.products = convertId;
             }
 
@@ -402,7 +408,7 @@ export const editPromotion = async (req, res) => {
                             update: {
                                 $set: {
                                     discountSpecial: {
-                                        promotion: null,
+                                        promotionRef: null,
                                         amount: 0,
                                         qtyMin: 0,
                                         qtyFree: 0,
@@ -420,7 +426,7 @@ export const editPromotion = async (req, res) => {
             if (convertId.length > 0) {
                 convertId.forEach((prodId) => {
                     const newDiscount = {
-                        promotion: req.params.id,
+                        promotionRef: req.params.id,
                         amount: objData.amount,
                         qtyMin: objData.qtyMin,
                         qtyFree: objData.qtyFree,

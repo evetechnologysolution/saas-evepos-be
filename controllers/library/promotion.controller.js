@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import multer from "multer";
 import Promotion from "../../models/library/promotion.js";
-import Counter from "../../models/counter.js";
 import Variant from "../../models/library/variant.js";
 import Category from "../../models/library/category.js";
 import Product from "../../models/library/product.js";
@@ -11,11 +10,11 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllPromotion = async (req, res) => {
     try {
-        const { page, perPage, search } = req.query;
+        const { page, perPage, search, promoType } = req.query;
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-        }
+        };
 
         const matchQuery = {};
 
@@ -35,6 +34,10 @@ export const getAllPromotion = async (req, res) => {
             matchQuery.name = { $regex: search, $options: "i" };
         }
 
+        if (promoType) {
+            matchQuery.promoType = Number(promoType);
+        }
+
         const pipeline = [
             { $match: matchQuery },
             {
@@ -43,9 +46,9 @@ export const getAllPromotion = async (req, res) => {
                     localField: "products",
                     foreignField: "_id",
                     as: "products",
-                }
+                },
             },
-            { $sort: { "date": -1 } },
+            { $sort: { date: -1 } },
             {
                 $project: {
                     _id: 1,
@@ -55,18 +58,21 @@ export const getAllPromotion = async (req, res) => {
                     image: 1,
                     type: 1,
                     amount: 1,
+                    qtyMin: 1,
+                    qtyFree: 1,
                     startDate: 1,
                     endDate: 1,
                     validUntil: 1,
+                    selectedDay: 1,
                     isAvailable: 1,
                     products: {
                         _id: 1,
                         name: 1,
                         price: 1,
                     },
-                }
+                },
             },
-        ]
+        ];
 
         const myAggregate = Promotion.aggregate(pipeline);
 
@@ -75,14 +81,14 @@ export const getAllPromotion = async (req, res) => {
                 return res.json(err);
             }
             if (result) {
-                return res.json(result)
+                return res.json(result);
             }
         });
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -102,9 +108,9 @@ export const getAvailablePromotion = async (req, res) => {
                         { endDate: { $exists: false } },
                         { endDate: null },
                         { endDate: { $gte: currDate } },
-                    ]
-                }
-            ]
+                    ],
+                },
+            ],
         };
 
         if (req.userData?.tenantRef) {
@@ -127,16 +133,19 @@ export const getAvailablePromotion = async (req, res) => {
                     localField: "products",
                     foreignField: "_id",
                     as: "products",
-                }
+                },
             },
-            { $sort: { "startDate": -1, "date": -1 } },
+            { $sort: { startDate: -1, date: -1 } },
             {
                 $project: {
                     _id: 1,
                     name: 1,
                     type: 1,
                     amount: 1,
+                    qtyMin: 1,
+                    qtyFree: 1,
                     image: 1,
+                    selectedDay: 1,
                     products: {
                         _id: 1,
                         name: 1,
@@ -149,12 +158,11 @@ export const getAvailablePromotion = async (req, res) => {
                         amountKg: 1,
                         extraNotes: 1,
                         variant: 1,
-                        isLaundryBag: 1,
                         isRecommended: 1,
                         isAvailable: 1,
                     },
-                }
-            }
+                },
+            },
         ]).exec((err, result) => {
             if (err) {
                 return res.send(err);
@@ -162,46 +170,75 @@ export const getAvailablePromotion = async (req, res) => {
             if (result) {
                 async function getData() {
                     try {
-                        const data = await Promise.all(result.map(async (field) => {
-                            const products = await Promise.all(field.products.map(async (item) => {
-                                const variants = await Promise.all(item.variant.map(async (row, index) => {
-                                    const check = await Variant.findById(row.variantRef).select("_id name options");
-                                    delete row.variantRef;
-                                    return { ...row, variantRef: check };
-                                }));
+                        const data = await Promise.all(
+                            result.map(async (field) => {
+                                const products = await Promise.all(
+                                    field.products.map(async (item) => {
+                                        const variants = await Promise.all(
+                                            item.variant.map(
+                                                async (row, index) => {
+                                                    const check =
+                                                        await Variant.findById(
+                                                            row.variantRef,
+                                                        ).select(
+                                                            "_id name options",
+                                                        );
+                                                    delete row.variantRef;
+                                                    return {
+                                                        ...row,
+                                                        variantRef: check,
+                                                    };
+                                                },
+                                            ),
+                                        );
 
-                                const cate = await Category.findById(item.category).select("_id name");
+                                        const cate = await Category.findById(
+                                            item.category,
+                                        ).select("_id name");
 
-                                return { ...item, variant: variants, category: { _id: cate._id, name: cate.name } };
-                            }));
+                                        return {
+                                            ...item,
+                                            variant: variants,
+                                            category: {
+                                                _id: cate._id,
+                                                name: cate.name,
+                                            },
+                                        };
+                                    }),
+                                );
 
-                            // Sort products by isRecommended first and then by name
-                            const sortedProducts = products.sort((a, b) => {
-                                // Sort by isRecommended first
-                                if (b.isRecommended !== a.isRecommended) {
-                                    return b.isRecommended - a.isRecommended;
-                                }
-                                // If isRecommended is the same, sort by name alphabetically
-                                return a.name.localeCompare(b.name);
-                            });
+                                // Sort products by isRecommended first and then by name
+                                const sortedProducts = products.sort((a, b) => {
+                                    // Sort by isRecommended first
+                                    if (b.isRecommended !== a.isRecommended) {
+                                        return (
+                                            b.isRecommended - a.isRecommended
+                                        );
+                                    }
+                                    // If isRecommended is the same, sort by name alphabetically
+                                    return a.name.localeCompare(b.name);
+                                });
 
-                            return { ...field, products: sortedProducts };
-                        }));
+                                return { ...field, products: sortedProducts };
+                            }),
+                        );
                         return res.json(data);
                     } catch (error) {
                         // console.error("Error:", error);
-                        return res.status(500).json({ message: "Internal Server Error" });
+                        return res
+                            .status(500)
+                            .json({ message: "Internal Server Error" });
                     }
                 }
 
                 return getData();
             }
-        })
+        });
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -219,7 +256,7 @@ export const getPromotionById = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -240,29 +277,11 @@ export const addPromotion = async (req, res) => {
         }
 
         try {
-            // Generate auto increment
-            const currYear = new Date().getFullYear();
-            const count = await Counter.findOneAndUpdate(
-                {
-                    $and: [
-                        { name: "Promotion" },
-                        { year: currYear },
-                    ],
-                },
-                { $inc: { seq: 1 } },
-                { new: true, upsert: true }
-            );
-
-            const str = "" + count.seq;
-            const pad = "000000";
-            const number = pad.substring(0, pad.length - str.length) + str;
-
             // Generate new ObjectId for _id
-            const newObjectId = mongoose.Types.ObjectId();
+            const newObjectId = new mongoose.Types.ObjectId();
             const objData = {
                 ...req.body,
                 _id: newObjectId,
-                promotionId: `PRM${currYear}${number}`,
             };
 
             if (req.userData) {
@@ -274,36 +293,54 @@ export const addPromotion = async (req, res) => {
 
             let convertId = [];
             if (req.body.products) {
-                convertId = JSON.parse(req.body.products);
+                convertId =
+                    typeof req.body.products === "string"
+                        ? JSON.parse(req.body.products)
+                        : req.body.products;
                 objData.products = convertId;
             }
 
             if (objData.startDate) {
                 const now = new Date(objData.startDate);
-                objData.startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                objData.startDate = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                );
             }
             if (objData.endDate) {
                 const now = new Date(objData.endDate);
-                objData.endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                objData.endDate = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                );
             }
 
             // Prepare bulk operations for updating products
             const bulkOps = [];
-            if (convertId.length > 0 && Number(objData.type) === 1) {
-                for (const prodId of convertId) {
-                    const newDiscount = {
-                        promotion: newObjectId,
-                        amount: objData.amount,
-                        startDate: objData.startDate,
-                        endDate: objData.endDate || null
-                    };
+            if (convertId.length > 0) {
+                // discount 1 or bundle 3
+                if (Number(objData.type) === 1 || Number(objData.type) === 3) {
+                    for (const prodId of convertId) {
+                        const newDiscount = {
+                            promotionRef: newObjectId,
+                            amount: objData?.amount,
+                            qtyMin: objData?.qtyMin,
+                            qtyFree: objData?.qtyFree,
+                            startDate: objData?.startDate || null,
+                            endDate: objData?.endDate || null,
+                            selectedDay: objData?.selectedDay ?? null, // karena bisa bernilai 0, maka menggunakan ??
+                            isSpecial: objData?.isSpecial || false,
+                        };
 
-                    bulkOps.push({
-                        updateOne: {
-                            filter: { _id: prodId },
-                            update: { $set: { discount: newDiscount } }
-                        }
-                    });
+                        bulkOps.push({
+                            updateOne: {
+                                filter: { _id: prodId },
+                                update: { $set: { discount: newDiscount } },
+                            },
+                        });
+                    }
                 }
             }
 
@@ -319,8 +356,8 @@ export const addPromotion = async (req, res) => {
                     format: "webp",
                     transformation: [
                         { width: 800, height: 800, crop: "fit" }, // Adjust the width and height as needed
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
                 objData.image = cloud.secure_url;
                 objData.imageId = cloud.public_id;
@@ -339,19 +376,18 @@ export const addPromotion = async (req, res) => {
                 return errorResponse(res, {
                     code: "VALIDATION_ERROR",
                     message: "Validasi gagal",
-                    errors
+                    errors,
                 });
             }
 
             return errorResponse(res, {
                 statusCode: 500,
                 code: "SERVER_ERROR",
-                message: err.message || "Terjadi kesalahan pada server"
+                message: err.message || "Terjadi kesalahan pada server",
             });
         }
     });
 };
-
 
 // UPDATE A SPECIFIC DATA
 export const editPromotion = async (req, res) => {
@@ -384,64 +420,89 @@ export const editPromotion = async (req, res) => {
 
             let convertId = [];
             if (req.body.products) {
-                convertId = JSON.parse(req.body.products);
+                convertId =
+                    typeof req.body.products === "string"
+                        ? JSON.parse(req.body.products)
+                        : req.body.products;
                 objData.products = convertId;
             }
 
             // Determine products to remove or update
             const productRemove = [
-                ...exist.products.filter(item => !convertId.includes(item)),
-                ...convertId.filter(item => !exist.products.includes(item))
+                ...exist.products.filter((item) => !convertId.includes(item)),
+                ...convertId.filter((item) => !exist.products.includes(item)),
             ];
 
             if (objData.startDate) {
                 const now = new Date(objData.startDate);
-                objData.startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                objData.startDate = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                );
             }
             if (objData.endDate) {
                 const now = new Date(objData.endDate);
-                objData.endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                objData.endDate = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                );
             }
 
             // Prepare bulk operations
             const bulkOps = [];
 
             if (productRemove.length > 0 && Number(exist.type) === 1) {
-                productRemove.forEach(prodId => {
+                productRemove.forEach((prodId) => {
                     bulkOps.push({
                         updateOne: {
-                            filter: { _id: prodId, "discount.promotion": req.params.id },
+                            filter: {
+                                _id: prodId,
+                                "discount.promotionRef": req.params.id,
+                            },
                             update: {
                                 $set: {
                                     discount: {
-                                        promotion: null,
+                                        promotionRef: null,
                                         amount: 0,
+                                        qtyMin: 0,
+                                        qtyFree: 0,
                                         startDate: null,
-                                        endDate: null
-                                    }
-                                }
-                            }
-                        }
+                                        endDate: null,
+                                        selectedDay: null,
+                                        isSpecial: false,
+                                    },
+                                },
+                            },
+                        },
                     });
                 });
             }
 
-            if (convertId.length > 0 && Number(objData.type) === 1) {
-                convertId.forEach(prodId => {
-                    const newDiscount = {
-                        promotion: req.params.id,
-                        amount: objData.amount,
-                        startDate: objData.startDate,
-                        endDate: objData.endDate || null
-                    };
+            if (convertId.length > 0) {
+                // discount 1 or bundle 3
+                if (Number(objData.type) === 1 || Number(objData.type) === 3) {
+                    for (const prodId of convertId) {
+                        const newDiscount = {
+                            promotionRef: req.params.id,
+                            amount: objData?.amount,
+                            qtyMin: objData?.qtyMin,
+                            qtyFree: objData?.qtyFree,
+                            startDate: objData?.startDate || null,
+                            endDate: objData?.endDate || null,
+                            selectedDay: objData?.selectedDay ?? null, // karena bisa bernilai 0, maka menggunakan ??
+                            isSpecial: objData?.isSpecial || false,
+                        };
 
-                    bulkOps.push({
-                        updateOne: {
-                            filter: { _id: prodId },
-                            update: { $set: { discount: newDiscount } }
-                        }
-                    });
-                });
+                        bulkOps.push({
+                            updateOne: {
+                                filter: { _id: prodId },
+                                update: { $set: { discount: newDiscount } },
+                            },
+                        });
+                    }
+                }
             }
 
             // Execute bulk operations if there are any
@@ -460,8 +521,8 @@ export const editPromotion = async (req, res) => {
                     format: "webp",
                     transformation: [
                         { width: 800, height: 800, crop: "fit" },
-                        { quality: "auto:low" }
-                    ]
+                        { quality: "auto:low" },
+                    ],
                 });
 
                 objData.image = cloud.secure_url;
@@ -469,18 +530,21 @@ export const editPromotion = async (req, res) => {
             }
 
             // Update the promotion with new data
-            const updatedData = await Promotion.findOneAndUpdate(qMatch, { $set: objData }, { new: true });
+            const updatedData = await Promotion.findOneAndUpdate(
+                qMatch,
+                { $set: objData },
+                { new: true },
+            );
             return res.json(updatedData);
         } catch (err) {
             return errorResponse(res, {
                 statusCode: 500,
                 code: "SERVER_ERROR",
-                message: err.message || "Terjadi kesalahan pada server"
+                message: err.message || "Terjadi kesalahan pada server",
             });
         }
     });
 };
-
 
 // DELETE A SPECIFIC DATA
 export const deletePromotion = async (req, res) => {
@@ -506,17 +570,25 @@ export const deletePromotion = async (req, res) => {
             for (const prodId of exist.products) {
                 bulkOps.push({
                     updateOne: {
-                        filter: { _id: prodId, "discount.promotion": req.params.id },
+                        filter: {
+                            _id: prodId,
+                            "discount.promotionRef": req.params.id,
+                        },
                         update: {
                             $set: {
                                 discount: {
+                                    promotionRef: null,
                                     amount: 0,
+                                    qtyMin: 0,
+                                    qtyFree: 0,
                                     startDate: null,
-                                    endDate: null
-                                }
-                            }
-                        }
-                    }
+                                    endDate: null,
+                                    selectedDay: null,
+                                    isSpecial: false,
+                                },
+                            },
+                        },
+                    },
                 });
             }
         }
@@ -533,7 +605,7 @@ export const deletePromotion = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };

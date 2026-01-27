@@ -84,60 +84,24 @@ export const getAllProduct = async (req, res) => {
                 },
             },
             {
-                $lookup: {
-                    from: "promotionspecials",
-                    localField: "discountSpecial.promotion",
-                    foreignField: "_id",
-                    as: "specialPromo",
-                },
-            },
-            {
                 $addFields: {
                     "discount.isAvailable": {
                         $cond: {
                             if: {
                                 $and: [
                                     { $eq: [{ $arrayElemAt: ["$promo.isAvailable", 0] }, true] },
-                                    { $gt: ["$discount.amount", 0] },
+                                    {
+                                        $or: [
+                                            { $gt: ["$discount.amount", 0] },
+                                            { $gt: ["$discount.qtyMin", 0] }
+                                        ]
+                                    },
                                     { $lte: ["$discount.startDate", currDate] },
                                     {
                                         $or: [
                                             { $eq: ["$discount.endDate", null] },
                                             { $not: { $ifNull: ["$discount.endDate", false] } },
                                             { $gte: ["$discount.endDate", currDate] }
-                                        ]
-                                    }
-                                ]
-                            },
-                            then: true,
-                            else: false
-                        }
-                    },
-                    // Tambahan nama
-                    "discount.name": {
-                        $arrayElemAt: ["$promo.name", 0]
-                    }
-                }
-            },
-            {
-                $addFields: {
-                    "discountSpecial.isAvailable": {
-                        $cond: {
-                            if: {
-                                $and: [
-                                    { $eq: [{ $arrayElemAt: ["$specialPromo.isAvailable", 0] }, true] },
-                                    {
-                                        $or: [
-                                            { $gt: ["$discountSpecial.amount", 0] },
-                                            { $gt: ["$discountSpecial.qtyMin", 0] }
-                                        ]
-                                    },
-                                    { $lte: ["$discountSpecial.startDate", currDate] },
-                                    {
-                                        $or: [
-                                            { $eq: ["$discountSpecial.endDate", null] },
-                                            { $not: { $ifNull: ["$discountSpecial.endDate", false] } },
-                                            { $gte: ["$discountSpecial.endDate", currDate] }
                                         ]
                                     },
                                     // Tambahkan kondisi untuk mencocokkan hari
@@ -150,8 +114,8 @@ export const getAllProduct = async (req, res) => {
                         }
                     },
                     // Tambahan nama
-                    "discountSpecial.name": {
-                        $arrayElemAt: ["$specialPromo.name", 0]
+                    "discount.name": {
+                        $arrayElemAt: ["$promo.name", 0]
                     }
                 }
             },
@@ -194,58 +158,13 @@ export const getAllProduct = async (req, res) => {
                         name: "$subcategory.name"
                     },
                     discount: {
-                        name: {
-                            $cond: {
-                                if: { $eq: ["$discountSpecial.isAvailable", true] },
-                                then: "$discountSpecial.name",
-                                else: "$discount.name"
-                            }
-                        },
-                        amount: {
-                            $cond: {
-                                if: { $eq: ["$discountSpecial.isAvailable", true] },
-                                then: "$discountSpecial.amount",
-                                else: "$discount.amount"
-                            }
-                        },
-                        qtyMin: {
-                            $cond: {
-                                if: { $eq: ["$discountSpecial.isAvailable", true] },
-                                then: "$discountSpecial.qtyMin",
-                                else: { $literal: 0 }
-                            }
-                        },
-                        qtyFree: {
-                            $cond: {
-                                if: { $eq: ["$discountSpecial.isAvailable", true] },
-                                then: "$discountSpecial.qtyFree",
-                                else: { $literal: 0 }
-                            }
-                        },
-                        isDailyPromotion: {
-                            $cond: {
-                                if: { $or: ["$discountSpecial.isAvailable", "$discount.isAvailable"] },
-                                then: true,
-                                else: false
-                            }
-                        },
-                        isAvailable: {
-                            $cond: {
-                                if: { $eq: ["$discountSpecial.isAvailable", true] },
-                                then: { $literal: true },
-                                else: "$discount.isAvailable"
-                            }
-                        }
+                        name: "$discount.name",
+                        amount: "$discount.amount",
+                        qtyMin: "$discount.qtyMin",
+                        qtyFree: "$discount.qtyFree",
+                        isDailyPromotion: "$discount.isAvailable",
+                        isAvailable: "$discount.isAvailable"
                     },
-                    // discount: {
-                    //     amount: 1,
-                    //     isAvailable: 1,
-                    // },
-                    // discountSpecial: {
-                    //     amount: 1,
-                    //     selectedDay: 1,
-                    //     isAvailable: 1,
-                    // },
                     variant: {
                         $map: {
                             input: "$variant",

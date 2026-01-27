@@ -2,68 +2,105 @@ import mongoose from "mongoose";
 import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter } from "../../lib/textSetting.js";
+import { generateRandomId } from "../../lib/generateRandom.js";
 
-const DataSchema = mongoose.Schema({
-    promotionId: {
-        type: String,
-        required: true
-    },
-    name: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    image: {
-        type: String
-    },
-    imageId: {
-        type: String
-    },
-    type: {
-        type: Number,
-        required: true
-    },
-    amount: {
-        type: Number,
-        required: true,
-        default: 0
-    },
-    startDate: {
-        type: Date,
-        default: null
-    },
-    endDate: {
-        type: Date,
-        default: null
-    },
-    validUntil: {
-        type: Boolean,
-        default: false
-    },
-    products: {
-        type: [mongoose.Types.ObjectId],
-        default: []
-    },
-    isAvailable: {
-        type: Boolean,
-        default: true
-    },
-    tenantRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Tenants",
-        default: null,
-        set: val => val === "" ? null : val
-    },
-    outletRef: {
-        type: [{
+const DataSchema = mongoose.Schema(
+    {
+        promotionId: {
+            type: String,
+        },
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        image: {
+            type: String,
+            default: "",
+        },
+        imageId: {
+            type: String,
+            default: "",
+        },
+        type: {
+            type: Number,
+            required: true, // 1 discount 2 package 3 bundle
+        },
+        amount: {
+            type: Number,
+            required: true,
+            default: 0,
+        },
+        qtyMin: {
+            type: Number,
+            default: 0,
+        },
+        qtyFree: {
+            type: Number,
+            default: 0,
+        },
+        isSpecial: {
+            type: Boolean,
+            default: false,
+        },
+        validUntil: {
+            type: Boolean,
+            default: false,
+        },
+        startDate: {
+            type: Date,
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
+        endDate: {
+            type: Date,
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
+        selectedDay: {
+            type: Number,
+            default: null,
+            set: (val) => {
+                if (val === "" || val === undefined || val === null)
+                    return null;
+
+                const num = Number(val);
+                return Number.isNaN(num) ? null : num;
+            },
+        },
+        products: {
+            type: [mongoose.Types.ObjectId],
+            default: [],
+        },
+        isAvailable: {
+            type: Boolean,
+            default: true,
+        },
+        tenantRef: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Outlets",
-        }],
-        default: []
-    }
-}, { timestamps: true });
+            ref: "Tenants",
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
+        outletRef: {
+            type: [
+                {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "Outlets",
+                },
+            ],
+            default: [],
+        },
+    },
+    { timestamps: true },
+);
 
 DataSchema.pre("save", function (next) {
+    if (!this.promotionId) {
+        const currYear = new Date().getFullYear();
+        const number = generateRandomId();
+        this.promotionId = `PR${currYear}${number}`;
+    }
     if (this.name) {
         this.name = capitalizeFirstLetter(this.name);
     }
