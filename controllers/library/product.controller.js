@@ -80,7 +80,12 @@ export const getAllProduct = async (req, res) => {
                     from: "promotions",
                     localField: "promotionRef",
                     foreignField: "_id",
-                    as: "promo",
+                    as: "promoRef",
+                },
+            },
+            {
+                $addFields: {
+                    promo: { $arrayElemAt: ["$promoRef", 0] },
                 },
             },
             {
@@ -89,7 +94,7 @@ export const getAllProduct = async (req, res) => {
                         $cond: {
                             if: {
                                 $and: [
-                                    { $eq: [{ $arrayElemAt: ["$promo.isAvailable", 0] }, true] },
+                                    { $eq: ["$promo.isAvailable", true] },
                                     { $or: [{ $gt: ["$promo.amount", 0] }, { $gt: ["$promo.qtyMin", 0] }] },
                                     { $lte: ["$promo.startDate", currDate] },
                                     {
@@ -118,10 +123,6 @@ export const getAllProduct = async (req, res) => {
                             then: true,
                             else: false,
                         },
-                    },
-                    // Tambahan nama
-                    "discount.name": {
-                        $arrayElemAt: ["$promo.name", 0],
                     },
                 },
             },
@@ -164,10 +165,10 @@ export const getAllProduct = async (req, res) => {
                         name: "$subcategory.name",
                     },
                     discount: {
-                        name: "$discount.name",
-                        amount: "$discount.amount",
-                        qtyMin: "$discount.qtyMin",
-                        qtyFree: "$discount.qtyFree",
+                        name: "$promo.name",
+                        amount: "$promo.amount",
+                        qtyMin: "$promo.qtyMin",
+                        qtyFree: "$promo.qtyFree",
                         isDailyPromotion: "$discount.isAvailable",
                         isAvailable: "$discount.isAvailable",
                     },
@@ -258,10 +259,10 @@ export const getPaginateProduct = async (req, res) => {
                     path: "subcategory",
                     select: ["name"],
                 },
-                {
-                    path: "promotionRef",
-                    select: ["name type amount qtyMin qtyFree startDate endDate selectedDay isAvailable"],
-                },
+                // {
+                //     path: "promotionRef",
+                //     select: "name type amount qtyMin qtyFree startDate endDate selectedDay isAvailable",
+                // },
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
