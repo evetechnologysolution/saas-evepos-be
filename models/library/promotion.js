@@ -54,14 +54,30 @@ const DataSchema = mongoose.Schema(
             set: (val) => (val === "" ? null : val),
         },
         selectedDay: {
-            type: Number,
-            default: null,
+            type: [Number],
+            default: [],
             set: (val) => {
-                if (val === "" || val === undefined || val === null)
-                    return null;
+                // "" / null / undefined → []
+                if (val === "" || val === null || val === undefined) {
+                    return [];
+                }
 
+                // sudah array → normalize
+                if (Array.isArray(val)) {
+                    return val.map((v) => Number(v)).filter((v) => !Number.isNaN(v));
+                }
+
+                // string "1,2,3"
+                if (typeof val === "string") {
+                    return val
+                        .split(",")
+                        .map((v) => Number(v.trim()))
+                        .filter((v) => !Number.isNaN(v));
+                }
+
+                // single number / numeric string
                 const num = Number(val);
-                return Number.isNaN(num) ? null : num;
+                return Number.isNaN(num) ? [] : [num];
             },
         },
         products: {

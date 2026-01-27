@@ -107,8 +107,19 @@ export const getAllProduct = async (req, res) => {
                                     // Tambahkan kondisi untuk mencocokkan hari
                                     {
                                         $or: [
-                                            { $eq: ["$promo.selectedDay", null] },
-                                            { $eq: ["$promo.selectedDay", { $dayOfWeek: currDate }] },
+                                            // setiap hari (null atau [])
+                                            {
+                                                $or: [
+                                                    { $eq: ["$promo.selectedDay", null] },
+                                                    {
+                                                        $and: [
+                                                            { $isArray: "$promo.selectedDay" },
+                                                            { $eq: [{ $size: "$promo.selectedDay" }, 0] },
+                                                        ],
+                                                    },
+                                                ],
+                                            },
+                                            // hari tertentu
                                             {
                                                 $and: [
                                                     { $isArray: "$promo.selectedDay" },

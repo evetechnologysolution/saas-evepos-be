@@ -50,8 +50,9 @@ export const getAllPromotion = async (req, res) => {
             {
                 $project: {
                     _id: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
                     promotionId: 1,
-                    date: 1,
                     name: 1,
                     image: 1,
                     type: 1,
@@ -131,6 +132,9 @@ export const getAvailablePromotion = async (req, res) => {
             {
                 $project: {
                     _id: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    promotionId: 1,
                     name: 1,
                     type: 1,
                     amount: 1,
