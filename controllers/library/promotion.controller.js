@@ -331,7 +331,7 @@ export const addPromotion = async (req, res) => {
                             startDate: objData?.startDate || null,
                             endDate: objData?.endDate || null,
                             selectedDay: objData?.selectedDay ?? null, // karena bisa bernilai 0, maka menggunakan ??
-                            isSpecial: objData?.isSpecial || false,
+                            // isSpecial: objData?.isSpecial || false,
                         };
 
                         bulkOps.push({
@@ -471,7 +471,7 @@ export const editPromotion = async (req, res) => {
                                         startDate: null,
                                         endDate: null,
                                         selectedDay: null,
-                                        isSpecial: false,
+                                        // isSpecial: false,
                                     },
                                 },
                             },
@@ -492,7 +492,7 @@ export const editPromotion = async (req, res) => {
                             startDate: objData?.startDate || null,
                             endDate: objData?.endDate || null,
                             selectedDay: objData?.selectedDay ?? null, // karena bisa bernilai 0, maka menggunakan ??
-                            isSpecial: objData?.isSpecial || false,
+                            // isSpecial: objData?.isSpecial || false,
                         };
 
                         bulkOps.push({
@@ -584,7 +584,7 @@ export const deletePromotion = async (req, res) => {
                                     startDate: null,
                                     endDate: null,
                                     selectedDay: null,
-                                    isSpecial: false,
+                                    // isSpecial: false,
                                 },
                             },
                         },

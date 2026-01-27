@@ -39,10 +39,6 @@ const DataSchema = mongoose.Schema(
             type: Number,
             default: 0,
         },
-        isSpecial: {
-            type: Boolean,
-            default: false,
-        },
         validUntil: {
             type: Boolean,
             default: false,

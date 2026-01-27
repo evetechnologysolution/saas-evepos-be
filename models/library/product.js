@@ -60,10 +60,6 @@ const DataSchema = mongoose.Schema(
                 type: Number,
                 default: null,
             },
-            isSpecial: {
-                type: Boolean,
-                default: false,
-            },
         },
         category: {
             type: mongoose.Schema.Types.ObjectId,
