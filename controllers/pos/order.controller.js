@@ -24,8 +24,7 @@ export const getAllOrder = async (req, res) => {
             end,
             paidStart,
             paidEnd,
-            sortBy,
-            sortType,
+            sort,
         } = req.query;
 
         let qMatch = { status: { $ne: "backlog" } };
@@ -36,9 +35,7 @@ export const getAllOrder = async (req, res) => {
         }
 
         if (search) {
-            const fixedId = mongoose.Types.ObjectId.isValid(search)
-                ? search
-                : null;
+            const fixedId = mongoose.Types.ObjectId.isValid(search) ? search : null;
 
             qMatch = {
                 ...qMatch,
@@ -49,9 +46,7 @@ export const getAllOrder = async (req, res) => {
                     { "customer.name": { $regex: search, $options: "i" } },
                     {
                         "customer.phone": {
-                            $regex: isNaN(search)
-                                ? search
-                                : convertToE164(search),
+                            $regex: isNaN(search) ? search : convertToE164(search),
                             $options: "i",
                         },
                     },
@@ -141,8 +136,14 @@ export const getAllOrder = async (req, res) => {
             };
         }
 
-        const sortField = sortBy || "date";
-        const sortDirection = sortType === "asc" ? 1 : -1;
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
 
         const options = {
             populate: [
@@ -161,7 +162,7 @@ export const getAllOrder = async (req, res) => {
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { [sortField]: sortDirection },
+            sort: sortObj,
             lean: true,
             leanWithId: false,
         };
@@ -178,22 +179,8 @@ export const getAllOrder = async (req, res) => {
 
 export const getDeliveryOrder = async (req, res) => {
     try {
-        const {
-            page,
-            perPage,
-            search,
-            printCount,
-            printLaundry,
-            status,
-            progressStatus,
-            pickup,
-            start,
-            end,
-            paidStart,
-            paidEnd,
-            sortBy,
-            sortType,
-        } = req.query;
+        const { page, perPage, search, printCount, printLaundry, status, progressStatus, pickup, start, end, paidStart, paidEnd, sort } =
+            req.query;
 
         let qMatch = { orderType: "delivery" };
 
@@ -212,9 +199,7 @@ export const getDeliveryOrder = async (req, res) => {
                     { "customer.name": { $regex: search, $options: "i" } },
                     {
                         "customer.phone": {
-                            $regex: isNaN(search)
-                                ? search
-                                : convertToE164(search),
+                            $regex: isNaN(search) ? search : convertToE164(search),
                             $options: "i",
                         },
                     },
@@ -300,13 +285,19 @@ export const getDeliveryOrder = async (req, res) => {
             };
         }
 
-        const sortField = sortBy || "date";
-        const sortDirection = sortType === "asc" ? 1 : -1;
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
 
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { [sortField]: sortDirection },
+            sort: sortObj,
             lean: true,
             leanWithId: false,
         };
@@ -324,20 +315,7 @@ export const getDeliveryOrder = async (req, res) => {
 
 export const getTrackOrder = async (req, res) => {
     try {
-        const {
-            page,
-            perPage,
-            search,
-            status,
-            progressStatus,
-            pickup,
-            start,
-            end,
-            paidStart,
-            paidEnd,
-            sortBy,
-            sortType,
-        } = req.query;
+        const { page, perPage, search, status, progressStatus, pickup, start, end, paidStart, paidEnd, sort } = req.query;
 
         let qMatch = {};
 
@@ -347,9 +325,7 @@ export const getTrackOrder = async (req, res) => {
         }
 
         if (search) {
-            const fixedId = mongoose.Types.ObjectId.isValid(search)
-                ? search
-                : null;
+            const fixedId = mongoose.Types.ObjectId.isValid(search) ? search : null;
 
             qMatch = {
                 ...qMatch,
@@ -360,9 +336,7 @@ export const getTrackOrder = async (req, res) => {
                     { "customer.name": { $regex: search, $options: "i" } },
                     {
                         "customer.phone": {
-                            $regex: isNaN(search)
-                                ? search
-                                : convertToE164(search),
+                            $regex: isNaN(search) ? search : convertToE164(search),
                             $options: "i",
                         },
                     },
@@ -436,13 +410,19 @@ export const getTrackOrder = async (req, res) => {
             };
         }
 
-        const sortField = sortBy || "date";
-        const sortDirection = sortType === "asc" ? 1 : -1;
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
 
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { [sortField]: sortDirection },
+            sort: sortObj,
             lean: true,
             leanWithId: false,
         };
@@ -513,9 +493,7 @@ export const getCountTrackOrder = async (req, res) => {
         ]);
 
         // Send response
-        res.status(200).json(
-            result?.length > 0 ? result[0] : { new: 0, old: 0 },
-        );
+        res.status(200).json(result?.length > 0 ? result[0] : { new: 0, old: 0 });
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
@@ -528,15 +506,7 @@ export const getCountTrackOrder = async (req, res) => {
 // GETTING ORDER BY MEMBER
 export const getOrderByMember = async (req, res) => {
     try {
-        const {
-            page,
-            perPage,
-            search,
-            status,
-            progressStatus,
-            pickup,
-            orderType,
-        } = req.query;
+        const { page, perPage, search, status, progressStatus, pickup, orderType } = req.query;
 
         let qMatch = {
             "customer.memberId": req.params.id,
@@ -549,16 +519,11 @@ export const getOrderByMember = async (req, res) => {
         }
 
         if (search) {
-            const fixedId = mongoose.Types.ObjectId.isValid(search)
-                ? search
-                : null;
+            const fixedId = mongoose.Types.ObjectId.isValid(search) ? search : null;
 
             qMatch = {
                 ...qMatch,
-                $or: [
-                    ...(fixedId ? [{ _id: fixedId }] : []),
-                    { orderId: { $regex: search, $options: "i" } },
-                ], // option i for case insensitivity to match upper and lower cases.
+                $or: [...(fixedId ? [{ _id: fixedId }] : []), { orderId: { $regex: search, $options: "i" } }], // option i for case insensitivity to match upper and lower cases.
             };
         }
         if (status) {
@@ -615,23 +580,10 @@ export const getOrderByMember = async (req, res) => {
 // GETTING PAID DATA
 export const getPaidOrder = async (req, res) => {
     try {
-        const {
-            page,
-            perPage,
-            search,
-            start,
-            end,
-            paidStart,
-            paidEnd,
-            sortBy,
-            sortType,
-        } = req.query;
+        const { page, perPage, search, start, end, paidStart, paidEnd, sort } = req.query;
 
         let qMatch = {
-            $or: [
-                { status: { $regex: "paid", $options: "i" } },
-                { status: { $regex: "refund", $options: "i" } },
-            ],
+            $or: [{ status: { $regex: "paid", $options: "i" } }, { status: { $regex: "refund", $options: "i" } }],
         };
 
         if (req.userData) {
@@ -639,9 +591,7 @@ export const getPaidOrder = async (req, res) => {
             qMatch.outletRef = req.userData?.outletRef;
         }
         if (search) {
-            const fixedId = mongoose.Types.ObjectId.isValid(search)
-                ? search
-                : null;
+            const fixedId = mongoose.Types.ObjectId.isValid(search) ? search : null;
 
             qMatch = {
                 ...qMatch,
@@ -687,13 +637,19 @@ export const getPaidOrder = async (req, res) => {
             };
         }
 
-        const sortField = sortBy || "date";
-        const sortDirection = sortType === "asc" ? 1 : -1;
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
 
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { [sortField]: sortDirection },
+            sort: sortObj,
             lean: true,
             leanWithId: false,
         };
@@ -714,10 +670,7 @@ export const getCloseCashierOrder = async (req, res) => {
     try {
         const { start, end } = req.query;
         let qMatch = {
-            $or: [
-                { status: { $regex: "paid", $options: "i" } },
-                { status: { $regex: "refund", $options: "i" } },
-            ],
+            $or: [{ status: { $regex: "paid", $options: "i" } }, { status: { $regex: "refund", $options: "i" } }],
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
@@ -752,10 +705,7 @@ export const getCloseCashierOrder = async (req, res) => {
         const totalDocuments = listofData.length;
 
         // Hitung jumlah billedAmount
-        const totalBilledAmount = listofData.reduce(
-            (total, order) => total + order.billedAmount,
-            0,
-        );
+        const totalBilledAmount = listofData.reduce((total, order) => total + order.billedAmount, 0);
 
         return res.json({
             docs: listofData,
@@ -774,22 +724,16 @@ export const getCloseCashierOrder = async (req, res) => {
 // GETTING EXPORT ORDER
 export const getExportOrder = async (req, res) => {
     try {
-        const { search, start, end, paidStart, paidEnd, sortBy, sortType } =
-            req.query;
+        const { search, start, end, paidStart, paidEnd, sort } = req.query;
         let qMatch = {
-            $or: [
-                { status: { $regex: "paid", $options: "i" } },
-                { status: { $regex: "refund", $options: "i" } },
-            ],
+            $or: [{ status: { $regex: "paid", $options: "i" } }, { status: { $regex: "refund", $options: "i" } }],
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
         }
         if (search) {
-            const fixedId = mongoose.Types.ObjectId.isValid(search)
-                ? search
-                : null;
+            const fixedId = mongoose.Types.ObjectId.isValid(search) ? search : null;
 
             qMatch = {
                 ...qMatch,
@@ -835,12 +779,16 @@ export const getExportOrder = async (req, res) => {
             };
         }
 
-        const sortField = sortBy || "date";
-        const sortDirection = sortType === "asc" ? 1 : -1;
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
 
-        const listofData = await Order.find(qMatch).sort({
-            [sortField]: sortDirection,
-        });
+        const listofData = await Order.find(qMatch).sort(sortObj);
 
         return res.json(listofData);
     } catch (err) {
@@ -892,12 +840,7 @@ export const getUnfinishedOrder = async (req, res) => {
 export const getOrderById = async (req, res) => {
     try {
         let qMatch = {
-            $or: [
-                { orderId: req.params.id },
-                ...(mongoose.Types.ObjectId.isValid(req.params.id)
-                    ? [{ _id: req.params.id }]
-                    : []),
-            ],
+            $or: [{ orderId: req.params.id }, ...(mongoose.Types.ObjectId.isValid(req.params.id) ? [{ _id: req.params.id }] : [])],
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
@@ -937,12 +880,7 @@ export const getOrderById = async (req, res) => {
 export const getOrderProgressById = async (req, res) => {
     try {
         let qMatch = {
-            $or: [
-                { orderId: req.params.id },
-                ...(mongoose.Types.ObjectId.isValid(req.params.id)
-                    ? [{ _id: req.params.id }]
-                    : []),
-            ],
+            $or: [{ orderId: req.params.id }, ...(mongoose.Types.ObjectId.isValid(req.params.id) ? [{ _id: req.params.id }] : [])],
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
@@ -1047,10 +985,7 @@ export const addOrder = async (req, res) => {
                 const newCustomer = {
                     ...objData.customer,
                     memberId,
-                    phone:
-                        phoneE164 === "62" || phoneE164 === "0"
-                            ? memberId
-                            : phoneE164,
+                    phone: phoneE164 === "62" || phoneE164 === "0" ? memberId : phoneE164,
                     tenantRef: req.userData?.tenantRef || null,
                 };
 
@@ -1073,11 +1008,9 @@ export const addOrder = async (req, res) => {
             if (statusPay.includes(objData.status)) {
                 let increase = { sales: objData.billedAmount };
 
-                if (objData.serviceCharge)
-                    increase.serviceCharge = objData.serviceCharge;
+                if (objData.serviceCharge) increase.serviceCharge = objData.serviceCharge;
                 if (objData.tax) increase.tax = objData.tax;
-                if (objData.status === "refund")
-                    increase.refund = objData.billedAmount * -1;
+                if (objData.status === "refund") increase.refund = objData.billedAmount * -1;
 
                 const paymentMap = {
                     Cash: "detail.cash",
@@ -1090,13 +1023,11 @@ export const addOrder = async (req, res) => {
                 };
 
                 if (paymentMap[objData.payment]) {
-                    increase[paymentMap[objData.payment]] =
-                        objData.billedAmount;
+                    increase[paymentMap[objData.payment]] = objData.billedAmount;
                 }
 
                 if (objData.payment === "Card" && objData.cardBankName) {
-                    increase[`detail.${objData.cardBankName.toLowerCase()}`] =
-                        objData.billedAmount;
+                    increase[`detail.${objData.cardBankName.toLowerCase()}`] = objData.billedAmount;
                 }
 
                 const qBal = {
@@ -1109,11 +1040,7 @@ export const addOrder = async (req, res) => {
                     }),
                 };
 
-                await Balance.findOneAndUpdate(
-                    qBal,
-                    { $inc: increase },
-                    { new: true, session },
-                );
+                await Balance.findOneAndUpdate(qBal, { $inc: increase }, { new: true, session });
             }
         }
 
@@ -1217,10 +1144,7 @@ export const editOrder = async (req, res) => {
                 const newCustomer = {
                     ...objData.customer,
                     memberId,
-                    phone:
-                        phoneE164 === "62" || phoneE164 === "0"
-                            ? memberId
-                            : phoneE164,
+                    phone: phoneE164 === "62" || phoneE164 === "0" ? memberId : phoneE164,
                     tenantRef: req.userData?.tenantRef || null,
                 };
 
@@ -1235,10 +1159,7 @@ export const editOrder = async (req, res) => {
         // ================= VOUCHER =================
         if (objData.voucherCode) {
             if (!exist.voucherCode.includes(objData.voucherCode)) {
-                if (
-                    typeof objData.voucherCode === "string" &&
-                    objData.voucherCode.trim()
-                ) {
+                if (typeof objData.voucherCode === "string" && objData.voucherCode.trim()) {
                     objData.voucherCode = [objData.voucherCode];
                 } else if (!Array.isArray(objData.voucherCode)) {
                     objData.voucherCode = [];
@@ -1250,25 +1171,16 @@ export const editOrder = async (req, res) => {
         if (objData?.status && objData?.billedAmount) {
             const statusPay = ["paid", "refund"];
 
-            if (
-                objData.status === "paid" &&
-                exist.status !== "paid" &&
-                !objData.paymentDate
-            ) {
+            if (objData.status === "paid" && exist.status !== "paid" && !objData.paymentDate) {
                 objData.paymentDate = new Date();
             }
 
-            if (
-                statusPay.includes(objData.status) &&
-                !statusPay.includes(exist.status)
-            ) {
+            if (statusPay.includes(objData.status) && !statusPay.includes(exist.status)) {
                 let increase = { sales: objData.billedAmount };
 
-                if (objData.serviceCharge)
-                    increase.serviceCharge = objData.serviceCharge;
+                if (objData.serviceCharge) increase.serviceCharge = objData.serviceCharge;
                 if (objData.tax) increase.tax = objData.tax;
-                if (objData.status === "refund")
-                    increase.refund = objData.billedAmount * -1;
+                if (objData.status === "refund") increase.refund = objData.billedAmount * -1;
 
                 const paymentMap = {
                     Cash: "detail.cash",
@@ -1281,13 +1193,11 @@ export const editOrder = async (req, res) => {
                 };
 
                 if (paymentMap[objData.payment]) {
-                    increase[paymentMap[objData.payment]] =
-                        objData.billedAmount;
+                    increase[paymentMap[objData.payment]] = objData.billedAmount;
                 }
 
                 if (objData.payment === "Card" && objData.cardBankName) {
-                    increase[`detail.${objData.cardBankName.toLowerCase()}`] =
-                        objData.billedAmount;
+                    increase[`detail.${objData.cardBankName.toLowerCase()}`] = objData.billedAmount;
                 }
 
                 const qBal = {
@@ -1300,20 +1210,12 @@ export const editOrder = async (req, res) => {
                     }),
                 };
 
-                await Balance.findOneAndUpdate(
-                    qBal,
-                    { $inc: increase },
-                    { new: true, session },
-                );
+                await Balance.findOneAndUpdate(qBal, { $inc: increase }, { new: true, session });
             }
         }
 
         // ================= UPDATE ORDER =================
-        const updatedData = await Order.updateOne(
-            { _id: req.params.id },
-            { $set: objData },
-            { session },
-        );
+        const updatedData = await Order.updateOne({ _id: req.params.id }, { $set: objData }, { session });
 
         await session.commitTransaction();
         session.endSession();
