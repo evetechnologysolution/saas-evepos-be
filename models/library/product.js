@@ -141,6 +141,33 @@ DataSchema.pre("findOneAndUpdate", function (next) {
     next();
 });
 
+DataSchema.virtual("discount").get(function () {
+    const promo = this.promotionRef;
+    if (!promo) {
+        return { isAvailable: false };
+    }
+
+    const currDate = new Date();
+
+    const isDateValid = promo.startDate <= currDate && (!promo.endDate || promo.endDate >= currDate);
+
+    const isDayValid = !promo.selectedDay || promo.selectedDay.length === 0 || promo.selectedDay.includes(currDate.getDay());
+
+    const isAvailable = promo.isAvailable === true && (promo.amount > 0 || promo.qtyMin > 0) && isDateValid && isDayValid;
+
+    return {
+        name: promo.name,
+        amount: promo.amount,
+        qtyMin: promo.qtyMin,
+        qtyFree: promo.qtyFree,
+        isDailyPromotion: isAvailable,
+        isAvailable,
+    };
+});
+
+DataSchema.set("toJSON", { virtuals: true });
+DataSchema.set("toObject", { virtuals: true });
+
 DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);

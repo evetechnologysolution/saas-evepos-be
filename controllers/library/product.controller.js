@@ -270,16 +270,24 @@ export const getAllProduct = async (req, res) => {
                     path: "subcategory",
                     select: ["name"],
                 },
-                // {
-                //     path: "promotionRef",
-                //     select: "name type amount qtyMin qtyFree startDate endDate selectedDay isAvailable",
-                // },
+                {
+                    path: "promotionRef",
+                    select: "name type amount qtyMin qtyFree startDate endDate selectedDay isAvailable",
+                },
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
+            lean: { virtuals: true },
         };
         const listofData = await Product.paginate(qMatch, options);
+
+        // manipulasi promotionRef tapi discount tetap
+        listofData.docs = listofData.docs.map(({ promotionRef, ...rest }) => ({
+            ...rest,
+            promotionRef: promotionRef?._id || null,
+        }));
+
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
