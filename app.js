@@ -85,8 +85,11 @@ import userRoute from "./routes/user/user.route.js";
 import memberRoute from "./routes/member/member.route.js";
 
 // report
+import revenueRoute from "./routes/report/revenue.route.js";
+import salesOverviewRoute from "./routes/report/sales.route.js";
 import popularRoute from "./routes/report/popular.route.js";
 import paymentRevenueRoute from "./routes/report/paymentRevenue.route.js";
+
 // import pusherRoute from "./routes/pusher.route.js";
 // import informationRoute from "./routes/information.route.js";
 // import promotionSpecialRoute from "./routes/promotionSpecial.route.js";
@@ -138,6 +141,8 @@ app.use("/api/user", userRoute);
 app.use("/api/member", memberRoute);
 
 // report
+app.use("/api/revenue", revenueRoute);
+app.use("/api/sales-overview", salesOverviewRoute);
 app.use("/api/popular", popularRoute);
 app.use("/api/payment-revenue", paymentRevenueRoute);
 

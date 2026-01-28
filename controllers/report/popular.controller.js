@@ -50,8 +50,8 @@ export const getPopularProduct = async (req, res) => {
                 if (!qStart) {
                     return errorResponse(res, {
                         statusCode: 400,
-                        code: "ERROR_REQUIRED",
-                        message: "start date is required for date range filter",
+                        code: "BAD_REQUEST",
+                        message: "start date is required",
                     });
                 }
 
