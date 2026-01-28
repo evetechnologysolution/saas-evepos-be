@@ -1,320 +1,101 @@
-import Order from "../../models/order.js";
+import Order from "../../models/pos/order.js";
 import { getFirstAndLastDayOfWeek } from "../../lib/dateFormatter.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
-// GET POPULAR MENU THIS YEAR
-export const getPopularThisYear = async (req, res) => {
+export const getPopularProduct = async (req, res) => {
     try {
-        const year = new Date().getFullYear(); // this year
-        const start = new Date(year, 0, 1);
-        const end = new Date(year + 1, 0, 1);
+        const { filter = "today", start: qStart, end: qEnd, limit } = req.query;
 
-        Order.aggregate([
-            { $unwind: "$orders" },
-            {
-                $match: {
-                    $and: [
-                        { status: "paid" },
-                        {
-                            date: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: "$orders.name",
-                    sales: { $sum: "$orders.qty" },
-                }
-            },
-            { $sort: { "sales": -1, "_id": 1 } },
-            { $limit: 10 },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            product: "$_id",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "This Year",
-                    period: {
-                        start: start,
-                        end: end,
-                    },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1,
-                }
-            }
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
+        let start;
+        let end;
+        let label = "";
+        let qLimit = limit ? Number(limit) : 10;
 
-// GET POPULAR MENU THIS MONTH
-export const getPopularThisMonth = async (req, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const start = new Date(year, month, 1);
-        const end = new Date(year, month + 1, 1);
+        const now = new Date();
 
-        Order.aggregate([
-            { $unwind: "$orders" },
-            {
-                $match: {
-                    $and: [
-                        { status: "paid" },
-                        {
-                            date: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: "$orders.name",
-                    sales: { $sum: "$orders.qty" },
-                }
-            },
-            { $sort: { "sales": -1, "_id": 1 } },
-            { $limit: 10 },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            product: "$_id",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "This Month",
-                    period: {
-                        start: start,
-                        end: end,
-                    },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1,
-                }
+        switch (filter) {
+            case "today": {
+                label = "Today";
+                start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+                break;
             }
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
 
-// GET POPULAR MENU THIS WEEK
-export const getPopularThisWeek = async (req, res) => {
-    try {
-        const { firstDay, lastDay } = getFirstAndLastDayOfWeek();
-        const start = firstDay;
-        const end = new Date(lastDay.setDate(lastDay.getDate() + 1));
-
-        Order.aggregate([
-            { $unwind: "$orders" },
-            {
-                $match: {
-                    $and: [
-                        { status: "paid" },
-                        {
-                            date: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: "$orders.name",
-                    sales: { $sum: "$orders.qty" },
-                }
-            },
-            { $sort: { "sales": -1, "_id": 1 } },
-            { $limit: 10 },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            product: "$_id",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "This Week",
-                    period: {
-                        start: start,
-                        end: end,
-                    },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1,
-                }
+            case "thisWeek": {
+                label = "This Week";
+                const { firstDay, lastDay } = getFirstAndLastDayOfWeek();
+                start = firstDay;
+                end = new Date(lastDay);
+                end.setDate(end.getDate() + 1);
+                break;
             }
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
 
-// GET POPULAR MENU TODAY
-export const getPopularToday = async (req, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const today = curr.getDate(); // today
-        const start = new Date(year, month, today);
-        const end = new Date(year, month, today + 1);
+            case "thisMonth": {
+                label = "This Month";
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+                end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                break;
+            }
 
-        Order.aggregate([
-            { $unwind: "$orders" },
-            {
-                $match: {
-                    $and: [
-                        { status: "paid" },
-                        {
-                            date: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
+            case "thisYear": {
+                label = "This Year";
+                start = new Date(now.getFullYear(), 0, 1);
+                end = new Date(now.getFullYear() + 1, 0, 1);
+                break;
+            }
+
+            case "date": {
+                label = "Date Range";
+
+                if (!qStart) {
+                    return errorResponse(res, {
+                        statusCode: 400,
+                        code: "ERROR_REQUIRED",
+                        message: "start date is required for date range filter",
+                    });
                 }
-            },
-            {
-                $group: {
-                    _id: "$orders.name",
-                    sales: { $sum: "$orders.qty" },
-                }
-            },
-            { $sort: { "sales": -1, "_id": 1 } },
-            { $limit: 10 },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            product: "$_id",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "Today",
-                    period: {
-                        start: start,
-                        end: end,
-                    },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1,
-                }
-            }
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
 
-// GET POPULAR MENU TODAY
-export const getPopularByDate = async (req, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const today = curr.getDate(); // today
-        let start = new Date(year, month, today, 0, 0, 0, 0);
-        let end = new Date(year, month, today, 23, 59, 59, 999);
+                const dStart = new Date(qStart);
+                dStart.setHours(0, 0, 0, 0);
+                start = new Date(dStart.toISOString());
 
-        if (req.query.start) {
-            const dStart = new Date(req.query.start);
-            dStart.setHours(0, 0, 0, 0);
-            const fixStart = new Date(dStart.toISOString()); // Konversi ke UTC string
-            start = fixStart;
+                const dEnd = new Date(qEnd || qStart);
+                dEnd.setHours(23, 59, 59, 999);
+                end = new Date(dEnd.toISOString());
+                break;
+            }
 
-            const dEnd = new Date(req.query.end ? req.query.end : req.query.start);
-            dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
-            const fixEnd = new Date(dEnd.toISOString());
-            end = fixEnd;
+            default:
+                return errorResponse(res, {
+                    statusCode: 400,
+                    code: "INVALID_FILTER",
+                    message: "Invalid filter",
+                });
         }
 
-        Order.aggregate([
+        const qMatch = {
+            status: "paid",
+            createdAt: { $gte: start, $lt: end },
+        };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        const result = await Order.aggregate([
             { $unwind: "$orders" },
             {
-                $match: {
-                    $and: [
-                        { status: "paid" },
-                        {
-                            date: {
-                                $gte: start,
-                                $lte: end
-                            }
-                        }
-                    ]
-                }
+                $match: qMatch,
             },
             {
                 $group: {
                     _id: "$orders.name",
                     sales: { $sum: "$orders.qty" },
-                }
+                },
             },
-            { $sort: { "sales": -1, "_id": 1 } },
-            { $limit: 10 },
+            { $sort: { sales: -1, _id: 1 } },
+            { $limit: qLimit },
             {
                 $group: {
                     _id: null,
@@ -322,31 +103,37 @@ export const getPopularByDate = async (req, res) => {
                         $push: {
                             product: "$_id",
                             sales: "$sales",
-                        }
+                        },
                     },
-                }
+                },
             },
             {
                 $project: {
                     _id: 0,
-                    filter: "Date",
+                    filter: label,
                     period: {
-                        start: start,
-                        end: end,
+                        start,
+                        end,
                     },
                     totalSales: { $sum: "$detail.sales" },
                     detail: 1,
-                }
-            }
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
+                },
+            },
+        ]);
+
+        return res.json(
+            result?.[0] || {
+                filter: label,
+                period: { start, end },
+                totalSales: 0,
+                detail: [],
+            },
+        );
     } catch (err) {
-        return res.json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };

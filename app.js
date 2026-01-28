@@ -52,26 +52,41 @@ app.use(async (req, res, next) => {
 });
 
 // ROUTES
+// core
 import serviceRoutes from "./routes/core/service.route.js";
 import tenantRoute from "./routes/core/tenant.route.js";
 import authTenantRoute from "./routes/core/authTenant.route.js";
 import authUserRoute from "./routes/user/authUser.route.js";
 import surveyRoute from "./routes/core/survey.route.js";
+
+// setup
 import setupRoute from "./routes/setup/setup.route.js";
-import userRoute from "./routes/user/user.route.js";
+
+// library
 import categoryRoute from "./routes/library/category.route.js";
 import subcategoryRoute from "./routes/library/subcategory.route.js";
 import variantRoute from "./routes/library/variant.route.js";
 import productRoute from "./routes/library/product.route.js";
 import promotionRoute from "./routes/library/promotion.route.js";
+
+// pos
 import orderRoute from "./routes/pos/order.route.js";
 import progressLabelRoute from "./routes/pos/progressLabel.route.js";
 import progressRoute from "./routes/pos/progress.route.js";
+
+// setting
 import settingRoute from "./routes/setting/setting.route.js";
 import receiptRoute from "./routes/setting/receipt.route.js";
 import taxRoute from "./routes/setting/tax.route.js";
 import cashBalanceRoute from "./routes/cashBalance/cashBalance.route.js";
+
+// master
+import userRoute from "./routes/user/user.route.js";
 import memberRoute from "./routes/member/member.route.js";
+
+// report
+import popularRoute from "./routes/report/popular.route.js";
+import paymentRevenueRoute from "./routes/report/paymentRevenue.route.js";
 // import pusherRoute from "./routes/pusher.route.js";
 // import informationRoute from "./routes/information.route.js";
 // import promotionSpecialRoute from "./routes/promotionSpecial.route.js";
@@ -90,26 +105,42 @@ import memberRoute from "./routes/member/member.route.js";
 // import helpRoute from "./routes/help.route.js";
 // import messageRoute from "./routes/message.route.js";
 
+// core
 app.use("/api/service", serviceRoutes);
 app.use("/api/tenant", tenantRoute);
 app.use("/api/auth-tenant", authTenantRoute);
 app.use("/api/auth", authUserRoute);
 app.use("/api/survey", surveyRoute);
+
+// setup
 app.use("/api/setup", setupRoute);
-app.use("/api/user", userRoute);
+
+// library
 app.use("/api/category", categoryRoute);
 app.use("/api/subcategory", subcategoryRoute);
 app.use("/api/variant", variantRoute);
 app.use("/api/product", productRoute);
 app.use("/api/promotion", promotionRoute);
+
+// pos
 app.use("/api/order", orderRoute);
 app.use("/api/progress-label", progressLabelRoute);
 app.use("/api/progress", progressRoute);
+
+// setting
 app.use("/api/setting", settingRoute);
 app.use("/api/tax", taxRoute);
 app.use("/api/receipt-setting", receiptRoute);
 app.use("/api/cash-balance", cashBalanceRoute);
+
+// master
+app.use("/api/user", userRoute);
 app.use("/api/member", memberRoute);
+
+// report
+app.use("/api/popular", popularRoute);
+app.use("/api/payment-revenue", paymentRevenueRoute);
+
 // app.use("/api/pusher", pusherRoute);
 // app.use("/api/informations", informationRoute);
 // app.use("/api/special-promotions", promotionSpecialRoute);
