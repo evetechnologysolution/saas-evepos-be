@@ -1,555 +1,164 @@
-import Order from "../../models/order.js";
+import Order from "../../models/pos/order.js";
 import { getFirstAndLastDayOfWeek, getDatesInRange, formatDate } from "../../lib/dateFormatter.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
-// GETTING SALES MONTHLY
-export const getSalesMonthly = async (_, res) => {
+export const getSales = async (req, res) => {
     try {
-        const year = new Date().getFullYear(); // this year
-        const start = new Date(year, 0, 1);
-        const end = new Date(year + 1, 0, 1);
+        const { filter = "monthly", start: qStart, end: qEnd } = req.query;
 
-        Order.aggregate([
-            {
-                $match:
-                {
-                    $and: [
-                        { status: "paid" },
-                        {
-                            date: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        month: {
-                            $month: {
-                                date: "$date",
-                                timezone: "Asia/Jakarta"
-                            }
-                        },
-                        type: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
-                    },
-                    myCount: { $count: {} }
-                }
-            },
-            { $sort: { "_id.month": 1 } },
-            {
-                $group: {
-                    _id: "$_id.type",
-                    month: {
-                        $push: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$_id.month", 1] }, then: "Jan" },
-                                    { case: { $eq: ["$_id.month", 2] }, then: "Feb" },
-                                    { case: { $eq: ["$_id.month", 3] }, then: "Mar" },
-                                    { case: { $eq: ["$_id.month", 4] }, then: "Apr" },
-                                    { case: { $eq: ["$_id.month", 5] }, then: "May" },
-                                    { case: { $eq: ["$_id.month", 6] }, then: "Jun" },
-                                    { case: { $eq: ["$_id.month", 7] }, then: "Jul" },
-                                    { case: { $eq: ["$_id.month", 8] }, then: "Aug" },
-                                    { case: { $eq: ["$_id.month", 9] }, then: "Sep" },
-                                    { case: { $eq: ["$_id.month", 10] }, then: "Oct" },
-                                    { case: { $eq: ["$_id.month", 11] }, then: "Nov" },
-                                    { case: { $eq: ["$_id.month", 12] }, then: "Dec" },
-                                ]
-                            }
-                        }
-                    },
-                    total: { $push: "$myCount" },
-                }
-            },
-            { $sort: { "_id": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    sales: {
-                        $push: {
-                            name: "$_id",
-                            label: "$month",
-                            value: "$total",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    sales: 1,
-                }
-            },
-        ]).exec((err, result) => {
-            const initialData = {
-                filter: "Monthly",
-                period: {
-                    start: start,
-                    end: end,
-                },
-                label: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-                sales: [
-                    {
-                        name: "Onsite",
-                        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-                    },
-                    {
-                        name: "Delivery",
-                        data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-                    },
-                ]
+        let start,
+            end,
+            label = [],
+            groupBy,
+            filterName;
+
+        const now = new Date();
+
+        /* =======================
+        PERIOD SETUP
+        ======================= */
+        switch (filter) {
+            case "thisWeek": {
+                const { firstDay, lastDay } = getFirstAndLastDayOfWeek();
+                start = firstDay;
+                end = new Date(lastDay.setDate(lastDay.getDate() + 1));
+                label = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                groupBy = {
+                    $dayOfWeek: { date: "$createdAt", timezone: "Asia/Jakarta" },
+                };
+                filterName = "This Week";
+                break;
             }
 
-            if (err) {
-                return res.send(err);
+            case "thisMonth": {
+                const y = now.getFullYear();
+                const m = now.getMonth();
+                start = new Date(y, m, 1);
+                end = new Date(y, m + 1, 1);
+                label = Array.from({ length: 31 }, (_, i) => `${i + 1}`);
+                groupBy = {
+                    $dayOfMonth: { date: "$createdAt", timezone: "Asia/Jakarta" },
+                };
+                filterName = "This Month";
+                break;
             }
 
-            if (result.length > 0) {
-                result.map((order) => {
-                    order.sales.map((item) => {
-                        item.label.map((row, index) => {
-                            initialData.label.map((field, i) => {
-                                if (field === row) {
-                                    if (item.name === initialData.sales[0].name) {
-                                        initialData.sales[0].data.splice(i, 1, item.value[index]);
-                                    }
-                                    if (item.name === initialData.sales[1].name) {
-                                        initialData.sales[1].data.splice(i, 1, item.value[index]);
-                                    }
-                                }
-                            })
-                        })
-                    })
-                    return initialData;
-                })
-            }
-            return res.send([initialData]);
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
+            case "date": {
+                const dStart = new Date(qStart || now);
+                dStart.setHours(0, 0, 0, 0);
+                const dEnd = new Date(qEnd || qStart || now);
+                dEnd.setHours(23, 59, 59, 999);
 
-// GETTING SALES THIS MONTH
-export const getSalesThisMonth = async (_, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const start = new Date(year, month, 1);
-        const end = new Date(year, month + 1, 1);
+                start = dStart;
+                end = dEnd;
 
-        Order.aggregate([
-            {
-                $match:
-                {
-                    $and: [
-                        { status: "paid" },
-                        {
-                            date: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        day: {
-                            $dayOfMonth: {
-                                date: "$date",
-                                timezone: "Asia/Jakarta"
-                            }
-                        },
-                        type: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
+                label = getDatesInRange(start, end);
+                groupBy = {
+                    $dateToString: {
+                        format: "%Y-%m-%d",
+                        date: "$createdAt",
+                        timezone: "Asia/Jakarta",
                     },
-                    myCount: { $count: {} }
-                }
-            },
-            { $sort: { "_id.day": 1 } },
-            {
-                $group: {
-                    _id: "$_id.type",
-                    day: { $push: "$_id.day" },
-                    total: { $push: "$myCount" },
-                }
-            },
-            { $sort: { "_id": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    sales: {
-                        $push: {
-                            name: "$_id",
-                            label: "$day",
-                            value: "$total",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    sales: 1,
-                }
-            },
-        ]).exec((err, result) => {
-            const initialData = {
-                filter: "This Month",
-                period: {
-                    start: start,
-                    end: end,
-                },
-                label: [
-                    "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-                    "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
-                    "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"
-                ],
-                sales: [
-                    {
-                        name: "Onsite",
-                        data: [
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                        ]
-                    },
-                    {
-                        name: "Delivery",
-                        data: [
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                        ]
-                    },
-                ]
+                };
+                filterName = "Date Range";
+                break;
             }
 
-            if (err) {
-                return res.send(err);
+            default: {
+                // monthly
+                const year = now.getFullYear();
+                start = new Date(year, 0, 1);
+                end = new Date(year + 1, 0, 1);
+                label = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                groupBy = {
+                    $month: { date: "$createdAt", timezone: "Asia/Jakarta" },
+                };
+                filterName = "Monthly";
             }
-
-            if (result.length > 0) {
-                result.map((order) => {
-                    order.sales.map((item) => {
-                        item.label.map((row, index) => {
-                            initialData.label.map((field, i) => {
-                                if (parseInt(field) === row) {
-                                    if (item.name === initialData.sales[0].name) {
-                                        initialData.sales[0].data.splice(i, 1, item.value[index]);
-                                    }
-                                    if (item.name === initialData.sales[1].name) {
-                                        initialData.sales[1].data.splice(i, 1, item.value[index]);
-                                    }
-                                }
-                            })
-                        })
-                    })
-                    return initialData;
-                })
-            }
-            return res.send([initialData]);
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
-
-// GETTING SALES WEEKLY
-export const getSalesThisWeek = async (_, res) => {
-    try {
-        const { firstDay, lastDay } = getFirstAndLastDayOfWeek();
-        const start = firstDay;
-        const end = new Date(lastDay.setDate(lastDay.getDate() + 1));
-
-        Order.aggregate([
-            {
-                $match:
-                {
-                    $and: [
-                        { status: "paid" },
-                        {
-                            date: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        day: {
-                            $dayOfWeek: {
-                                date: "$date",
-                                timezone: "Asia/Jakarta"
-                            }
-                        },
-                        type: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
-                    },
-                    myCount: { $count: {} }
-                }
-            },
-            { $sort: { "_id.day": 1 } },
-            {
-                $group: {
-                    _id: "$_id.type",
-                    day: {
-                        $push: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$_id.day", 1] }, then: "Sun" },
-                                    { case: { $eq: ["$_id.day", 2] }, then: "Mon" },
-                                    { case: { $eq: ["$_id.day", 3] }, then: "Tue" },
-                                    { case: { $eq: ["$_id.day", 4] }, then: "Wed" },
-                                    { case: { $eq: ["$_id.day", 5] }, then: "Thu" },
-                                    { case: { $eq: ["$_id.day", 6] }, then: "Fri" },
-                                    { case: { $eq: ["$_id.day", 7] }, then: "Sat" },
-                                ]
-                            }
-                        }
-                    },
-                    total: { $push: "$myCount" },
-                }
-            },
-            { $sort: { "_id": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    sales: {
-                        $push: {
-                            name: "$_id",
-                            label: "$day",
-                            value: "$total",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    sales: 1,
-                }
-            },
-        ]).exec((err, result) => {
-            const initialData = {
-                filter: "This Week",
-                period: {
-                    start: start,
-                    end: end,
-                },
-                label: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-                sales: [
-                    {
-                        name: "Onsite",
-                        data: [0, 0, 0, 0, 0, 0, 0]
-                    },
-                    {
-                        name: "Delivery",
-                        data: [0, 0, 0, 0, 0, 0, 0]
-                    },
-                ]
-            }
-
-            if (err) {
-                return res.send(err);
-            }
-
-            if (result.length > 0) {
-                result.map((order) => {
-                    order.sales.map((item) => {
-                        item.label.map((row, index) => {
-                            initialData.label.map((field, i) => {
-                                if (field === row) {
-                                    if (item.name === initialData.sales[0].name) {
-                                        initialData.sales[0].data.splice(i, 1, item.value[index]);
-                                    }
-                                    if (item.name === initialData.sales[1].name) {
-                                        initialData.sales[1].data.splice(i, 1, item.value[index]);
-                                    }
-                                }
-                            })
-                        })
-                    })
-                    return initialData;
-                })
-            }
-            return res.send([initialData]);
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
-
-// GETTING SALES BY DATE
-export const getSalesByDate = async (req, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const today = curr.getDate(); // today
-        let start = new Date(year, month, today, 0, 0, 0, 0);
-        let end = new Date(year, month, today, 23, 59, 59, 999);
-
-        if (req.query.start) {
-            const dStart = new Date(req.query.start);
-            dStart.setHours(0, 0, 0, 0);
-            const fixStart = new Date(dStart.toISOString()); // Konversi ke UTC string
-            start = fixStart;
-
-            const dEnd = new Date(req.query.end ? req.query.end : req.query.start);
-            dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
-            const fixEnd = new Date(dEnd.toISOString());
-            end = fixEnd;
         }
 
-        Order.aggregate([
+        const qMatch = {
+            status: "paid",
+            createdAt: { $gte: start, $lt: end },
+        };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        /* =======================
+        AGGREGATION
+        ======================= */
+        const result = await Order.aggregate([
             {
-                $match:
-                {
-                    $and: [
-                        { status: "paid" },
-                        {
-                            date: {
-                                $gte: start,
-                                $lte: end
-                            }
-                        }
-                    ]
-                }
+                $match: qMatch,
             },
             {
                 $group: {
                     _id: {
-                        day: {
-                            $dateToString: {
-                                format: "%Y-%m-%d",
-                                date: "$date",
-                                timezone: "Asia/Jakarta"
-                            }
-                        },
+                        time: groupBy,
                         type: {
                             $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
+                                branches: [{ case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" }],
+                                default: "Onsite",
+                            },
+                        },
                     },
-                    myCount: { $count: {} }
-                }
+                    total: { $count: {} },
+                },
             },
-            { $sort: { "_id.day": 1 } },
+            { $sort: { "_id.time": 1 } },
             {
                 $group: {
                     _id: "$_id.type",
-                    day: { $push: "$_id.day" },
-                    total: { $push: "$myCount" },
-                }
-            },
-            { $sort: { "_id": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    sales: {
-                        $push: {
-                            name: "$_id",
-                            label: "$day",
-                            value: "$total",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    sales: 1,
-                }
-            },
-        ]).exec((err, result) => {
-            const labelDate = getDatesInRange(start, end);
-            let arr1 = [];
-            let arr2 = [];
-            let arr3 = [];
-            for (let n = 0; n < labelDate.length; n++) {
-                arr1.push(0);
-                arr2.push(0);
-                arr3.push(0);
-            }
-
-            const initialData = {
-                filter: "Date",
-                period: {
-                    start: start,
-                    end: end,
+                    label: { $push: "$_id.time" },
+                    value: { $push: "$total" },
                 },
-                label: labelDate,
-                sales: [
-                    {
-                        name: "Onsite",
-                        data: arr1
-                    },
-                    {
-                        name: "Delivery",
-                        data: arr2
-                    },
-                ]
-            }
+            },
+        ]);
 
-            if (err) {
-                return res.send(err);
-            }
+        /* =======================
+        INITIAL DATA
+        ======================= */
+        const initialData = {
+            filter: filterName,
+            period: { start, end },
+            label,
+            sales: [
+                { name: "Onsite", data: Array(label.length).fill(0) },
+                { name: "Delivery", data: Array(label.length).fill(0) },
+            ],
+        };
 
-            if (result.length > 0) {
-                result.map((order) => {
-                    order.sales.map((item) => {
-                        item.label.map((row, index) => {
-                            initialData.label.map((field, i) => {
-                                if (field === formatDate(row)) {
-                                    if (item.name === initialData.sales[0].name) {
-                                        initialData.sales[0].data.splice(i, 1, item.value[index]);
-                                    }
-                                    if (item.name === initialData.sales[1].name) {
-                                        initialData.sales[1].data.splice(i, 1, item.value[index]);
-                                    }
-                                }
-                            })
-                        })
-                    })
-                    return initialData;
-                })
-            }
-            return res.send([initialData]);
-        })
+        /* =======================
+        MAPPING RESULT
+        ======================= */
+        result.forEach((order) => {
+            const target = initialData.sales.find((s) => s.name === order._id);
+            if (!target) return;
+
+            order.label.forEach((row, idx) => {
+                const key =
+                    filter === "monthly"
+                        ? label[row - 1]
+                        : filter === "thisWeek"
+                          ? label[row - 1]
+                          : filter === "date"
+                            ? formatDate(row)
+                            : `${row}`;
+
+                const i = initialData.label.indexOf(key);
+                if (i !== -1) target.data[i] = order.value[idx];
+            });
+        });
+
+        return res.send([initialData]);
     } catch (err) {
-        return res.json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };

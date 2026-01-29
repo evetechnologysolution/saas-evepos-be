@@ -1,8 +1,8 @@
 import express from "express";
 import { isAuth } from "../../middleware/auth.js";
 import {
+    getAllRawProduct,
     getAllProduct,
-    getPaginateProduct,
     getProductById,
     addProduct,
     editProduct,
@@ -12,8 +12,8 @@ import {
 const router = express.Router();
 
 // GETTING ALL THE DATA
-router.get("/all", isAuth, getAllProduct);
-router.get("/", isAuth, getPaginateProduct);
+router.get("/all", isAuth, getAllRawProduct);
+router.get("/", isAuth, getAllProduct);
 
 // GET A SPECIFIC DATA
 router.get("/:id", isAuth, getProductById);

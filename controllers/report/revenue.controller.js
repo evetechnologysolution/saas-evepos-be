@@ -1,598 +1,85 @@
-import Order from "../../models/order.js";
+import Order from "../../models/pos/order.js";
 import { getFirstAndLastDayOfWeek } from "../../lib/dateFormatter.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
-// GETTING ALL REVENUE & SALES
-export const getAllRevenue = async (_, res) => {
+export const getRevenue = async (req, res) => {
     try {
-        Order.aggregate([
-            {
-                $match: {
-                    $or: [
-                        { status: "paid" },
-                        { status: "refund" },
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    revenue: { $sum: "$billedAmount" },
-                    sales: { $count: {} },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    revenue: 1,
-                    sales: 1,
-                }
-            }
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
+        const { filter = "today", start: qStart, end: qEnd } = req.query;
 
-// GETTING REVENUE & SALES YEARLY
-export const getRevenueYearly = async (_, res) => {
-    try {
-        Order.aggregate([
-            {
-                $match: {
-                    $or: [
-                        { status: "paid" },
-                        { status: "refund" },
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        $year: {
-                            // date: "$date",
-                            date: "$paymentDate",
-                            timezone: "Asia/Jakarta"
-                        }
-                    },
-                    revenue: { $sum: "$billedAmount" },
-                    sales: { $count: {} }
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    year: "$_id",
-                    revenue: 1,
-                    sales: 1
-                }
-            }
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
+        let start;
+        let end;
+        let label = "";
 
-// GETTING REVENUE & SALES MONTHLY
-export const getRevenueMonthly = async (_, res) => {
-    try {
-        const year = new Date().getFullYear(); // this year
-        const start = new Date(year, 0, 1);
-        const end = new Date(year + 1, 0, 1);
+        const now = new Date();
 
-        Order.aggregate([
-            {
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            // date: {
-                            paymentDate: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        $month: {
-                            // date: "$date",
-                            date: "$paymentDate",
-                            timezone: "Asia/Jakarta"
-                        }
-                    },
-                    revenue: { $sum: "$billedAmount" },
-                    count: { $count: {} }
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    month: "$_id",
-                    revenue: 1,
-                    count: 1
-                }
-            },
-            { $sort: { month: 1 } }
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
+        switch (filter) {
+            case "today":
+                label = "Today";
+                start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+                break;
+
+            case "thisWeek": {
+                label = "This Week";
+                const { firstDay, lastDay } = getFirstAndLastDayOfWeek();
+                start = firstDay;
+                end = new Date(lastDay);
+                end.setDate(end.getDate() + 1);
+                break;
             }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
 
-// GETTING REVENUE & SALES WEEKLY
-export const getRevenueWeekly = async (_, res) => {
-    try {
-        const { firstDay, lastDay } = getFirstAndLastDayOfWeek();
-        const start = firstDay;
-        const end = new Date(lastDay.setDate(lastDay.getDate() + 1));
+            case "thisMonth":
+                label = "This Month";
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+                end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                break;
 
-        Order.aggregate([
-            {
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            // date: {
-                            paymentDate: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        $dayOfWeek: {
-                            // date: "$date",
-                            date: "$paymentDate",
-                            timezone: "Asia/Jakarta"
-                        }
-                    },
-                    revenue: { $sum: "$billedAmount" },
-                    count: { $count: {} }
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    day: "$_id",
-                    revenue: 1,
-                    count: 1
-                }
-            },
-            { $sort: { day: 1 } }
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
+            case "thisYear":
+                label = "This Year";
+                start = new Date(now.getFullYear(), 0, 1);
+                end = new Date(now.getFullYear() + 1, 0, 1);
+                break;
 
-// GETTING REVENUE & SALES THIS YEAR
-export const getRevenueThisYear = async (_, res) => {
-    try {
-        const year = new Date().getFullYear(); // this year
-        const start = new Date(year, 0, 1);
-        const end = new Date(year + 1, 0, 1);
+            case "date":
+                label = "Date Range";
+                if (!qStart) {
+                    return errorResponse(res, {
+                        statusCode: 400,
+                        code: "BAD_REQUEST",
+                        message: "start date is required",
+                    });
+                }
 
-        Order.aggregate([
-            {
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            // date: {
-                            paymentDate: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        type: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
-                    },
-                    donation: { $sum: "$donation" },
-                    revenue: { $sum: "$billedAmount" },
-                    sales: {
-                        $sum: { $cond: { if: { $gt: ["$billedAmount", 0] }, then: 1, else: 0 } }
-                    }
-                    // sales: { $count: {} }
-                }
-            },
-            { $sort: { "_id.type": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            type: "$_id.type",
-                            donation: "$donation",
-                            revenue: "$revenue",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "This Year",
-                    totalDonation: { $sum: "$detail.donation" },
-                    totalRevenue: { $sum: "$detail.revenue" },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1
-                }
-            },
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
+                const dStart = new Date(qStart);
+                dStart.setHours(0, 0, 0, 0);
+                start = new Date(dStart.toISOString());
 
-// GETTING REVENUE & SALES THIS MONTH
-export const getRevenueThisMonth = async (_, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const start = new Date(year, month, 1);
-        const end = new Date(year, month + 1, 1);
+                const dEnd = new Date(qEnd || qStart);
+                dEnd.setHours(23, 59, 59, 999);
+                end = new Date(dEnd.toISOString());
+                break;
 
-        Order.aggregate([
-            {
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            // date: {
-                            paymentDate: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        type: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
-                    },
-                    donation: { $sum: "$donation" },
-                    revenue: { $sum: "$billedAmount" },
-                    sales: {
-                        $sum: { $cond: { if: { $gt: ["$billedAmount", 0] }, then: 1, else: 0 } }
-                    }
-                }
-            },
-            { $sort: { "_id.type": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            type: "$_id.type",
-                            donation: "$donation",
-                            revenue: "$revenue",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "This Month",
-                    totalDonation: { $sum: "$detail.donation" },
-                    totalRevenue: { $sum: "$detail.revenue" },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1
-                }
-            },
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
-
-// GETTING REVENUE & SALES THIS WEEK
-export const getRevenueThisWeek = async (_, res) => {
-    try {
-        const { firstDay, lastDay } = getFirstAndLastDayOfWeek();
-        const start = firstDay;
-        const end = new Date(lastDay.setDate(lastDay.getDate() + 1));
-
-        Order.aggregate([
-            {
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            // date: {
-                            paymentDate: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        type: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
-                    },
-                    donation: { $sum: "$donation" },
-                    revenue: { $sum: "$billedAmount" },
-                    sales: {
-                        $sum: { $cond: { if: { $gt: ["$billedAmount", 0] }, then: 1, else: 0 } }
-                    }
-                }
-            },
-            { $sort: { "_id.type": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            type: "$_id.type",
-                            donation: "$donation",
-                            revenue: "$revenue",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "This Week",
-                    totalDonation: { $sum: "$detail.donation" },
-                    totalRevenue: { $sum: "$detail.revenue" },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1
-                }
-            },
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
-
-// GETTING REVENUE & SALES TODAY
-export const getRevenueToday = async (_, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const today = curr.getDate(); // today
-        const start = new Date(year, month, today);
-        const end = new Date(year, month, today + 1);
-
-        Order.aggregate([
-            {
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            // date: {
-                            paymentDate: {
-                                $gte: start,
-                                $lt: end
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        type: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
-                    },
-                    donation: { $sum: "$donation" },
-                    revenue: { $sum: "$billedAmount" },
-                    sales: {
-                        $sum: { $cond: { if: { $gt: ["$billedAmount", 0] }, then: 1, else: 0 } }
-                    }
-                }
-            },
-            { $sort: { "_id.type": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            type: "$_id.type",
-                            donation: "$donation",
-                            revenue: "$revenue",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "Today",
-                    period: {
-                        start: start,
-                        end: start,
-                    },
-                    totalDonation: { $sum: "$detail.donation" },
-                    totalRevenue: { $sum: "$detail.revenue" },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1
-                }
-            },
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
-
-// GETTING REVENUE & SALES TODAY
-export const getRevenueByDate = async (req, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const today = curr.getDate(); // today
-        let start = new Date(year, month, today, 0, 0, 0, 0);
-        let end = new Date(year, month, today, 23, 59, 59, 999);
-
-        if (req.query.start) {
-            const dStart = new Date(req.query.start);
-            dStart.setHours(0, 0, 0, 0);
-            const fixStart = new Date(dStart.toISOString()); // Konversi ke UTC string
-            start = fixStart;
-
-            const dEnd = new Date(req.query.end ? req.query.end : req.query.start);
-            dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
-            const fixEnd = new Date(dEnd.toISOString());
-            end = fixEnd;
+            default:
+                return errorResponse(res, {
+                    statusCode: 400,
+                    code: "INVALID_FILTER",
+                    message: "Invalid filter value",
+                });
         }
 
-        Order.aggregate([
+        const qMatch = {
+            status: { $in: ["paid", "refund"] },
+            paymentDate: { $gte: start, $lt: end },
+        };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        const result = await Order.aggregate([
             {
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            // date: {
-                            paymentDate: {
-                                $gte: start,
-                                $lte: end
-                            }
-                        }
-                    ]
-                }
+                $match: qMatch,
             },
             {
                 $group: {
@@ -600,18 +87,23 @@ export const getRevenueByDate = async (req, res) => {
                         type: {
                             $switch: {
                                 branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
+                                    {
+                                        case: { $eq: ["$orderType", "delivery"] },
+                                        then: "Delivery",
+                                    },
                                 ],
-                                default: "Onsite"
-                            }
-                        }
+                                default: "Onsite",
+                            },
+                        },
                     },
                     donation: { $sum: "$donation" },
                     revenue: { $sum: "$billedAmount" },
                     sales: {
-                        $sum: { $cond: { if: { $gt: ["$billedAmount", 0] }, then: 1, else: 0 } }
-                    }
-                }
+                        $sum: {
+                            $cond: [{ $gt: ["$billedAmount", 0] }, 1, 0],
+                        },
+                    },
+                },
             },
             { $sort: { "_id.type": -1 } },
             {
@@ -623,291 +115,32 @@ export const getRevenueByDate = async (req, res) => {
                             donation: "$donation",
                             revenue: "$revenue",
                             sales: "$sales",
-                        }
+                        },
                     },
-                }
+                },
             },
             {
                 $project: {
                     _id: 0,
-                    filter: "Date",
+                    filter: label,
                     period: {
-                        start: start,
-                        end: start,
+                        start,
+                        end,
                     },
                     totalDonation: { $sum: "$detail.donation" },
                     totalRevenue: { $sum: "$detail.revenue" },
                     totalSales: { $sum: "$detail.sales" },
-                    detail: 1
-                }
+                    detail: 1,
+                },
             },
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
+        ]);
+
+        return res.send(result);
     } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
-
-// GETTING REVENUE & SALES LAST 365 DAYS
-export const getRevenue365Days = async (_, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const today = curr.getDate(); // today
-        const start = new Date(year, month, today);
-
-        Order.aggregate([
-            {
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            $expr: {
-                                $gt: [
-                                    // "$date",
-                                    "$paymentDate",
-                                    { $dateSubtract: { startDate: start, unit: "day", amount: 364, timezone: "Asia/Jakarta" } }
-                                ]
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        type: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
-                    },
-                    revenue: { $sum: "$billedAmount" },
-                    sales: { $count: {} }
-                }
-            },
-            { $sort: { "_id.type": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            type: "$_id.type",
-                            revenue: "$revenue",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "365 Days",
-                    period: {
-                        start: { $dateSubtract: { startDate: start, unit: "day", amount: 364, timezone: "Asia/Jakarta" } },
-                        end: { $dateSubtract: { startDate: start, unit: "day", amount: 0, timezone: "Asia/Jakarta" } }
-                    },
-                    totalRevenue: { $sum: "$detail.revenue" },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1
-                }
-            },
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
-
-// GETTING REVENUE & SALES LAST 30 DAYS
-export const getRevenue30Days = async (_, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const today = curr.getDate(); // today
-        const start = new Date(year, month, today);
-
-        Order.aggregate([
-            {
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            $expr: {
-                                $gt: [
-                                    // "$date",
-                                    "$paymentDate",
-                                    { $dateSubtract: { startDate: start, unit: "day", amount: 29, timezone: "Asia/Jakarta" } }
-                                ]
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        type: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
-                    },
-                    revenue: { $sum: "$billedAmount" },
-                    sales: { $count: {} }
-                }
-            },
-            { $sort: { "_id.type": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            type: "$_id.type",
-                            revenue: "$revenue",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "30 Days",
-                    period: {
-                        start: { $dateSubtract: { startDate: start, unit: "day", amount: 29, timezone: "Asia/Jakarta" } },
-                        end: { $dateSubtract: { startDate: start, unit: "day", amount: 0, timezone: "Asia/Jakarta" } }
-                    },
-                    totalRevenue: { $sum: "$detail.revenue" },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1
-                }
-            },
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
-    }
-};
-
-// GETTING REVENUE & SALES LAST 7 DAYS
-export const getRevenue7Days = async (_, res) => {
-    try {
-        const curr = new Date(); // this date
-        const year = curr.getFullYear(); // this year
-        const month = curr.getMonth(); // this month
-        const today = curr.getDate(); // today
-        const start = new Date(year, month, today);
-
-        Order.aggregate([
-            {
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            $expr: {
-                                $gt: [
-                                    // "$date",
-                                    "$paymentDate",
-                                    { $dateSubtract: { startDate: start, unit: "day", amount: 6, timezone: "Asia/Jakarta" } }
-                                ]
-                            }
-                        }
-                    ]
-                }
-            },
-            {
-                $group: {
-                    _id: {
-                        type: {
-                            $switch: {
-                                branches: [
-                                    { case: { $eq: ["$orderType", "delivery"] }, then: "Delivery" },
-                                ],
-                                default: "Onsite"
-                            }
-                        }
-                    },
-                    revenue: { $sum: "$billedAmount" },
-                    sales: { $count: {} }
-                }
-            },
-            { $sort: { "_id.type": -1 } },
-            {
-                $group: {
-                    _id: null,
-                    detail: {
-                        $push: {
-                            type: "$_id.type",
-                            revenue: "$revenue",
-                            sales: "$sales",
-                        }
-                    },
-                }
-            },
-            {
-                $project: {
-                    _id: 0,
-                    filter: "7 Days",
-                    period: {
-                        start: { $dateSubtract: { startDate: start, unit: "day", amount: 6, timezone: "Asia/Jakarta" } },
-                        end: { $dateSubtract: { startDate: start, unit: "day", amount: 0, timezone: "Asia/Jakarta" } }
-                    },
-                    totalRevenue: { $sum: "$detail.revenue" },
-                    totalSales: { $sum: "$detail.sales" },
-                    detail: 1
-                }
-            },
-        ]).exec((err, result) => {
-            if (err) {
-                return res.send(err);
-            }
-            if (result) {
-                return res.send(result);
-            }
-        })
-    } catch (err) {
-        return res.json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };

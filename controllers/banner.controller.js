@@ -12,12 +12,12 @@ export const getAllBanner = async (req, res) => {
                 ...query,
                 name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { date: -1 },
-        }
+        };
         const listofData = await Banner.paginate(query, options);
         return res.json(listofData);
     } catch (err) {
@@ -31,7 +31,7 @@ export const getAvailableBanner = async (req, res) => {
             .select("-imageId -imageMobileId")
             .where("isAvailable")
             .equals(true)
-            .sort({ "listNumber": 1 });
+            .sort({ listNumber: 1 });
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -50,23 +50,23 @@ export const getBannerById = async (req, res) => {
 
 // CREATE NEW DATA
 export const addBanner = async (req, res) => {
-    try {
-        imageUpload.fields([
-            { name: "image", maxCount: 1 },
-            { name: "imageMobile", maxCount: 1 }
-        ])(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.fields([
+        { name: "image", maxCount: 1 },
+        { name: "imageMobile", maxCount: 1 },
+    ])(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        }
 
+        try {
             let objData = req.body;
 
             if (req.files) {
@@ -74,28 +74,36 @@ export const addBanner = async (req, res) => {
                 if (req.files["image"]) {
                     const image = req.files["image"][0];
                     if (image.size <= limitFileSize) {
-                        const cloudImage = await cloudinary.uploader.upload(image.path, {
-                            folder: process.env.FOLDER_MAIN,
-                            format: "webp",
-                            transformation: [
-                                { quality: "auto:low" }
-                            ]
+                        const cloudImage = await cloudinary.uploader.upload(
+                            image.path,
+                            {
+                                folder: process.env.FOLDER_MAIN,
+                                format: "webp",
+                                transformation: [{ quality: "auto:low" }],
+                            },
+                        );
+                        objData = Object.assign(objData, {
+                            image: cloudImage.secure_url,
+                            imageId: cloudImage.public_id,
                         });
-                        objData = Object.assign(objData, { image: cloudImage.secure_url, imageId: cloudImage.public_id });
                     }
                 }
 
                 if (req.files["imageMobile"]) {
                     const imgMobile = req.files["imageMobile"][0];
                     if (imgMobile.size <= limitFileSize) {
-                        const cloudMobile = await cloudinary.uploader.upload(imgMobile.path, {
-                            folder: process.env.FOLDER_MAIN,
-                            format: "webp",
-                            transformation: [
-                                { quality: "auto:low" }
-                            ]
+                        const cloudMobile = await cloudinary.uploader.upload(
+                            imgMobile.path,
+                            {
+                                folder: process.env.FOLDER_MAIN,
+                                format: "webp",
+                                transformation: [{ quality: "auto:low" }],
+                            },
+                        );
+                        objData = Object.assign(objData, {
+                            imageMobile: cloudMobile.secure_url,
+                            imageMobileId: cloudMobile.public_id,
                         });
-                        objData = Object.assign(objData, { imageMobile: cloudMobile.secure_url, imageMobileId: cloudMobile.public_id });
                     }
                 }
             }
@@ -103,31 +111,31 @@ export const addBanner = async (req, res) => {
             const data = new Banner(objData);
             const newData = await data.save();
             return res.json(newData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            return res.status(500).json({ message: err.message });
+        }
+    });
 };
 
 // UPDATE A SPECIFIC DATA
 export const editBanner = async (req, res) => {
-    try {
-        imageUpload.fields([
-            { name: "image", maxCount: 1 },
-            { name: "imageMobile", maxCount: 1 }
-        ])(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.fields([
+        { name: "image", maxCount: 1 },
+        { name: "imageMobile", maxCount: 1 },
+    ])(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        }
 
+        try {
             const existing = await Banner.findById(req.params.id);
 
             let objData = req.body;
@@ -140,14 +148,18 @@ export const editBanner = async (req, res) => {
                         if (existing.imageId) {
                             await cloudinary.uploader.destroy(existing.imageId);
                         }
-                        const cloudImage = await cloudinary.uploader.upload(image.path, {
-                            folder: process.env.FOLDER_MAIN,
-                            format: "webp",
-                            transformation: [
-                                { quality: "auto:low" }
-                            ]
+                        const cloudImage = await cloudinary.uploader.upload(
+                            image.path,
+                            {
+                                folder: process.env.FOLDER_MAIN,
+                                format: "webp",
+                                transformation: [{ quality: "auto:low" }],
+                            },
+                        );
+                        objData = Object.assign(objData, {
+                            image: cloudImage.secure_url,
+                            imageId: cloudImage.public_id,
                         });
-                        objData = Object.assign(objData, { image: cloudImage.secure_url, imageId: cloudImage.public_id });
                     }
                 }
 
@@ -155,16 +167,22 @@ export const editBanner = async (req, res) => {
                     const imgMobile = req.files["imageMobile"][0];
                     if (imgMobile.size <= limitFileSize) {
                         if (existing.imageMobileId) {
-                            await cloudinary.uploader.destroy(existing.imageMobileId);
+                            await cloudinary.uploader.destroy(
+                                existing.imageMobileId,
+                            );
                         }
-                        const cloudMobile = await cloudinary.uploader.upload(imgMobile.path, {
-                            folder: process.env.FOLDER_MAIN,
-                            format: "webp",
-                            transformation: [
-                                { quality: "auto:low" }
-                            ]
+                        const cloudMobile = await cloudinary.uploader.upload(
+                            imgMobile.path,
+                            {
+                                folder: process.env.FOLDER_MAIN,
+                                format: "webp",
+                                transformation: [{ quality: "auto:low" }],
+                            },
+                        );
+                        objData = Object.assign(objData, {
+                            imageMobile: cloudMobile.secure_url,
+                            imageMobileId: cloudMobile.public_id,
                         });
-                        objData = Object.assign(objData, { imageMobile: cloudMobile.secure_url, imageMobileId: cloudMobile.public_id });
                     }
                 }
             }
@@ -172,14 +190,14 @@ export const editBanner = async (req, res) => {
             const updatedData = await Banner.updateOne(
                 { _id: req.params.id },
                 {
-                    $set: objData
-                }
+                    $set: objData,
+                },
             );
             return res.json(updatedData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            return res.status(500).json({ message: err.message });
+        }
+    });
 };
 
 // DELETE A SPECIFIC DATA

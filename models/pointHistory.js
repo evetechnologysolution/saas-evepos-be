@@ -11,12 +11,16 @@ const DataSchema = mongoose.Schema({
         set: val => val === "" ? null : val
     },
     orderRef: {
-        type: String,
-        default: "",
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Orders",
+        default: null,
+        set: val => val === "" ? null : val
     },
-    orderPending: {
-        type: String,
-        default: "",
+    orderPendingRef: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Orders",
+        default: null,
+        set: val => val === "" ? null : val
     },
     point: {
         type: Number,

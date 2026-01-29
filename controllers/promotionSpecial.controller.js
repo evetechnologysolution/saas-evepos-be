@@ -14,13 +14,13 @@ export const getAllPromotion = async (req, res) => {
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-        }
+        };
 
         const searchQuery = [
             {
                 $match: { name: { $regex: search, $options: "i" } },
-            }
-        ]
+            },
+        ];
 
         const defaultQuery = [
             {
@@ -29,9 +29,9 @@ export const getAllPromotion = async (req, res) => {
                     localField: "products",
                     foreignField: "_id",
                     as: "products",
-                }
+                },
             },
-            { $sort: { "date": -1 } },
+            { $sort: { date: -1 } },
             {
                 $project: {
                     _id: 1,
@@ -53,9 +53,9 @@ export const getAllPromotion = async (req, res) => {
                         name: 1,
                         price: 1,
                     },
-                }
+                },
             },
-        ]
+        ];
 
         let fixQuery = defaultQuery;
 
@@ -70,7 +70,7 @@ export const getAllPromotion = async (req, res) => {
                 return res.json(err);
             }
             if (result) {
-                return res.json(result)
+                return res.json(result);
             }
         });
     } catch (err) {
@@ -95,10 +95,10 @@ export const getAvailablePromotion = async (req, res) => {
                                 { endDate: { $exists: false } },
                                 { endDate: null },
                                 { endDate: { $gte: currDate } },
-                            ]
-                        }
-                    ]
-                }
+                            ],
+                        },
+                    ],
+                },
             },
             {
                 $lookup: {
@@ -106,9 +106,9 @@ export const getAvailablePromotion = async (req, res) => {
                     localField: "products",
                     foreignField: "_id",
                     as: "products",
-                }
+                },
             },
-            { $sort: { "startDate": -1, "date": -1 } },
+            { $sort: { startDate: -1, date: -1 } },
             {
                 $project: {
                     _id: 1,
@@ -135,8 +135,8 @@ export const getAvailablePromotion = async (req, res) => {
                         isRecommended: 1,
                         isAvailable: 1,
                     },
-                }
-            }
+                },
+            },
         ]).exec((err, result) => {
             if (err) {
                 return res.send(err);
@@ -144,41 +144,70 @@ export const getAvailablePromotion = async (req, res) => {
             if (result) {
                 async function getData() {
                     try {
-                        const data = await Promise.all(result.map(async (field) => {
-                            const products = await Promise.all(field.products.map(async (item) => {
-                                const variants = await Promise.all(item.variant.map(async (row, index) => {
-                                    const check = await Variant.findById(row.variantRef).select("_id name options");
-                                    delete row.variantRef;
-                                    return { ...row, variantRef: check };
-                                }));
+                        const data = await Promise.all(
+                            result.map(async (field) => {
+                                const products = await Promise.all(
+                                    field.products.map(async (item) => {
+                                        const variants = await Promise.all(
+                                            item.variant.map(
+                                                async (row, index) => {
+                                                    const check =
+                                                        await Variant.findById(
+                                                            row.variantRef,
+                                                        ).select(
+                                                            "_id name options",
+                                                        );
+                                                    delete row.variantRef;
+                                                    return {
+                                                        ...row,
+                                                        variantRef: check,
+                                                    };
+                                                },
+                                            ),
+                                        );
 
-                                const cate = await Category.findById(item.category).select("_id name");
+                                        const cate = await Category.findById(
+                                            item.category,
+                                        ).select("_id name");
 
-                                return { ...item, variant: variants, category: { _id: cate._id, name: cate.name } };
-                            }));
+                                        return {
+                                            ...item,
+                                            variant: variants,
+                                            category: {
+                                                _id: cate._id,
+                                                name: cate.name,
+                                            },
+                                        };
+                                    }),
+                                );
 
-                            // Sort products by isRecommended first and then by name
-                            const sortedProducts = products.sort((a, b) => {
-                                // Sort by isRecommended first
-                                if (b.isRecommended !== a.isRecommended) {
-                                    return b.isRecommended - a.isRecommended;
-                                }
-                                // If isRecommended is the same, sort by name alphabetically
-                                return a.name.localeCompare(b.name);
-                            });
+                                // Sort products by isRecommended first and then by name
+                                const sortedProducts = products.sort((a, b) => {
+                                    // Sort by isRecommended first
+                                    if (b.isRecommended !== a.isRecommended) {
+                                        return (
+                                            b.isRecommended - a.isRecommended
+                                        );
+                                    }
+                                    // If isRecommended is the same, sort by name alphabetically
+                                    return a.name.localeCompare(b.name);
+                                });
 
-                            return { ...field, products: sortedProducts };
-                        }));
+                                return { ...field, products: sortedProducts };
+                            }),
+                        );
                         return res.json(data);
                     } catch (error) {
                         // console.error("Error:", error);
-                        return res.status(500).json({ message: "Internal Server Error" });
+                        return res
+                            .status(500)
+                            .json({ message: "Internal Server Error" });
                     }
                 }
 
                 return getData();
             }
-        })
+        });
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }
@@ -195,31 +224,28 @@ export const getPromotionById = async (req, res) => {
 
 // CREATE NEW DATA
 export const addPromotion = async (req, res) => {
-    try {
-        imageUpload.single("image")(req, res, async function (err) {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    imageUpload.single("image")(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        }
 
+        try {
             // Generate auto increment
             const currYear = new Date().getFullYear();
             const count = await Counter.findOneAndUpdate(
                 {
-                    $and: [
-                        { name: "Special Promotion" },
-                        { year: currYear },
-                    ],
+                    $and: [{ name: "Special Promotion" }, { year: currYear }],
                 },
                 { $inc: { seq: 1 } },
-                { new: true, upsert: true }
+                { new: true, upsert: true },
             );
 
             const str = "" + count.seq;
@@ -227,7 +253,7 @@ export const addPromotion = async (req, res) => {
             const number = pad.substring(0, pad.length - str.length) + str;
 
             // Generate new ObjectId for _id
-            const newObjectId = mongoose.Types.ObjectId();
+            const newObjectId = new mongoose.Types.ObjectId();
             const objData = {
                 ...req.body,
                 _id: newObjectId,
@@ -236,17 +262,28 @@ export const addPromotion = async (req, res) => {
 
             let convertId = [];
             if (req.body.products) {
-                convertId = JSON.parse(req.body.products);
+                convertId =
+                    typeof req.body.products === "string"
+                        ? JSON.parse(req.body.products)
+                        : req.body.products;
                 objData.products = convertId;
             }
 
             if (objData.startDate) {
                 const now = new Date(objData.startDate);
-                objData.startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                objData.startDate = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                );
             }
             if (objData.endDate) {
                 const now = new Date(objData.endDate);
-                objData.endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                objData.endDate = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                );
             }
 
             // Prepare bulk operations for updating products
@@ -254,7 +291,7 @@ export const addPromotion = async (req, res) => {
             if (convertId.length > 0) {
                 for (const prodId of convertId) {
                     const newDiscount = {
-                        promotion: newObjectId,
+                        promotionRef: newObjectId,
                         amount: objData.amount,
                         qtyMin: objData.qtyMin,
                         qtyFree: objData.qtyFree,
@@ -266,8 +303,8 @@ export const addPromotion = async (req, res) => {
                     bulkOps.push({
                         updateOne: {
                             filter: { _id: prodId },
-                            update: { $set: { discountSpecial: newDiscount } }
-                        }
+                            update: { $set: { discountSpecial: newDiscount } },
+                        },
                     });
                 }
             }
@@ -284,8 +321,8 @@ export const addPromotion = async (req, res) => {
                     format: "webp",
                     transformation: [
                         { width: 800, height: 800, crop: "fit" }, // Adjust the width and height as needed
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
                 objData.image = cloud.secure_url;
                 objData.imageId = cloud.public_id;
@@ -294,30 +331,29 @@ export const addPromotion = async (req, res) => {
             const data = new Promotion(objData);
             const newData = await data.save();
             return res.json(newData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            return res.status(500).json({ message: err.message });
+        }
+    });
 };
-
 
 // UPDATE A SPECIFIC DATA
 export const editPromotion = async (req, res) => {
-    try {
-        // Handle image upload
-        imageUpload.single("image")(req, res, async (err) => {
-            if (err instanceof multer.MulterError) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: "Failed to upload image",
-                });
-            } else if (err) {
-                return res.status(400).json({
-                    status: "Failed",
-                    message: err.message.message,
-                });
-            }
+    // Handle image upload
+    imageUpload.single("image")(req, res, async (err) => {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err?.message || "Failed to upload image",
+            });
+        }
 
+        try {
             // Check if the promotion exists
             const exist = await Promotion.findById(req.params.id);
             if (!exist) {
@@ -328,55 +364,69 @@ export const editPromotion = async (req, res) => {
 
             let convertId = [];
             if (req.body.products) {
-                convertId = JSON.parse(req.body.products);
+                convertId =
+                    typeof req.body.products === "string"
+                        ? JSON.parse(req.body.products)
+                        : req.body.products;
                 objData.products = convertId;
             }
 
             // Determine products to remove or update
             const productRemove = [
-                ...exist.products.filter(item => !convertId.includes(item)),
-                ...convertId.filter(item => !exist.products.includes(item))
+                ...exist.products.filter((item) => !convertId.includes(item)),
+                ...convertId.filter((item) => !exist.products.includes(item)),
             ];
 
             if (objData.startDate) {
                 const now = new Date(objData.startDate);
-                objData.startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                objData.startDate = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                );
             }
             if (objData.endDate) {
                 const now = new Date(objData.endDate);
-                objData.endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                objData.endDate = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    now.getDate(),
+                );
             }
 
             // Prepare bulk operations
             const bulkOps = [];
 
             if (productRemove.length > 0 && Number(exist.type) === 1) {
-                productRemove.forEach(prodId => {
+                productRemove.forEach((prodId) => {
                     bulkOps.push({
                         updateOne: {
-                            filter: { _id: prodId, "discountSpecial.promotion": req.params.id },
+                            filter: {
+                                _id: prodId,
+                                "discountSpecial.promotion": req.params.id,
+                            },
                             update: {
                                 $set: {
                                     discountSpecial: {
-                                        promotion: null,
+                                        promotionRef: null,
                                         amount: 0,
                                         qtyMin: 0,
                                         qtyFree: 0,
                                         startDate: null,
                                         endDate: null,
-                                        selectedDay: null
-                                    }
-                                }
-                            }
-                        }
+                                        selectedDay: null,
+                                    },
+                                },
+                            },
+                        },
                     });
                 });
             }
 
             if (convertId.length > 0) {
-                convertId.forEach(prodId => {
+                convertId.forEach((prodId) => {
                     const newDiscount = {
-                        promotion: req.params.id,
+                        promotionRef: req.params.id,
                         amount: objData.amount,
                         qtyMin: objData.qtyMin,
                         qtyFree: objData.qtyFree,
@@ -388,8 +438,8 @@ export const editPromotion = async (req, res) => {
                     bulkOps.push({
                         updateOne: {
                             filter: { _id: prodId },
-                            update: { $set: { discountSpecial: newDiscount } }
-                        }
+                            update: { $set: { discountSpecial: newDiscount } },
+                        },
                     });
                 });
             }
@@ -410,8 +460,8 @@ export const editPromotion = async (req, res) => {
                     format: "webp",
                     transformation: [
                         { width: 800, height: 800, crop: "fit" },
-                        { quality: "auto:low" }
-                    ]
+                        { quality: "auto:low" },
+                    ],
                 });
 
                 objData.image = cloud.secure_url;
@@ -419,14 +469,17 @@ export const editPromotion = async (req, res) => {
             }
 
             // Update the promotion with new data
-            const updatedData = await Promotion.findByIdAndUpdate(req.params.id, { $set: objData }, { new: true });
+            const updatedData = await Promotion.findByIdAndUpdate(
+                req.params.id,
+                { $set: objData },
+                { new: true },
+            );
             return res.json(updatedData);
-        });
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+        } catch (err) {
+            return res.status(500).json({ message: err.message });
+        }
+    });
 };
-
 
 // DELETE A SPECIFIC DATA
 export const deletePromotion = async (req, res) => {
@@ -447,7 +500,10 @@ export const deletePromotion = async (req, res) => {
             for (const prodId of exist.products) {
                 bulkOps.push({
                     updateOne: {
-                        filter: { _id: prodId, "discountSpecial.promotion": req.params.id },
+                        filter: {
+                            _id: prodId,
+                            "discountSpecial.promotion": req.params.id,
+                        },
                         update: {
                             $set: {
                                 discountSpecial: {
@@ -455,11 +511,11 @@ export const deletePromotion = async (req, res) => {
                                     qtyMin: 0,
                                     qtyFree: 0,
                                     startDate: null,
-                                    endDate: null
-                                }
-                            }
-                        }
-                    }
+                                    endDate: null,
+                                },
+                            },
+                        },
+                    },
                 });
             }
         }

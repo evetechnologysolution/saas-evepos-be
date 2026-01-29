@@ -3,161 +3,120 @@ import mongoosePaginate from "mongoose-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
-const DataSchema = mongoose.Schema({
-    name: {
-        type: String,
-        required: true,
-        trim: true,
-    },
-    image: {
-        type: String
-    },
-    imageId: {
-        type: String
-    },
-    price: {
-        type: Number,
-        required: true
-    },
-    productionPrice: {
-        type: Number,
-        default: 0
-    },
-    productionNotes: {
-        type: String,
-        trim: true,
-        default: ""
-    },
-    discount: {
-        promotion: {
+const DataSchema = mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        image: {
+            type: String,
+        },
+        imageId: {
+            type: String,
+        },
+        price: {
+            type: Number,
+            required: true,
+        },
+        productionPrice: {
+            type: Number,
+            default: 0,
+        },
+        productionNotes: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        promotionRef: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Promotions",
             default: null,
-            set: val => val === "" ? null : val
+            set: (val) => (val === "" ? null : val),
         },
-        amount: {
-            type: Number,
-            default: 0
-        },
-        startDate: {
-            type: Date,
-            default: null
-        },
-        endDate: {
-            type: Date,
-            default: null
-        }
-    },
-    discountSpecial: {
-        promotion: {
+        category: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "PromotionSpecial",
+            ref: "Categories",
             default: null,
-            set: val => val === "" ? null : val
+            set: (val) => (val === "" ? null : val),
         },
-        amount: {
-            type: Number,
-            default: 0
-        },
-        qtyMin: {
-            type: Number,
-            default: 0
-        },
-        qtyFree: {
-            type: Number,
-            default: 0
-        },
-        startDate: {
-            type: Date,
-            default: null
-        },
-        endDate: {
-            type: Date,
-            default: null
-        },
-        selectedDay: {
-            type: Number,
-            default: null
-        }
-    },
-    category: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Categories",
-        default: null,
-        set: val => val === "" ? null : val
-    },
-    subcategory: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Subcategories",
-        default: null,
-        set: val => val === "" ? null : val
-    },
-    description: {
-        type: String,
-        trim: true,
-        default: ""
-    },
-    unit: {
-        type: String,
-        trim: true,
-        lowercase: true,
-        default: "pcs"
-    },
-    isAvailable: {
-        type: Boolean,
-        default: true
-    },
-    extraNotes: {
-        type: Boolean,
-        default: false,
-    },
-    listNumber: {
-        type: Number,
-        default: 0
-    },
-    amountKg: {
-        type: Number,
-        default: 0
-    },
-    variant: {
-        type: [
-            {
-                variantRef: {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: "Variants",
-                    default: null,
-                    set: val => val === "" ? null : val
-                },
-                isMandatory: {
-                    type: Boolean,
-                    default: false
-                },
-                isMultiple: {
-                    type: Boolean,
-                    default: false
-                }
-            },
-        ],
-        default: []
-    },
-    isRecommended: {
-        type: Boolean,
-        default: false
-    },
-    tenantRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Tenants",
-        default: null,
-        set: val => val === "" ? null : val
-    },
-    outletRef: {
-        type: [{
+        subcategory: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Outlets",
-        }],
-        default: []
-    }
-}, { timestamps: true });
+            ref: "Subcategories",
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
+        description: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        unit: {
+            type: String,
+            trim: true,
+            lowercase: true,
+            default: "pcs",
+        },
+        isAvailable: {
+            type: Boolean,
+            default: true,
+        },
+        extraNotes: {
+            type: Boolean,
+            default: false,
+        },
+        listNumber: {
+            type: Number,
+            default: 0,
+        },
+        amountKg: {
+            type: Number,
+            default: 0,
+        },
+        variant: {
+            type: [
+                {
+                    variantRef: {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "Variants",
+                        default: null,
+                        set: (val) => (val === "" ? null : val),
+                    },
+                    isMandatory: {
+                        type: Boolean,
+                        default: false,
+                    },
+                    isMultiple: {
+                        type: Boolean,
+                        default: false,
+                    },
+                },
+            ],
+            default: [],
+        },
+        isRecommended: {
+            type: Boolean,
+            default: false,
+        },
+        tenantRef: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Tenants",
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
+        outletRef: {
+            type: [
+                {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "Outlets",
+                },
+            ],
+            default: [],
+        },
+    },
+    { timestamps: true },
+);
 
 DataSchema.pre("save", function (next) {
     if (this.name) {
@@ -181,6 +140,33 @@ DataSchema.pre("findOneAndUpdate", function (next) {
     }
     next();
 });
+
+DataSchema.virtual("discount").get(function () {
+    const promo = this.promotionRef;
+    if (!promo) {
+        return { isAvailable: false };
+    }
+
+    const currDate = new Date();
+
+    const isDateValid = promo.startDate <= currDate && (!promo.endDate || promo.endDate >= currDate);
+
+    const isDayValid = !promo.selectedDay || promo.selectedDay.length === 0 || promo.selectedDay.includes(currDate.getDay());
+
+    const isAvailable = promo.isAvailable === true && (promo.amount > 0 || promo.qtyMin > 0) && isDateValid && isDayValid;
+
+    return {
+        name: promo.name,
+        amount: promo.amount,
+        qtyMin: promo.qtyMin,
+        qtyFree: promo.qtyFree,
+        isDailyPromotion: isAvailable,
+        isAvailable,
+    };
+});
+
+DataSchema.set("toJSON", { virtuals: true });
+DataSchema.set("toObject", { virtuals: true });
 
 DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);

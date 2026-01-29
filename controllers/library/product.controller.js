@@ -6,7 +6,7 @@ import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
-export const getAllProduct = async (req, res) => {
+export const getAllRawProduct = async (req, res) => {
     try {
         const { category, subcategory } = req.query;
         let qMatch = {};
@@ -78,17 +78,14 @@ export const getAllProduct = async (req, res) => {
             {
                 $lookup: {
                     from: "promotions",
-                    localField: "discount.promotion",
+                    localField: "promotionRef",
                     foreignField: "_id",
-                    as: "promo",
+                    as: "promoRef",
                 },
             },
             {
-                $lookup: {
-                    from: "promotionspecials",
-                    localField: "discountSpecial.promotion",
-                    foreignField: "_id",
-                    as: "specialPromo",
+                $addFields: {
+                    promo: { $arrayElemAt: ["$promoRef", 0] },
                 },
             },
             {
@@ -97,75 +94,60 @@ export const getAllProduct = async (req, res) => {
                         $cond: {
                             if: {
                                 $and: [
-                                    { $eq: [{ $arrayElemAt: ["$promo.isAvailable", 0] }, true] },
-                                    { $gt: ["$discount.amount", 0] },
-                                    { $lte: ["$discount.startDate", currDate] },
+                                    { $eq: ["$promo.isAvailable", true] },
+                                    { $or: [{ $gt: ["$promo.amount", 0] }, { $gt: ["$promo.qtyMin", 0] }] },
+                                    { $lte: ["$promo.startDate", currDate] },
                                     {
                                         $or: [
-                                            { $eq: ["$discount.endDate", null] },
-                                            { $not: { $ifNull: ["$discount.endDate", false] } },
-                                            { $gte: ["$discount.endDate", currDate] }
-                                        ]
-                                    }
-                                ]
-                            },
-                            then: true,
-                            else: false
-                        }
-                    },
-                    // Tambahan nama
-                    "discount.name": {
-                        $arrayElemAt: ["$promo.name", 0]
-                    }
-                }
-            },
-            {
-                $addFields: {
-                    "discountSpecial.isAvailable": {
-                        $cond: {
-                            if: {
-                                $and: [
-                                    { $eq: [{ $arrayElemAt: ["$specialPromo.isAvailable", 0] }, true] },
-                                    {
-                                        $or: [
-                                            { $gt: ["$discountSpecial.amount", 0] },
-                                            { $gt: ["$discountSpecial.qtyMin", 0] }
-                                        ]
-                                    },
-                                    { $lte: ["$discountSpecial.startDate", currDate] },
-                                    {
-                                        $or: [
-                                            { $eq: ["$discountSpecial.endDate", null] },
-                                            { $not: { $ifNull: ["$discountSpecial.endDate", false] } },
-                                            { $gte: ["$discountSpecial.endDate", currDate] }
-                                        ]
+                                            { $eq: ["$promo.endDate", null] },
+                                            { $not: { $ifNull: ["$promo.endDate", false] } },
+                                            { $gte: ["$promo.endDate", currDate] },
+                                        ],
                                     },
                                     // Tambahkan kondisi untuk mencocokkan hari
-                                    { $eq: ["$discountSpecial.selectedDay", { $dayOfWeek: currDate }] },
-                                    // { $in: [{ $dayOfWeek: currDate }, "$discountSpecial.selectedDay"] }, // jika array
-                                ]
+                                    {
+                                        $or: [
+                                            // setiap hari (null atau [])
+                                            {
+                                                $or: [
+                                                    { $eq: ["$promo.selectedDay", null] },
+                                                    {
+                                                        $and: [
+                                                            { $isArray: "$promo.selectedDay" },
+                                                            { $eq: [{ $size: "$promo.selectedDay" }, 0] },
+                                                        ],
+                                                    },
+                                                ],
+                                            },
+                                            // hari tertentu
+                                            {
+                                                $and: [
+                                                    { $isArray: "$promo.selectedDay" },
+                                                    { $gt: [{ $size: "$promo.selectedDay" }, 0] },
+                                                    { $in: [{ $dayOfWeek: currDate }, "$promo.selectedDay"] },
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                ],
                             },
                             then: true,
-                            else: false
-                        }
+                            else: false,
+                        },
                     },
-                    // Tambahan nama
-                    "discountSpecial.name": {
-                        $arrayElemAt: ["$specialPromo.name", 0]
-                    }
-                }
+                },
             },
             {
                 $addFields: {
                     category: { $arrayElemAt: ["$category", 0] },
-                    subcategory: { $arrayElemAt: ["$subcategory", 0] }
-                }
+                    subcategory: { $arrayElemAt: ["$subcategory", 0] },
+                },
             },
             {
                 $sort: {
-                    "isRecommended": -1,
-                    "listNumber": 1,
-                    "name": 1,
+                    isRecommended: -1,
+                    listNumber: 1,
+                    name: 1,
                 },
             },
             {
@@ -187,65 +169,20 @@ export const getAllProduct = async (req, res) => {
                     isAvailable: 1,
                     category: {
                         _id: "$category._id",
-                        name: "$category.name"
+                        name: "$category.name",
                     },
                     subcategory: {
                         _id: "$subcategory._id",
-                        name: "$subcategory.name"
+                        name: "$subcategory.name",
                     },
                     discount: {
-                        name: {
-                            $cond: {
-                                if: { $eq: ["$discountSpecial.isAvailable", true] },
-                                then: "$discountSpecial.name",
-                                else: "$discount.name"
-                            }
-                        },
-                        amount: {
-                            $cond: {
-                                if: { $eq: ["$discountSpecial.isAvailable", true] },
-                                then: "$discountSpecial.amount",
-                                else: "$discount.amount"
-                            }
-                        },
-                        qtyMin: {
-                            $cond: {
-                                if: { $eq: ["$discountSpecial.isAvailable", true] },
-                                then: "$discountSpecial.qtyMin",
-                                else: { $literal: 0 }
-                            }
-                        },
-                        qtyFree: {
-                            $cond: {
-                                if: { $eq: ["$discountSpecial.isAvailable", true] },
-                                then: "$discountSpecial.qtyFree",
-                                else: { $literal: 0 }
-                            }
-                        },
-                        isDailyPromotion: {
-                            $cond: {
-                                if: { $or: ["$discountSpecial.isAvailable", "$discount.isAvailable"] },
-                                then: true,
-                                else: false
-                            }
-                        },
-                        isAvailable: {
-                            $cond: {
-                                if: { $eq: ["$discountSpecial.isAvailable", true] },
-                                then: { $literal: true },
-                                else: "$discount.isAvailable"
-                            }
-                        }
+                        name: "$promo.name",
+                        amount: "$promo.amount",
+                        qtyMin: "$promo.qtyMin",
+                        qtyFree: "$promo.qtyFree",
+                        isDailyPromotion: "$discount.isAvailable",
+                        isAvailable: "$discount.isAvailable",
                     },
-                    // discount: {
-                    //     amount: 1,
-                    //     isAvailable: 1,
-                    // },
-                    // discountSpecial: {
-                    //     amount: 1,
-                    //     selectedDay: 1,
-                    //     isAvailable: 1,
-                    // },
                     variant: {
                         $map: {
                             input: "$variant",
@@ -263,25 +200,25 @@ export const getAllProduct = async (req, res) => {
                                                             input: "$variantDetails",
                                                             as: "variantDetail",
                                                             cond: {
-                                                                $eq: ["$$variantDetail._id", "$$variantItem.variantRef"]
-                                                            }
-                                                        }
+                                                                $eq: ["$$variantDetail._id", "$$variantItem.variantRef"],
+                                                            },
+                                                        },
                                                     },
-                                                    0
-                                                ]
-                                            }
+                                                    0,
+                                                ],
+                                            },
                                         },
                                         in: {
                                             _id: "$$variantDetailsFiltered._id",
                                             name: "$$variantDetailsFiltered.name",
-                                            options: "$$variantDetailsFiltered.options"
+                                            options: "$$variantDetailsFiltered.options",
                                             // Explicitly avoid projecting date or any other unnecessary fields
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
                 },
             },
         ]);
@@ -291,13 +228,13 @@ export const getAllProduct = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
 
 // GETTING ALL THE DATA
-export const getPaginateProduct = async (req, res) => {
+export const getAllProduct = async (req, res) => {
     try {
         const { page, perPage, search, sort } = req.query;
         let qMatch = {};
@@ -312,7 +249,7 @@ export const getPaginateProduct = async (req, res) => {
                 ...qMatch,
                 name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
 
         let sortObj = { name: 1 }; // default
         if (sort && sort.trim() !== "") {
@@ -333,18 +270,30 @@ export const getPaginateProduct = async (req, res) => {
                     path: "subcategory",
                     select: ["name"],
                 },
+                {
+                    path: "promotionRef",
+                    select: "name type amount qtyMin qtyFree startDate endDate selectedDay isAvailable",
+                },
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
-        }
+            lean: { virtuals: true },
+        };
         const listofData = await Product.paginate(qMatch, options);
+
+        // manipulasi promotionRef tapi discount tetap
+        listofData.docs = listofData.docs.map(({ promotionRef, ...rest }) => ({
+            ...rest,
+            promotionRef: promotionRef?._id || null,
+        }));
+
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -362,7 +311,7 @@ export const getProductById = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -373,12 +322,12 @@ export const addProduct = async (req, res) => {
         if (err instanceof multer.MulterError) {
             return res.status(400).json({
                 status: "Failed",
-                message: "Failed to upload image",
+                message: err?.message || "Failed to upload image",
             });
         } else if (err) {
             return res.status(400).json({
                 status: "Failed",
-                message: err.message.message,
+                message: err?.message || "Failed to upload image",
             });
         }
 
@@ -393,8 +342,8 @@ export const addProduct = async (req, res) => {
 
             if (req.body.variantString) {
                 const objVariant = {
-                    variant: JSON.parse(req.body.variantString)
-                }
+                    variant: JSON.parse(req.body.variantString),
+                };
                 objData = Object.assign(objData, objVariant);
             }
 
@@ -404,10 +353,13 @@ export const addProduct = async (req, res) => {
                     format: "webp",
                     transformation: [
                         { width: 800, height: 800, crop: "fit" }, // Adjust the width and height as needed
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
-                objData = Object.assign(objData, { image: cloud.secure_url, imageId: cloud.public_id });
+                objData = Object.assign(objData, {
+                    image: cloud.secure_url,
+                    imageId: cloud.public_id,
+                });
             }
 
             const data = new Product(objData);
@@ -423,14 +375,14 @@ export const addProduct = async (req, res) => {
                 return errorResponse(res, {
                     code: "VALIDATION_ERROR",
                     message: "Validasi gagal",
-                    errors
+                    errors,
                 });
             }
 
             return errorResponse(res, {
                 statusCode: 500,
                 code: "SERVER_ERROR",
-                message: err.message || "Terjadi kesalahan pada server"
+                message: err.message || "Terjadi kesalahan pada server",
             });
         }
     });
@@ -442,12 +394,12 @@ export const editProduct = async (req, res) => {
         if (err instanceof multer.MulterError) {
             return res.status(400).json({
                 status: "Failed",
-                message: "Failed to upload image",
+                message: err?.message || "Failed to upload image",
             });
         } else if (err) {
             return res.status(400).json({
                 status: "Failed",
-                message: err.message.message,
+                message: err?.message || "Failed to upload image",
             });
         }
 
@@ -461,8 +413,8 @@ export const editProduct = async (req, res) => {
 
             if (req.body.variantString) {
                 const objVariant = {
-                    variant: JSON.parse(req.body.variantString)
-                }
+                    variant: JSON.parse(req.body.variantString),
+                };
                 objData = Object.assign(objData, objVariant);
             }
 
@@ -478,25 +430,24 @@ export const editProduct = async (req, res) => {
                     format: "webp",
                     transformation: [
                         { width: 800, height: 800, crop: "fit" }, // Adjust the width and height as needed
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
-                objData = Object.assign(objData, { image: cloud.secure_url, imageId: cloud.public_id });
+                objData = Object.assign(objData, {
+                    image: cloud.secure_url,
+                    imageId: cloud.public_id,
+                });
             }
 
-
-            const updatedData = await Product.updateOne(
-                qMatch,
-                {
-                    $set: objData
-                }
-            );
+            const updatedData = await Product.updateOne(qMatch, {
+                $set: objData,
+            });
             return res.json(updatedData);
         } catch (err) {
             return errorResponse(res, {
                 statusCode: 500,
                 code: "SERVER_ERROR",
-                message: err.message || "Terjadi kesalahan pada server"
+                message: err.message || "Terjadi kesalahan pada server",
             });
         }
     });
@@ -522,7 +473,7 @@ export const deleteProduct = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };

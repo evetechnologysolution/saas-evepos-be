@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Service from "../../models/core/service.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
@@ -8,7 +9,9 @@ export const getAll = async (req, res) => {
         let query = {};
 
         if (search) {
-            const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
+            const objectId = mongoose.Types.ObjectId.isValid(search)
+                ? new mongoose.Types.createFromHexString(search)
+                : null;
 
             query = {
                 ...query,
@@ -37,7 +40,11 @@ export const getAll = async (req, res) => {
         const listofData = await Service.paginate(query, options);
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -47,7 +54,11 @@ export const getDataById = async (req, res) => {
         const spesificData = await Service.findById(req.params.id);
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -60,7 +71,11 @@ export const addData = async (req, res) => {
         const newData = await data.save();
         return res.json(newData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -71,17 +86,23 @@ export const editData = async (req, res) => {
 
         const spesificData = await Service.findById(req.params.id);
         if (!spesificData)
-            return res.status(404).json({ status: 404, message: "Data not found" });
+            return res
+                .status(404)
+                .json({ status: 404, message: "Data not found" });
 
         const updatedData = await Service.findOneAndUpdate(
             { _id: req.params.id },
             { $set: objData },
-            { upsert: false, new: true }
+            { upsert: false, new: true },
         );
 
         return res.json(updatedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -91,6 +112,10 @@ export const deleteData = async (req, res) => {
         const deletedData = await Service.deleteOne({ _id: req.params.id });
         return res.json(deletedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };

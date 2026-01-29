@@ -13,7 +13,7 @@ export const getHistory = async (req, res) => {
         // Filter berdasarkan member
         if (member) {
             pipeline.push({
-                $match: { member: mongoose.Types.ObjectId(member) },
+                $match: { memberRef: mongoose.Types.ObjectId(member) },
             });
         }
 
@@ -110,7 +110,7 @@ export const getHistory = async (req, res) => {
                         else: null, // Jika kosong, kembalikan null
                     },
                 },
-                orderPending: 1,
+                orderPendingRef: 1,
                 point: 1,
                 pointRemaining: 1,
                 pointPendingUsed: 1,

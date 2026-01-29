@@ -4,6 +4,10 @@ import User from "../../models/core/user.js";
 import Outlet from "../../models/core/outlet.js";
 import Subs from "../../models/core/subscription.js";
 import Invoice from "../../models/core/invoice.js";
+// Setup
+import Setting from "../../models/setting/settings.js";
+import Tax from "../../models/setting/tax.js";
+import Receipt from "../../models/setting/receipt.js";
 import { convertToE164 } from "../../lib/textSetting.js";
 import { ERROR_CONFIG } from "../../utils/errorMessages.js";
 
@@ -14,7 +18,9 @@ export const getAll = async (req, res) => {
         let query = {};
 
         if (search) {
-            const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
+            const objectId = mongoose.Types.ObjectId.isValid(search)
+                ? new mongoose.Types.createFromHexString(search)
+                : null;
 
             query = {
                 ...query,
@@ -63,7 +69,10 @@ export const editData = async (req, res) => {
         let objData = req.body;
 
         const spesificData = await Tenant.findById(req.params.id);
-        if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
+        if (!spesificData)
+            return res
+                .status(404)
+                .json({ status: 404, message: "Data not found" });
 
         // Build duplicate check query
         const duplicateQuery = [];
@@ -82,16 +91,19 @@ export const editData = async (req, res) => {
         if (duplicateQuery.length > 0) {
             const exist = await Tenant.findOne({
                 _id: { $ne: req.params.id },
-                $or: duplicateQuery
+                $or: duplicateQuery,
             });
 
-            if (exist) return res.status(400).json({ message: "Phone or email already exists" });
+            if (exist)
+                return res
+                    .status(400)
+                    .json({ message: "Phone or email already exists" });
         }
 
         const updatedData = await Tenant.findOneAndUpdate(
             { _id: req.params.id },
             { $set: objData },
-            { upsert: false, new: true }
+            { upsert: false, new: true },
         );
 
         return res.json(updatedData);
@@ -105,10 +117,11 @@ export const completeData = async (req, res) => {
     session.startTransaction();
 
     try {
-
         let objData = req.body;
 
-        const spesificData = await Tenant.findById(req.params.id).session(session);
+        const spesificData = await Tenant.findById(req.params.id).session(
+            session,
+        );
         if (!spesificData) {
             throw new Error("DATA_NOT_FOUND");
         }
@@ -129,7 +142,7 @@ export const completeData = async (req, res) => {
         if (duplicateQuery.length > 0) {
             const exist = await Tenant.findOne({
                 _id: { $ne: req.params.id },
-                $or: duplicateQuery
+                $or: duplicateQuery,
             });
 
             if (exist) {
@@ -138,6 +151,8 @@ export const completeData = async (req, res) => {
         }
 
         const _subsId = new mongoose.Types.ObjectId();
+        const _outletId = new mongoose.Types.ObjectId();
+        const businessName = objData?.businessName || "UTAMA";
         const today = new Date();
         const endDate = new Date(today);
         endDate.setDate(endDate.getDate() + 14);
@@ -147,14 +162,14 @@ export const completeData = async (req, res) => {
             Tenant.findOneAndUpdate(
                 { _id: req.params.id },
                 { $set: { ...objData, status: "active" } },
-                { new: true, session }
+                { new: true, session },
             ),
 
             // UPDATE USER (selalu)
             User.findOneAndUpdate(
                 { tenantRef: spesificData?._id, role: "owner" },
                 { $set: { fullname: objData?.ownerName || "" } },
-                { new: true, session }
+                { new: true, session },
             ),
 
             // UPDATE OUTLET (hanya sekali)
@@ -162,20 +177,22 @@ export const completeData = async (req, res) => {
                 { tenantRef: spesificData?._id },
                 {
                     $setOnInsert: {
-                        name: objData?.businessName || "UTAMA",
+                        _id: _outletId,
+                        name: businessName,
                         phone: objData?.phone || spesificData?.phone,
                         email: objData?.email || spesificData?.email,
                         address: objData?.address || spesificData?.address,
                         province: objData?.province || spesificData?.province,
                         city: objData?.city || spesificData?.city,
                         district: objData?.district || spesificData?.district,
-                        subdistrict: objData?.subdistrict || spesificData?.subdistrict,
+                        subdistrict:
+                            objData?.subdistrict || spesificData?.subdistrict,
                         zipCode: objData?.zipCode || spesificData?.zipCode,
                         tenantRef: spesificData?._id,
-                        isPrimary: true
-                    }
+                        isPrimary: true,
+                    },
                 },
-                { upsert: true, new: true, session }
+                { upsert: true, new: true, session },
             ),
 
             // SUBS (trial hanya sekali)
@@ -188,10 +205,10 @@ export const completeData = async (req, res) => {
                         tenantRef: spesificData?._id,
                         startDate: today,
                         endDate,
-                        status: "trial"
-                    }
+                        status: "trial",
+                    },
                 },
-                { upsert: true, new: true, session }
+                { upsert: true, new: true, session },
             ),
 
             // INVOICE (trial invoice sekali)
@@ -209,10 +226,58 @@ export const completeData = async (req, res) => {
                         },
                         notes: "trial",
                         status: "paid",
-                    }
+                    },
                 },
-                { upsert: true, new: true, session }
-            )
+                { upsert: true, new: true, session },
+            ),
+
+            // SETUP
+            Setting.findOneAndUpdate(
+                { tenantRef: spesificData?._id, outletRef: _outletId },
+                {
+                    $setOnInsert: {
+                        tenantRef: spesificData._id,
+                        outletRef: [_outletId],
+                        cashBalance: false,
+                        themeSetting: false,
+                        dineIn: {
+                            table: false,
+                            customer: false,
+                        },
+                    },
+                },
+                { new: true, upsert: true, session },
+            ),
+            Tax.findOneAndUpdate(
+                { tenantRef: spesificData?._id, outletRef: _outletId },
+                {
+                    $setOnInsert: {
+                        tenantRef: spesificData._id,
+                        outletRef: [_outletId],
+                        tax: {
+                            isActive: false,
+                            percentage: 0,
+                        },
+                        serviceCharge: {
+                            isActive: false,
+                            percentage: 0,
+                        },
+                    },
+                },
+                { new: true, upsert: true, session },
+            ),
+            Receipt.findOneAndUpdate(
+                { tenantRef: spesificData?._id, outletRef: _outletId },
+                {
+                    $setOnInsert: {
+                        tenantRef: spesificData._id,
+                        outletRef: [_outletId],
+                        name: businessName,
+                        isPrintLogo: false,
+                    },
+                },
+                { new: true, upsert: true, session },
+            ),
         ];
 
         const [tenantResult] = await Promise.all(promises);
@@ -222,9 +287,8 @@ export const completeData = async (req, res) => {
 
         return res.json({
             message: "Berhasil update data!",
-            tenant: tenantResult
+            tenant: tenantResult,
         });
-
     } catch (err) {
         if (session.inTransaction()) {
             await session.abortTransaction();
@@ -234,9 +298,8 @@ export const completeData = async (req, res) => {
 
         return res.status(error.status).json({
             code: err.message,
-            message: error.message
+            message: error.message,
         });
-
     } finally {
         session.endSession();
     }
@@ -268,9 +331,8 @@ export const deleteData = async (req, res) => {
         await session.commitTransaction();
 
         return res.status(200).json({
-            message: "Berhasil hapus data."
+            message: "Berhasil hapus data.",
         });
-
     } catch (err) {
         if (session.inTransaction()) {
             await session.abortTransaction();
@@ -280,9 +342,8 @@ export const deleteData = async (req, res) => {
 
         return res.status(error.status).json({
             code: err.message,
-            message: error.message
+            message: error.message,
         });
-
     } finally {
         session.endSession();
     }

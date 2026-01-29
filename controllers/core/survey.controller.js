@@ -10,11 +10,11 @@ export const getAll = async (req, res) => {
         if (search) {
             qMatch = {
                 ...qMatch,
-                name: { $regex: search, $options: 'i' }, // option i for case insensitivity to match upper and lower cases.
+                name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
 
-        let sortObj = { name: 1 }; // default
+        let sortObj = { createdAt: -1 }; // default
         if (sort && sort.trim() !== "") {
             sortObj = {};
             sort.split(",").forEach((rule) => {
@@ -27,14 +27,14 @@ export const getAll = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
-        }
+        };
         const listofData = await Survey.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -48,7 +48,7 @@ export const getDataById = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -64,7 +64,6 @@ export const addData = async (req, res) => {
         const data = new Survey(objData);
         const newData = await data.save();
         return res.json(newData);
-
     } catch (err) {
         if (err.name === "ValidationError") {
             const errors = {};
@@ -75,14 +74,14 @@ export const addData = async (req, res) => {
             return errorResponse(res, {
                 code: "VALIDATION_ERROR",
                 message: "Validasi gagal",
-                errors
+                errors,
             });
         }
 
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -92,18 +91,15 @@ export const editData = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
         let objData = req.body;
-        const updatedData = await Survey.updateOne(
-            qMatch,
-            {
-                $set: objData
-            }
-        );
+        const updatedData = await Survey.updateOne(qMatch, {
+            $set: objData,
+        });
         return res.json(updatedData);
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -118,7 +114,7 @@ export const deleteData = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
