@@ -52,6 +52,10 @@ app.use(async (req, res, next) => {
 });
 
 // ROUTES
+// user master
+import authUserMasterRoute from "./routes/user/authUserMaster.route.js";
+import userMasterRoute from "./routes/user/userMaster.route.js";
+
 // core
 import serviceRoutes from "./routes/core/service.route.js";
 import tenantRoute from "./routes/core/tenant.route.js";
@@ -107,6 +111,10 @@ import paymentRevenueRoute from "./routes/report/paymentRevenue.route.js";
 // import voucherMemberRoute from "./routes/voucherMember.route.js";
 // import helpRoute from "./routes/help.route.js";
 // import messageRoute from "./routes/message.route.js";
+
+// user master
+app.use("/api/auth-master", authUserMasterRoute);
+app.use("/api/user-master", userMasterRoute);
 
 // core
 app.use("/api/service", serviceRoutes);
