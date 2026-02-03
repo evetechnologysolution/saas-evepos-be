@@ -7,7 +7,7 @@ import {
   getMyUser,
   forgotPasswordByToken,
   changePasswordByToken,
-} from "../../controllers/user/authUserMaster.controller.js";
+} from "../../controllers/userMaster/authUserMaster.controller.js";
 
 const router = express.Router();
 

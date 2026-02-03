@@ -53,8 +53,8 @@ app.use(async (req, res, next) => {
 
 // ROUTES
 // user master
-import authUserMasterRoute from "./routes/user/authUserMaster.route.js";
-import userMasterRoute from "./routes/user/userMaster.route.js";
+import authUserMasterRoute from "./routes/userMaster/authUserMaster.route.js";
+import userMasterRoute from "./routes/userMaster/userMaster.route.js";
 
 // core
 import serviceRoutes from "./routes/core/service.route.js";

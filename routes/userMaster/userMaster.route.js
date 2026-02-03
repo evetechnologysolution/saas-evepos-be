@@ -7,7 +7,7 @@ import {
     editUser,
     changeUserPassword,
     deleteUser
-} from "../../controllers/user/userMaster.controller.js";
+} from "../../controllers/userMaster/userMaster.controller.js";
 
 const router = express.Router();
 
