@@ -73,6 +73,13 @@ DataSchema.pre("save", async function (next) {
 });
 
 // virtual
+DataSchema.virtual("subsRef", {
+    ref: "Subscriptions",
+    localField: "_id",
+    foreignField: "tenantRef",
+    justOne: true,
+});
+
 DataSchema.virtual("surveyRef", {
     ref: "Survey",
     localField: "_id",

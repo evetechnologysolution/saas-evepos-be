@@ -13,25 +13,25 @@ export const loginUser = async (req, res) => {
                 {
                     path: "tenantRef",
                     select: "ownerName businessName status",
-                    populate: {
-                        path: "surveyRef",
-                        select: "_id",
-                    },
+                    populate: [
+                        {
+                            path: "subsRef",
+                            select: "startDate endDate status -tenantRef",
+                        },
+                        {
+                            path: "surveyRef",
+                            select: "_id -tenantRef",
+                        },
+                    ],
                 },
             ])
             .lean({ virtuals: true });
 
-        if (!userExist)
-            return res.status(400).json({ message: "User is not found" });
-        if (!userExist?.isActive)
-            return res.status(400).json({ message: "User is not active" });
+        if (!userExist) return res.status(400).json({ message: "User is not found" });
+        if (!userExist?.isActive) return res.status(400).json({ message: "User is not active" });
 
-        const validPassword = await bcrypt.compare(
-            req.body.password,
-            userExist.password,
-        );
-        if (!validPassword)
-            return res.status(400).json({ message: "Invalid password" });
+        const validPassword = await bcrypt.compare(req.body.password, userExist.password);
+        if (!validPassword) return res.status(400).json({ message: "Invalid password" });
 
         // Create and asign a token
         const token = jwt.sign(
@@ -70,10 +70,16 @@ export const getMyUser = async (req, res) => {
                 {
                     path: "tenantRef",
                     select: "ownerName businessName status",
-                    populate: {
-                        path: "surveyRef",
-                        select: "_id",
-                    },
+                    populate: [
+                        {
+                            path: "subsRef",
+                            select: "startDate endDate status -tenantRef",
+                        },
+                        {
+                            path: "surveyRef",
+                            select: "_id -tenantRef",
+                        },
+                    ],
                 },
             ])
             .lean({ virtuals: true });
@@ -103,8 +109,7 @@ export const forgotPasswordByToken = async (req, res) => {
 
         // Generate a new token
         const token = nanoid(64);
-        const fixUrl =
-            baseUrl || process.env.FE_URL || "https://saas-evepos.vercel.app";
+        const fixUrl = baseUrl || process.env.FE_URL || "https://saas-evepos.vercel.app";
         const resetUrl = `${fixUrl}/auth/reset-password?token=${token}`;
 
         // Update the member with the new OTP
@@ -139,21 +144,16 @@ export const changePasswordByToken = async (req, res) => {
     try {
         const { token, password } = req.body;
 
-        if (!token)
-            return res.status(400).json({ message: "Token wajib diisi." });
+        if (!token) return res.status(400).json({ message: "Token wajib diisi." });
 
-        if (!password)
-            return res.status(400).json({ message: "Password wajib diisi." });
+        if (!password) return res.status(400).json({ message: "Password wajib diisi." });
 
         // Check if the member exists
         const existingUser = await User.findOne({
             resetToken: token,
             resetTokenExpiry: { $gt: Date.now() },
         });
-        if (!existingUser)
-            return res
-                .status(400)
-                .json({ message: "Token tidak valid atau sudah kedaluwarsa." });
+        if (!existingUser) return res.status(400).json({ message: "Token tidak valid atau sudah kedaluwarsa." });
 
         // Hash the new password
         const salt = await bcrypt.genSalt(10);
