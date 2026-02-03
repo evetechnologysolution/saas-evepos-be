@@ -1,28 +1,21 @@
-import express from "express";
-// import { isAuth } from "../middleware/auth.js";
-import {
-    getAll,
-    getDataById,
-    addData,
-    editData,
-    deleteData
-} from "../../controllers/core/service.controller.js";
+import { isAuthMaster } from "../../middleware/auth.js";
+import { getAll, getDataById, addData, editData, deleteData } from "../../controllers/core/service.controller.js";
 
 const router = express.Router();
 
 // GETTING ALL THE DATA
-router.get("/", getAll);
+router.get("/", isAuthMaster, getAll);
 
 // GET A SPECIFIC DATA
-router.get("/:id", getDataById);
+router.get("/:id", isAuthMaster, getDataById);
 
 // CREATE NEW DATA
-router.post("/", addData);
+router.post("/", isAuthMaster, addData);
 
 // UPDATE A SPECIFIC DATA
-router.patch("/:id", editData);
+router.patch("/:id", isAuthMaster, editData);
 
 // DELETE A SPECIFIC DATA
-router.delete("/:id", deleteData);
+router.delete("/:id", isAuthMaster, deleteData);
 
 export default router;

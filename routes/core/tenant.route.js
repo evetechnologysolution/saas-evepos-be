@@ -1,26 +1,20 @@
 import express from "express";
-// import { isAuth } from "../middleware/auth.js";
-import {
-    getAll,
-    getDataById,
-    editData,
-    completeData,
-    deleteData
-} from "../../controllers/core/tenant.controller.js";
+import { isAuthMaster } from "../../middleware/auth.js";
+import { getAll, getDataById, editData, completeData, deleteData } from "../../controllers/core/tenant.controller.js";
 
 const router = express.Router();
 
 // GETTING ALL THE DATA
-router.get("/", getAll);
+router.get("/", isAuthMaster, getAll);
 
 // GET A SPECIFIC DATA
-router.get("/:id", getDataById);
+router.get("/:id", isAuthMaster, getDataById);
 
 // UPDATE A SPECIFIC DATA
-router.patch("/:id", editData);
-router.patch("/complete/:id", completeData);
+router.patch("/:id", isAuthMaster, editData);
+router.patch("/complete/:id", completeData); // saat register, tidak perlu auth
 
 // DELETE A SPECIFIC DATA
-router.delete("/:id", deleteData);
+router.delete("/:id", isAuthMaster, deleteData);
 
 export default router;
