@@ -18,16 +18,11 @@ export const getAll = async (req, res) => {
         let query = {};
 
         if (search) {
-            const objectId = mongoose.Types.ObjectId.isValid(search)
-                ? new mongoose.Types.createFromHexString(search)
-                : null;
+            const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
 
             query = {
                 ...query,
-                $or: [
-                    { fullname: { $regex: search, $options: "i" } },
-                    ...(objectId ? [{ _id: objectId }] : []),
-                ],
+                $or: [{ fullname: { $regex: search, $options: "i" } }, ...(objectId ? [{ _id: objectId }] : [])],
             };
         }
 
@@ -43,6 +38,16 @@ export const getAll = async (req, res) => {
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
+            populate: [
+                {
+                    path: "subsRef",
+                    select: "-tenantRef startDate endDate status",
+                    populate: {
+                        path: "serviceRef",
+                        select: "name",
+                    },
+                },
+            ],
             sort: sortObj,
         };
 
@@ -69,10 +74,7 @@ export const editData = async (req, res) => {
         let objData = req.body;
 
         const spesificData = await Tenant.findById(req.params.id);
-        if (!spesificData)
-            return res
-                .status(404)
-                .json({ status: 404, message: "Data not found" });
+        if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
 
         // Build duplicate check query
         const duplicateQuery = [];
@@ -94,17 +96,10 @@ export const editData = async (req, res) => {
                 $or: duplicateQuery,
             });
 
-            if (exist)
-                return res
-                    .status(400)
-                    .json({ message: "Phone or email already exists" });
+            if (exist) return res.status(400).json({ message: "Phone or email already exists" });
         }
 
-        const updatedData = await Tenant.findOneAndUpdate(
-            { _id: req.params.id },
-            { $set: objData },
-            { upsert: false, new: true },
-        );
+        const updatedData = await Tenant.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
 
         return res.json(updatedData);
     } catch (err) {
@@ -119,9 +114,7 @@ export const completeData = async (req, res) => {
     try {
         let objData = req.body;
 
-        const spesificData = await Tenant.findById(req.params.id).session(
-            session,
-        );
+        const spesificData = await Tenant.findById(req.params.id).session(session);
         if (!spesificData) {
             throw new Error("DATA_NOT_FOUND");
         }
@@ -159,11 +152,7 @@ export const completeData = async (req, res) => {
 
         const promises = [
             // UPDATE TENANT (selalu)
-            Tenant.findOneAndUpdate(
-                { _id: req.params.id },
-                { $set: { ...objData, status: "active" } },
-                { new: true, session },
-            ),
+            Tenant.findOneAndUpdate({ _id: req.params.id }, { $set: { ...objData, status: "active" } }, { new: true, session }),
 
             // UPDATE USER (selalu)
             User.findOneAndUpdate(
@@ -185,8 +174,7 @@ export const completeData = async (req, res) => {
                         province: objData?.province || spesificData?.province,
                         city: objData?.city || spesificData?.city,
                         district: objData?.district || spesificData?.district,
-                        subdistrict:
-                            objData?.subdistrict || spesificData?.subdistrict,
+                        subdistrict: objData?.subdistrict || spesificData?.subdistrict,
                         zipCode: objData?.zipCode || spesificData?.zipCode,
                         tenantRef: spesificData?._id,
                         isPrimary: true,
