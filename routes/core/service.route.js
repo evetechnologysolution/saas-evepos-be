@@ -1,10 +1,11 @@
 import express from "express";
 import { isAuthMaster } from "../../middleware/auth.js";
-import { getAll, getDataById, addData, editData, deleteData } from "../../controllers/core/service.controller.js";
+import { getAll, getAllRaw, getDataById, addData, editData, deleteData } from "../../controllers/core/service.controller.js";
 
 const router = express.Router();
 
 // GETTING ALL THE DATA
+router.get("/all", isAuthMaster, getAllRaw);
 router.get("/", isAuthMaster, getAll);
 
 // GET A SPECIFIC DATA

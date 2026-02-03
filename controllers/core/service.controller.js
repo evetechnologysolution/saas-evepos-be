@@ -9,16 +9,11 @@ export const getAll = async (req, res) => {
         let query = {};
 
         if (search) {
-            const objectId = mongoose.Types.ObjectId.isValid(search)
-                ? new mongoose.Types.createFromHexString(search)
-                : null;
+            const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
 
             query = {
                 ...query,
-                $or: [
-                    { name: { $regex: search, $options: "i" } },
-                    ...(objectId ? [{ _id: objectId }] : []),
-                ],
+                $or: [{ name: { $regex: search, $options: "i" } }, ...(objectId ? [{ _id: objectId }] : [])],
             };
         }
 
@@ -38,6 +33,19 @@ export const getAll = async (req, res) => {
         };
 
         const listofData = await Service.paginate(query, options);
+        return res.json(listofData);
+    } catch (err) {
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
+    }
+};
+
+export const getAllRaw = async (req, res) => {
+    try {
+        const listofData = await Service.find().sort({ listNumber: 1 }).lean();
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
@@ -85,16 +93,9 @@ export const editData = async (req, res) => {
         let objData = req.body;
 
         const spesificData = await Service.findById(req.params.id);
-        if (!spesificData)
-            return res
-                .status(404)
-                .json({ status: 404, message: "Data not found" });
+        if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
 
-        const updatedData = await Service.findOneAndUpdate(
-            { _id: req.params.id },
-            { $set: objData },
-            { upsert: false, new: true },
-        );
+        const updatedData = await Service.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
 
         return res.json(updatedData);
     } catch (err) {
