@@ -58,7 +58,7 @@ const DataSchema = mongoose.Schema({
         type: String,
         lowercase: true,
         trim: true,
-        enum: ["pending", "active", "inactive"],
+        enum: ["pending", "active", "inactive", "suspend"],
         default: "pending"
     },
 }, { timestamps: true });
