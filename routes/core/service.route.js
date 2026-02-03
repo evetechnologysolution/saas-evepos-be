@@ -1,3 +1,4 @@
+import express from "express";
 import { isAuthMaster } from "../../middleware/auth.js";
 import { getAll, getDataById, addData, editData, deleteData } from "../../controllers/core/service.controller.js";
 
