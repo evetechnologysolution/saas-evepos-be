@@ -40,6 +40,9 @@ export const getAll = async (req, res) => {
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
+            sort: sortObj,
+            lean: true,
+            leanWithId: false,
             populate: [
                 {
                     path: "subsRef",
@@ -50,7 +53,6 @@ export const getAll = async (req, res) => {
                     },
                 },
             ],
-            sort: sortObj,
         };
 
         const listofData = await Tenant.paginate(query, options);
@@ -63,7 +65,18 @@ export const getAll = async (req, res) => {
 // GET A SPECIFIC DATA
 export const getDataById = async (req, res) => {
     try {
-        const spesificData = await Tenant.findById(req.params.id);
+        const spesificData = await Tenant.findById(req.params.id)
+            .populate([
+                {
+                    path: "subsRef",
+                    select: "-tenantRef startDate endDate status",
+                    populate: {
+                        path: "serviceRef",
+                        select: "name",
+                    },
+                },
+            ])
+            .lean();
         return res.json(spesificData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
