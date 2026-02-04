@@ -8,6 +8,8 @@ import Invoice from "../../models/core/invoice.js";
 import Setting from "../../models/setting/settings.js";
 import Tax from "../../models/setting/tax.js";
 import Receipt from "../../models/setting/receipt.js";
+//
+import { generateRandomId } from "../../lib/generateRandom.js";
 import { convertToE164 } from "../../lib/textSetting.js";
 import { ERROR_CONFIG } from "../../utils/errorMessages.js";
 
@@ -150,6 +152,10 @@ export const completeData = async (req, res) => {
         const endDate = new Date(today);
         endDate.setDate(endDate.getDate() + 14);
 
+        // subsId
+        const currYear = new Date().getFullYear();
+        const number = generateRandomId();
+
         const promises = [
             // UPDATE TENANT (selalu)
             Tenant.findOneAndUpdate({ _id: req.params.id }, { $set: { ...objData, status: "active" } }, { new: true, session }),
@@ -189,6 +195,7 @@ export const completeData = async (req, res) => {
                 {
                     $setOnInsert: {
                         _id: _subsId,
+                        subsId: `SU${currYear}${number}`,
                         serviceRef: objData?.serviceRef,
                         tenantRef: spesificData?._id,
                         startDate: today,
