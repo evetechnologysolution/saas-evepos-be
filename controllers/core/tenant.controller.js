@@ -16,16 +16,31 @@ import { ERROR_CONFIG } from "../../utils/errorMessages.js";
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort } = req.query;
-        let query = {};
+        const { page, perPage, search, status, sort } = req.query;
+        let qMatch = {};
 
         if (search) {
             const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 $or: [{ fullname: { $regex: search, $options: "i" } }, ...(objectId ? [{ _id: objectId }] : [])],
             };
+        }
+
+        if (status) {
+            const fixStatus = status.replace(":ne", "").trim();
+            if (fixStatus) {
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
+                if (status.includes(":ne")) {
+                    qMatch.status = { $nin: fixStatusArray };
+                } else {
+                    qMatch.status = { $in: fixStatusArray };
+                }
+            }
         }
 
         let sortObj = { createdAt: -1 }; // default
@@ -55,7 +70,7 @@ export const getAll = async (req, res) => {
             ],
         };
 
-        const listofData = await Tenant.paginate(query, options);
+        const listofData = await Tenant.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
