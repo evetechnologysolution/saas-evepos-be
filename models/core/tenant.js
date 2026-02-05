@@ -58,7 +58,7 @@ const DataSchema = mongoose.Schema({
         type: String,
         lowercase: true,
         trim: true,
-        enum: ["pending", "active", "inactive", "suspend"],
+        enum: ["pending", "active", "inactive", "suspended"],
         default: "pending"
     },
 }, { timestamps: true });
@@ -73,6 +73,13 @@ DataSchema.pre("save", async function (next) {
 });
 
 // virtual
+DataSchema.virtual("subsRef", {
+    ref: "Subscriptions",
+    localField: "_id",
+    foreignField: "tenantRef",
+    justOne: true,
+});
+
 DataSchema.virtual("surveyRef", {
     ref: "Survey",
     localField: "_id",
