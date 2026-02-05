@@ -24,7 +24,14 @@ export const getAll = async (req, res) => {
 
             qMatch = {
                 ...qMatch,
-                $or: [{ fullname: { $regex: search, $options: "i" } }, ...(objectId ? [{ _id: objectId }] : [])],
+                $or: [
+                    ...(objectId ? [{ _id: objectId }] : []),
+                    { tenantId: { $regex: search, $options: "i" } },
+                    { ownerName: { $regex: search, $options: "i" } },
+                    { businessName: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                ],
             };
         }
 
