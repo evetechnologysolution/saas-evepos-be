@@ -49,7 +49,7 @@ app.use(async (req, res, next) => {
 
 // ROUTES
 // cron
-import cronRoute from "./routes/cron/cron.route.js"; // disambungkan ke cron-job.org
+import cronRoute from "./routes/cron/cron.route.js"; // disambungkan ke cron-job.org atau github actions
 
 // user master
 import authUserMasterRoute from "./routes/userMaster/authUserMaster.route.js";
@@ -114,7 +114,7 @@ import paymentRevenueRoute from "./routes/report/paymentRevenue.route.js";
 // import messageRoute from "./routes/message.route.js";
 
 // cron
-app.use("/api/cron", cronRoute); // disambungkan ke cron-job.org
+app.use("/api/cron", cronRoute); // disambungkan ke cron-job.org atau github actions
 
 // user master
 app.use("/api/auth-master", authUserMasterRoute);
