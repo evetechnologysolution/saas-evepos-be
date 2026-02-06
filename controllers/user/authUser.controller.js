@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../../models/core/user.js";
+import Subs from "../../models/core/subscription.js";
 import { sendUrlForgotPassword } from "../../lib/nodemailer.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
@@ -32,6 +33,19 @@ export const loginUser = async (req, res) => {
 
         const validPassword = await bcrypt.compare(req.body.password, userExist.password);
         if (!validPassword) return res.status(400).json({ message: "Invalid password" });
+
+        // ===== CEK SUBSCRIPTION =====
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        let subs = userExist?.tenantRef?.subsRef;
+
+        if (subs && subs.endDate && new Date(subs.endDate) < now && !["expired", "canceled", "pending"].includes(subs.status)) {
+            const updatedSubs = await Subs.findByIdAndUpdate(subs._id, { $set: { status: "expired" } }, { new: true }).lean();
+
+            // inject subs terbaru ke user
+            userExist.tenantRef.subsRef = updatedSubs;
+        }
 
         // Create and asign a token
         const token = jwt.sign(
@@ -83,7 +97,25 @@ export const getMyUser = async (req, res) => {
                 },
             ])
             .lean({ virtuals: true });
-        res.json({ user: userExist });
+
+        if (!userExist) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // ===== CEK & UPDATE SUBSCRIPTION =====
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        const subs = userExist?.tenantRef?.subsRef;
+
+        if (subs && subs.endDate && new Date(subs.endDate) < now && !["expired", "canceled", "pending"].includes(subs.status)) {
+            const updatedSubs = await Subs.findByIdAndUpdate(subs._id, { $set: { status: "expired" } }, { new: true }).lean();
+
+            // inject subscription terbaru ke response
+            userExist.tenantRef.subsRef = updatedSubs;
+        }
+
+        return res.json({ user: userExist });
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
