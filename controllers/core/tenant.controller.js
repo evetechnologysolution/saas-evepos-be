@@ -16,16 +16,38 @@ import { ERROR_CONFIG } from "../../utils/errorMessages.js";
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort } = req.query;
-        let query = {};
+        const { page, perPage, search, status, sort } = req.query;
+        let qMatch = {};
 
         if (search) {
             const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
 
-            query = {
-                ...query,
-                $or: [{ fullname: { $regex: search, $options: "i" } }, ...(objectId ? [{ _id: objectId }] : [])],
+            qMatch = {
+                ...qMatch,
+                $or: [
+                    ...(objectId ? [{ _id: objectId }] : []),
+                    { tenantId: { $regex: search, $options: "i" } },
+                    { ownerName: { $regex: search, $options: "i" } },
+                    { businessName: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                ],
             };
+        }
+
+        if (status) {
+            const fixStatus = status.replace(":ne", "").trim();
+            if (fixStatus) {
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
+                if (status.includes(":ne")) {
+                    qMatch.status = { $nin: fixStatusArray };
+                } else {
+                    qMatch.status = { $in: fixStatusArray };
+                }
+            }
         }
 
         let sortObj = { createdAt: -1 }; // default
@@ -55,7 +77,7 @@ export const getAll = async (req, res) => {
             ],
         };
 
-        const listofData = await Tenant.paginate(query, options);
+        const listofData = await Tenant.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -164,6 +186,7 @@ export const completeData = async (req, res) => {
         const today = new Date();
         const endDate = new Date(today);
         endDate.setDate(endDate.getDate() + 14);
+        endDate.setHours(0, 0, 0, 0);
 
         // subsId
         const currYear = new Date().getFullYear();

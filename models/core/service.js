@@ -42,9 +42,52 @@ const DataSchema = mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+const DataSchema = mongoose.Schema(
+    {
+        name: {
+            type: String,
+            uppercase: true,
+            trim: true,
+            required: [true, "Name wajib diisi"],
+            // "BASIC", "START UP", "ENTERPRISE"
+        },
+        price: {
+            yearly: {
+                type: Number,
+                default: 0,
+            },
+            monthly: {
+                type: Number,
+                default: 0,
+            },
+        },
+        discount: {
+            yearly: {
+                type: Number,
+                default: 0,
+            },
+            monthly: {
+                type: Number,
+                default: 0,
+            },
+        },
+        description: {
+            type: String,
+            default: "",
+        },
+        listNumber: {
+            type: Number,
+            default: 0,
+        },
+        isActive: {
+            type: Boolean,
+            default: true,
+        },
     },
   },
   { timestamps: true },
+);
+    { timestamps: true },
 );
 
 DataSchema.plugin(mongoosePaginate);
