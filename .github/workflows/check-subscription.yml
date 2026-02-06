@@ -1,0 +1,17 @@
+name: Check Subscription Daily
+
+on:
+    schedule:
+        - cron: "0 17 * * *" # 00:00 WIB (Asia/Jakarta)
+    workflow_dispatch: # optional, bisa run manual
+
+jobs:
+    check-subscription:
+        runs-on: ubuntu-latest
+
+        environment: ${{ github.ref_name == 'main' || github.ref_name == 'master' && 'Production' || 'Dev' }}
+
+        steps:
+            - name: Call subscription check API
+              run: |
+                  curl -X GET ${{ secrets.BE_BASE_URL }}/api/cron/check-subscription

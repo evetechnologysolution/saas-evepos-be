@@ -8,27 +8,46 @@ import Invoice from "../../models/core/invoice.js";
 import Setting from "../../models/setting/settings.js";
 import Tax from "../../models/setting/tax.js";
 import Receipt from "../../models/setting/receipt.js";
+//
+import { generateRandomId } from "../../lib/generateRandom.js";
 import { convertToE164 } from "../../lib/textSetting.js";
 import { ERROR_CONFIG } from "../../utils/errorMessages.js";
 
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort } = req.query;
-        let query = {};
+        const { page, perPage, search, status, sort } = req.query;
+        let qMatch = {};
 
         if (search) {
-            const objectId = mongoose.Types.ObjectId.isValid(search)
-                ? new mongoose.Types.createFromHexString(search)
-                : null;
+            const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 $or: [
-                    { fullname: { $regex: search, $options: "i" } },
                     ...(objectId ? [{ _id: objectId }] : []),
+                    { tenantId: { $regex: search, $options: "i" } },
+                    { ownerName: { $regex: search, $options: "i" } },
+                    { businessName: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
                 ],
             };
+        }
+
+        if (status) {
+            const fixStatus = status.replace(":ne", "").trim();
+            if (fixStatus) {
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
+                if (status.includes(":ne")) {
+                    qMatch.status = { $nin: fixStatusArray };
+                } else {
+                    qMatch.status = { $in: fixStatusArray };
+                }
+            }
         }
 
         let sortObj = { createdAt: -1 }; // default
@@ -44,9 +63,21 @@ export const getAll = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
+            lean: true,
+            leanWithId: false,
+            populate: [
+                {
+                    path: "subsRef",
+                    select: "-tenantRef startDate endDate status",
+                    populate: {
+                        path: "serviceRef",
+                        select: "name",
+                    },
+                },
+            ],
         };
 
-        const listofData = await Tenant.paginate(query, options);
+        const listofData = await Tenant.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -56,7 +87,18 @@ export const getAll = async (req, res) => {
 // GET A SPECIFIC DATA
 export const getDataById = async (req, res) => {
     try {
-        const spesificData = await Tenant.findById(req.params.id);
+        const spesificData = await Tenant.findById(req.params.id)
+            .populate([
+                {
+                    path: "subsRef",
+                    select: "-tenantRef startDate endDate status",
+                    populate: {
+                        path: "serviceRef",
+                        select: "name",
+                    },
+                },
+            ])
+            .lean();
         return res.json(spesificData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -69,10 +111,7 @@ export const editData = async (req, res) => {
         let objData = req.body;
 
         const spesificData = await Tenant.findById(req.params.id);
-        if (!spesificData)
-            return res
-                .status(404)
-                .json({ status: 404, message: "Data not found" });
+        if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
 
         // Build duplicate check query
         const duplicateQuery = [];
@@ -94,17 +133,10 @@ export const editData = async (req, res) => {
                 $or: duplicateQuery,
             });
 
-            if (exist)
-                return res
-                    .status(400)
-                    .json({ message: "Phone or email already exists" });
+            if (exist) return res.status(400).json({ message: "Phone or email already exists" });
         }
 
-        const updatedData = await Tenant.findOneAndUpdate(
-            { _id: req.params.id },
-            { $set: objData },
-            { upsert: false, new: true },
-        );
+        const updatedData = await Tenant.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
 
         return res.json(updatedData);
     } catch (err) {
@@ -119,9 +151,7 @@ export const completeData = async (req, res) => {
     try {
         let objData = req.body;
 
-        const spesificData = await Tenant.findById(req.params.id).session(
-            session,
-        );
+        const spesificData = await Tenant.findById(req.params.id).session(session);
         if (!spesificData) {
             throw new Error("DATA_NOT_FOUND");
         }
@@ -156,14 +186,15 @@ export const completeData = async (req, res) => {
         const today = new Date();
         const endDate = new Date(today);
         endDate.setDate(endDate.getDate() + 14);
+        endDate.setHours(0, 0, 0, 0);
+
+        // subsId
+        const currYear = new Date().getFullYear();
+        const number = generateRandomId();
 
         const promises = [
             // UPDATE TENANT (selalu)
-            Tenant.findOneAndUpdate(
-                { _id: req.params.id },
-                { $set: { ...objData, status: "active" } },
-                { new: true, session },
-            ),
+            Tenant.findOneAndUpdate({ _id: req.params.id }, { $set: { ...objData, status: "active" } }, { new: true, session }),
 
             // UPDATE USER (selalu)
             User.findOneAndUpdate(
@@ -185,8 +216,7 @@ export const completeData = async (req, res) => {
                         province: objData?.province || spesificData?.province,
                         city: objData?.city || spesificData?.city,
                         district: objData?.district || spesificData?.district,
-                        subdistrict:
-                            objData?.subdistrict || spesificData?.subdistrict,
+                        subdistrict: objData?.subdistrict || spesificData?.subdistrict,
                         zipCode: objData?.zipCode || spesificData?.zipCode,
                         tenantRef: spesificData?._id,
                         isPrimary: true,
@@ -201,6 +231,7 @@ export const completeData = async (req, res) => {
                 {
                     $setOnInsert: {
                         _id: _subsId,
+                        subsId: `SU${currYear}${number}`,
                         serviceRef: objData?.serviceRef,
                         tenantRef: spesificData?._id,
                         startDate: today,

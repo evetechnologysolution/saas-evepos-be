@@ -583,7 +583,7 @@ export const getPaidOrder = async (req, res) => {
         const { page, perPage, search, start, end, paidStart, paidEnd, sort } = req.query;
 
         let qMatch = {
-            $or: [{ status: { $regex: "paid", $options: "i" } }, { status: { $regex: "refund", $options: "i" } }],
+            status: { $in: [/^paid$/i, /^refund$/i] },
         };
 
         if (req.userData) {
@@ -670,7 +670,7 @@ export const getCloseCashierOrder = async (req, res) => {
     try {
         const { start, end } = req.query;
         let qMatch = {
-            $or: [{ status: { $regex: "paid", $options: "i" } }, { status: { $regex: "refund", $options: "i" } }],
+            status: { $in: [/^paid$/i, /^refund$/i] },
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
@@ -726,7 +726,7 @@ export const getExportOrder = async (req, res) => {
     try {
         const { search, start, end, paidStart, paidEnd, sort } = req.query;
         let qMatch = {
-            $or: [{ status: { $regex: "paid", $options: "i" } }, { status: { $regex: "refund", $options: "i" } }],
+            status: { $in: [/^paid$/i, /^refund$/i] },
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;

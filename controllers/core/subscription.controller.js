@@ -11,15 +11,10 @@ export const getAll = async (req, res) => {
         let query = {};
 
         if (search) {
-            const objectId = mongoose.Types.ObjectId.isValid(search)
-                ? new mongoose.Types.createFromHexString(search)
-                : null;
+            const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
 
             const services = await Service.find({
-                $or: [
-                    ...(objectId ? [{ _id: objectId }] : []),
-                    { name: { $regex: search, $options: "i" } },
-                ],
+                $or: [...(objectId ? [{ _id: objectId }] : []), { name: { $regex: search, $options: "i" } }],
             });
             const filteredService = services.map((item) => item._id);
 
@@ -57,6 +52,14 @@ export const getAll = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
+            lean: true,
+            leanWithId: false,
+            populate: [
+                {
+                    path: "tenantRef",
+                    select: "tenantId ownerName businessName businessType phone email",
+                },
+            ],
         };
 
         const listofData = await Subs.paginate(query, options);
@@ -73,7 +76,14 @@ export const getAll = async (req, res) => {
 // GET A SPECIFIC DATA
 export const getDataById = async (req, res) => {
     try {
-        const spesificData = await Subs.findById(req.params.id);
+        const spesificData = await Subs.findById(req.params.id)
+            .populate([
+                {
+                    path: "tenantRef",
+                    select: "tenantId ownerName businessName businessType phone email",
+                },
+            ])
+            .lean();
         return res.json(spesificData);
     } catch (err) {
         return errorResponse(res, {
@@ -107,16 +117,9 @@ export const editData = async (req, res) => {
         let objData = req.body;
 
         const spesificData = await Subs.findById(req.params.id);
-        if (!spesificData)
-            return res
-                .status(404)
-                .json({ status: 404, message: "Data not found" });
+        if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
 
-        const updatedData = await Subs.findOneAndUpdate(
-            { _id: req.params.id },
-            { $set: objData },
-            { upsert: false, new: true },
-        );
+        const updatedData = await Subs.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
 
         return res.json(updatedData);
     } catch (err) {

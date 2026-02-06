@@ -11,7 +11,7 @@ export const isAuthMaster = async (req, res, next) => {
             const token = req.headers.authorization.split(" ")[1];
             const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
 
-            const userMasterResult = await UserMaster.findOne({ _id: decoded._id, isMaster: true }).lean();
+            const userMasterResult = await UserMaster.findById(decoded._id).lean();
 
             if (userMasterResult) {
                 req.userData = {
@@ -44,7 +44,7 @@ export const isAuth = async (req, res, next) => {
             const token = req.headers.authorization.split(" ")[1];
             const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
 
-            const userResult = await User.findOne({ _id: decoded._id, isMaster: { $ne: true } }).lean();
+            const userResult = await User.findById(decoded._id).lean();
 
             if (userResult) {
                 let outletResult = null;

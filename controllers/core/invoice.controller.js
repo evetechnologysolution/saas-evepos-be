@@ -1,20 +1,22 @@
 import mongoose from "mongoose";
-import Service from "../../models/core/service.js";
+import Invoice from "../../models/core/invoice.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort } = req.query;
-        let query = {};
+        const { page, perPage, search, sort, tenant } = req.query;
+        let qMatch = {};
 
         if (search) {
-            const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
-
-            query = {
-                ...query,
-                $or: [{ name: { $regex: search, $options: "i" } }, ...(objectId ? [{ _id: objectId }] : [])],
+            qMatch = {
+                ...qMatch,
+                name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
+        }
+
+        if (tenant && mongoose.Types.ObjectId.isValid(tenant)) {
+            qMatch.tenantRef = tenant;
         }
 
         let sortObj = { createdAt: -1 }; // default
@@ -30,9 +32,20 @@ export const getAll = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
+            lean: true,
+            leanWithId: false,
+            populate: [
+                {
+                    path: "tenantRef",
+                    select: "tenantId ownerName businessName businessType phone email",
+                },
+                {
+                    path: "serviceRef",
+                    select: "name",
+                },
+            ],
         };
-
-        const listofData = await Service.paginate(query, options);
+        const listofData = await Invoice.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
@@ -43,23 +56,21 @@ export const getAll = async (req, res) => {
     }
 };
 
-export const getAllRaw = async (req, res) => {
-    try {
-        const listofData = await Service.find().sort({ listNumber: 1 }).lean();
-        return res.json(listofData);
-    } catch (err) {
-        return errorResponse(res, {
-            statusCode: 500,
-            code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server",
-        });
-    }
-};
-
-// GET A SPECIFIC DATA
 export const getDataById = async (req, res) => {
     try {
-        const spesificData = await Service.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+        const spesificData = await Invoice.findOne(qMatch)
+            .populate([
+                {
+                    path: "tenantRef",
+                    select: "tenantId ownerName businessName businessType phone email",
+                },
+                {
+                    path: "serviceRef",
+                    select: "name",
+                },
+            ])
+            .lean();
         return res.json(spesificData);
     } catch (err) {
         return errorResponse(res, {
@@ -74,11 +85,27 @@ export const getDataById = async (req, res) => {
 export const addData = async (req, res) => {
     try {
         let objData = req.body;
+        if (req.userData) {
+            objData.tenantRef = req.userData?.tenantRef;
+        }
 
-        const data = new Service(objData);
+        const data = new Invoice(objData);
         const newData = await data.save();
         return res.json(newData);
     } catch (err) {
+        if (err.name === "ValidationError") {
+            const errors = {};
+            Object.keys(err.errors).forEach((key) => {
+                errors[key] = err.errors[key].message;
+            });
+
+            return errorResponse(res, {
+                code: "VALIDATION_ERROR",
+                message: "Validasi gagal",
+                errors,
+            });
+        }
+
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
@@ -90,13 +117,11 @@ export const addData = async (req, res) => {
 // UPDATE A SPECIFIC DATA
 export const editData = async (req, res) => {
     try {
+        let qMatch = { _id: req.params.id };
         let objData = req.body;
-
-        const spesificData = await Service.findById(req.params.id);
-        if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
-
-        const updatedData = await Service.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
-
+        const updatedData = await Invoice.updateOne(qMatch, {
+            $set: objData,
+        });
         return res.json(updatedData);
     } catch (err) {
         return errorResponse(res, {
@@ -110,7 +135,8 @@ export const editData = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteData = async (req, res) => {
     try {
-        const deletedData = await Service.deleteOne({ _id: req.params.id });
+        let qMatch = { _id: req.params.id };
+        const deletedData = await Invoice.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {

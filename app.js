@@ -5,10 +5,6 @@ import path from "path";
 import logger from "morgan";
 import "dotenv/config.js";
 import dbConnect from "./utils/dbConnect.js";
-import {
-    // skipSleepServer,
-    resetPointHistory,
-} from "./lib/cron.js";
 
 process.env.TZ = "Asia/Jakarta";
 
@@ -52,6 +48,9 @@ app.use(async (req, res, next) => {
 });
 
 // ROUTES
+// cron
+import cronRoute from "./routes/cron/cron.route.js"; // disambungkan ke cron-job.org atau github actions
+
 // user master
 import authUserMasterRoute from "./routes/userMaster/authUserMaster.route.js";
 import userMasterRoute from "./routes/userMaster/userMaster.route.js";
@@ -59,9 +58,11 @@ import userMasterRoute from "./routes/userMaster/userMaster.route.js";
 // core
 import serviceRoutes from "./routes/core/service.route.js";
 import tenantRoute from "./routes/core/tenant.route.js";
+import subscriptionRoutes from "./routes/core/subscription.route.js";
 import authTenantRoute from "./routes/core/authTenant.route.js";
 import authUserRoute from "./routes/user/authUser.route.js";
 import surveyRoute from "./routes/core/survey.route.js";
+import invoiceRoute from "./routes/core/invoice.route.js";
 
 // setup
 import setupRoute from "./routes/setup/setup.route.js";
@@ -112,6 +113,9 @@ import paymentRevenueRoute from "./routes/report/paymentRevenue.route.js";
 // import helpRoute from "./routes/help.route.js";
 // import messageRoute from "./routes/message.route.js";
 
+// cron
+app.use("/api/cron", cronRoute); // disambungkan ke cron-job.org atau github actions
+
 // user master
 app.use("/api/auth-master", authUserMasterRoute);
 app.use("/api/user-master", userMasterRoute);
@@ -119,9 +123,11 @@ app.use("/api/user-master", userMasterRoute);
 // core
 app.use("/api/service", serviceRoutes);
 app.use("/api/tenant", tenantRoute);
+app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/auth-tenant", authTenantRoute);
 app.use("/api/auth", authUserRoute);
 app.use("/api/survey", surveyRoute);
+app.use("/api/invoice", invoiceRoute);
 
 // setup
 app.use("/api/setup", setupRoute);
@@ -188,10 +194,6 @@ if (process.env.NODE_ENV !== "production") {
 } else {
     console.log("🟢 Running in server");
 }
-
-// running cron job
-// skipSleepServer.start();
-resetPointHistory.start();
 
 export default app;
 export const handler = serverless(app);
