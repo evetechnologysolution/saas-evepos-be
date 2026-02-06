@@ -186,6 +186,7 @@ export const completeData = async (req, res) => {
         const today = new Date();
         const endDate = new Date(today);
         endDate.setDate(endDate.getDate() + 14);
+        endDate.setHours(0, 0, 0, 0);
 
         // subsId
         const currYear = new Date().getFullYear();
