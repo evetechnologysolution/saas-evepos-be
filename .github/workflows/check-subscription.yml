@@ -9,7 +9,9 @@ jobs:
     check-subscription:
         runs-on: ubuntu-latest
 
+        environment: ${{ github.ref_name == 'main' || github.ref_name == 'master' && 'Production' || 'Dev' }}
+
         steps:
             - name: Call subscription check API
               run: |
-                  curl -X GET ${{ secrets.BE_URL }}/api/cron/check-subscription
+                  curl -X GET ${{ secrets.BE_BASE_URL }}/api/cron/check-subscription
