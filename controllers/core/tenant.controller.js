@@ -247,6 +247,7 @@ export const completeData = async (req, res) => {
                 { tenantRef: spesificData?._id, notes: "trial" },
                 {
                     $setOnInsert: {
+                        invoiceId: `INV${currYear}${number}`,
                         subsRef: _subsId,
                         tenantRef: spesificData?._id,
                         amount: 0,
