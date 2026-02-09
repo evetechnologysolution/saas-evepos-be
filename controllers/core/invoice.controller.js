@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Invoice from "../../models/core/invoice.js";
+import Tenant from "../../models/core/tenant.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
@@ -9,9 +10,29 @@ export const getAll = async (req, res) => {
         let qMatch = {};
 
         if (search) {
+            const objectId = mongoose.Types.ObjectId.isValid(search) ? search : null;
+
+            const tenants = await Tenant.find({
+                $or: [
+                    { tenantId: { $regex: search, $options: "i" } },
+                    { ownerName: { $regex: search, $options: "i" } },
+                    { businessName: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                ],
+            });
+            const filteredTenant = tenants.map((item) => item._id);
+
             qMatch = {
                 ...qMatch,
-                name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
+                $or: [
+                    ...(objectId ? [{ _id: objectId }] : []),
+                    { tenantRef: { $in: filteredTenant } },
+                    { invoiceId: { $regex: search, $options: "i" } },
+                    { notes: { $regex: search, $options: "i" } },
+                    { "payment.channel": { $regex: search, $options: "i" } },
+                    { status: { $regex: search, $options: "i" } },
+                ], // option i for case insensitivity to match upper and lower cases.
             };
         }
 

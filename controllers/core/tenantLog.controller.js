@@ -1,16 +1,16 @@
 import mongoose from "mongoose";
-import Survey from "../../models/core/survey.js";
+import Log from "../../models/core/tenantLog.js";
 import Tenant from "../../models/core/tenant.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort } = req.query;
+        const { page, perPage, search, sort, tenant } = req.query;
         let qMatch = {};
 
         if (search) {
-            const objectId = mongoose.Types.ObjectId.isValid(search) ? search : null;
+            const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
 
             const tenants = await Tenant.find({
                 $or: [
@@ -27,9 +27,14 @@ export const getAll = async (req, res) => {
                 ...qMatch,
                 $or: [
                     ...(objectId ? [{ _id: objectId }] : []),
+                    { log: { $regex: search, $options: "i" } },
                     { tenantRef: { $in: filteredTenant } },
                 ],
             };
+        }
+
+        if (tenant && mongoose.Types.ObjectId.isValid(tenant)) {
+            qMatch.tenantRef = tenant;
         }
 
         let sortObj = { createdAt: -1 }; // default
@@ -45,8 +50,18 @@ export const getAll = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
+            populate: [
+                {
+                    path: "tenantRef",
+                    select: "tenantId ownerName businessName phone email",
+                },
+                {
+                    path: "uMasterRef",
+                    select: "userId fullname phone email",
+                },
+            ],
         };
-        const listofData = await Survey.paginate(qMatch, options);
+        const listofData = await Log.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
@@ -60,7 +75,18 @@ export const getAll = async (req, res) => {
 export const getDataById = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
-        const spesificData = await Survey.findOne(qMatch).lean();
+        const spesificData = await Log.findOne(qMatch)
+            .populate([
+                {
+                    path: "tenantRef",
+                    select: "tenantId ownerName businessName phone email",
+                },
+                {
+                    path: "uMasterRef",
+                    select: "userId fullname phone email",
+                },
+            ])
+            .lean();
         return res.json(spesificData);
     } catch (err) {
         return errorResponse(res, {
@@ -76,10 +102,10 @@ export const addData = async (req, res) => {
     try {
         let objData = req.body;
         if (req.userData) {
-            objData.tenantRef = req.userData?.tenantRef;
+            objData.uMastertRef = req.userData?._id;
         }
 
-        const data = new Survey(objData);
+        const data = new Log(objData);
         const newData = await data.save();
         return res.json(newData);
     } catch (err) {
@@ -109,7 +135,7 @@ export const editData = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
         let objData = req.body;
-        const updatedData = await Survey.updateOne(qMatch, {
+        const updatedData = await Log.updateOne(qMatch, {
             $set: objData,
         });
         return res.json(updatedData);
@@ -126,7 +152,7 @@ export const editData = async (req, res) => {
 export const deleteData = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
-        const deletedData = await Survey.deleteOne(qMatch);
+        const deletedData = await Log.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {

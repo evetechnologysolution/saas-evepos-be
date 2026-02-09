@@ -20,7 +20,8 @@ export const getAll = async (req, res) => {
 
             const tenants = await Tenant.find({
                 $or: [
-                    { fullname: { $regex: search, $options: "i" } },
+                    { tenantId: { $regex: search, $options: "i" } },
+                    { ownerName: { $regex: search, $options: "i" } },
                     { businessName: { $regex: search, $options: "i" } },
                     { phone: { $regex: search, $options: "i" } },
                     { email: { $regex: search, $options: "i" } },

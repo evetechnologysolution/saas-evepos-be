@@ -58,6 +58,7 @@ import userMasterRoute from "./routes/userMaster/userMaster.route.js";
 // core
 import serviceRoutes from "./routes/core/service.route.js";
 import tenantRoute from "./routes/core/tenant.route.js";
+import tenantLogRoute from "./routes/core/tenantLog.route.js";
 import subscriptionRoutes from "./routes/core/subscription.route.js";
 import authTenantRoute from "./routes/core/authTenant.route.js";
 import authUserRoute from "./routes/user/authUser.route.js";
@@ -123,6 +124,7 @@ app.use("/api/user-master", userMasterRoute);
 // core
 app.use("/api/service", serviceRoutes);
 app.use("/api/tenant", tenantRoute);
+app.use("/api/tenant-log", tenantLogRoute);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/auth-tenant", authTenantRoute);
 app.use("/api/auth", authUserRoute);

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Tenant from "../../models/core/tenant.js";
+import Log from "../../models/core/tenantLog.js";
 import User from "../../models/core/user.js";
 import Outlet from "../../models/core/outlet.js";
 import Subs from "../../models/core/subscription.js";
@@ -337,6 +338,99 @@ export const completeData = async (req, res) => {
     }
 };
 
+export const suspendData = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const spesificData = await Tenant.findById(req.params.id).session(session);
+        if (!spesificData) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ status: 404, message: "Data not found" });
+        }
+
+        // Optional: kalau sudah suspended, tidak perlu update
+        if (spesificData.status === "suspended") {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({
+                status: 400,
+                message: "Tenant already suspend",
+            });
+        }
+
+        const objData = { ...req.body, status: "suspended" };
+        const reason = objData?.reason ? ` .Alasan : ${objData.reason}` : "";
+
+        const objLog = {
+            log: `Tenant disuspend${reason}`,
+            ...(req.userData && { uMastertRef: req.userData._id }),
+        };
+
+        await Promise.all([Log.create([objLog], { session }), Tenant.updateOne({ _id: req.params.id }, { $set: objData }, { session })]);
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.json({
+            message: "Tenant suspended successfully",
+        });
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(500).json({ message: err.message });
+    }
+};
+
+export const activateData = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const spesificData = await Tenant.findById(req.params.id).session(session);
+        if (!spesificData) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({
+                status: 404,
+                message: "Data not found",
+            });
+        }
+
+        // Optional: kalau sudah active, tidak perlu update
+        if (spesificData.status === "active") {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({
+                status: 400,
+                message: "Tenant already active",
+            });
+        }
+
+        const objData = { ...req.body, status: "active", reason: "" };
+        const reason = objData?.reason ? ` .Alasan : ${objData?.reason}` : "";
+
+        const objLog = {
+            log: `Tenant diaktifkan kembali${reason}`,
+            ...(req.userData && { uMastertRef: req.userData._id }),
+        };
+
+        await Promise.all([Log.create([objLog], { session }), Tenant.updateOne({ _id: req.params.id }, { $set: objData }, { session })]);
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.json({
+            message: "Tenant activated successfully",
+        });
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(500).json({ message: err.message });
+    }
+};
+
 // DELETE A SPECIFIC DATA
 export const deleteData = async (req, res) => {
     const session = await mongoose.startSession();
@@ -354,6 +448,7 @@ export const deleteData = async (req, res) => {
         // Hapus paralel dalam satu transaction
         await Promise.all([
             Tenant.deleteOne({ _id: tenantId }).session(session),
+            Log.deleteMany({ tenantRef: tenantId }).session(session),
             Outlet.deleteMany({ tenantRef: tenantId }).session(session),
             User.deleteMany({ tenantRef: tenantId }).session(session),
             Subs.deleteMany({ tenantRef: tenantId }).session(session),
