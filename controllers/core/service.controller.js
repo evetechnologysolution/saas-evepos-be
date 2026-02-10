@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import Service from "../../models/core/service.js";
 import { errorResponse } from "../../utils/errorResponse.js";
+import { logAudit } from "../../helper/audit.helper.js";
+import { diffObject } from "../../helper/objectDiff.helper.js";
 
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
@@ -85,6 +87,15 @@ export const addData = async (req, res) => {
 
     const data = new Service(objData);
     const newData = await data.save();
+
+    await logAudit({
+      req,
+      entity: "Services",
+      entityId: newData._id,
+      action: "CREATE",
+      after: newData.toObject(),
+    });
+
     return res.json(newData);
   } catch (err) {
     return errorResponse(res, {
@@ -98,17 +109,29 @@ export const addData = async (req, res) => {
 // UPDATE A SPECIFIC DATA
 export const editData = async (req, res) => {
   try {
-    let objData = req.body;
+    const objData = req.body;
 
-    const spesificData = await Service.findById(req.params.id);
-    if (!spesificData)
+    const beforeData = await Service.findById(req.params.id).lean();
+    if (!beforeData)
       return res.status(404).json({ status: 404, message: "Data not found" });
 
     const updatedData = await Service.findOneAndUpdate(
       { _id: req.params.id },
       { $set: objData },
       { upsert: false, new: true },
-    );
+    ).lean();
+
+    const diff = diffObject(beforeData, updatedData);
+
+    if (diff) {
+      await logAudit({
+        req,
+        entity: "Services",
+        entityId: updatedData._id,
+        action: "UPDATE",
+        before: diff,
+      });
+    }
 
     return res.json(updatedData);
   } catch (err) {
@@ -123,8 +146,29 @@ export const editData = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteData = async (req, res) => {
   try {
-    const deletedData = await Service.deleteOne({ _id: req.params.id });
-    return res.json(deletedData);
+    const beforeData = await Service.findById(req.params.id).lean();
+
+    if (!beforeData) {
+      return res.status(404).json({
+        status: 404,
+        message: "Data not found",
+      });
+    }
+
+    await Service.deleteOne({ _id: req.params.id });
+
+    await logAudit({
+      req,
+      entity: "Services",
+      entityId: req.params.id,
+      action: "DELETE",
+      before: beforeData,
+    });
+
+    return res.json({
+      status: 200,
+      message: "Data berhasil dihapus",
+    });
   } catch (err) {
     return errorResponse(res, {
       statusCode: 500,
