@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Tenant from "../../models/core/tenant.js";
 import Log from "../../models/core/tenantLog.js";
+import Bank from "../../models/core/tenantBank.js";
 import User from "../../models/core/user.js";
 import Outlet from "../../models/core/outlet.js";
 import Subs from "../../models/core/subscription.js";
@@ -451,6 +452,7 @@ export const deleteData = async (req, res) => {
         await Promise.all([
             Tenant.deleteOne({ _id: tenantId }).session(session),
             Log.deleteMany({ tenantRef: tenantId }).session(session),
+            Bank.deleteMany({ tenantRef: tenantId }).session(session),
             Outlet.deleteMany({ tenantRef: tenantId }).session(session),
             User.deleteMany({ tenantRef: tenantId }).session(session),
             Subs.deleteMany({ tenantRef: tenantId }).session(session),

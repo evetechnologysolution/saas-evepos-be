@@ -15,7 +15,7 @@ export const getAllPromotion = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            if(req.userData?.outletRef) {
+            if (req.userData?.outletRef) {
                 qMatch.outletRef = req.userData?.outletRef;
             }
         }
@@ -437,43 +437,48 @@ export const editPromotion = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deletePromotion = async (req, res) => {
     try {
-        let qMatch = { _id: req.params.id };
+        const qMatch = { _id: req.params.id };
+
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
         }
-        // Check image & delete image
-        const exist = await Promotion.findOne(qMatch).lean();
-        if (!exist) {
-            return res.status(404).json({ message: "Promotion not found" });
+
+        const existData = await Promotion.findOne(qMatch).lean();
+
+        if (!existData) {
+            return errorResponse(res, {
+                statusCode: 404,
+                code: "DATA_NOT_FOUND",
+                message: "Data not found!",
+            });
         }
 
-        if (exist?.imageId) {
-            await cloudinary.uploader.destroy(exist.imageId);
-        }
+        const tasks = [];
 
-        // Prepare bulk operations for updating products
-        const bulkOps = [];
-        if (exist.products.length > 0 && Number(exist.type) === 1) {
-            for (const prodId of exist.products) {
-                bulkOps.push({
-                    updateOne: {
-                        filter: { _id: prodId, promotionRef: req.params.id },
-                        update: {
-                            $set: { promotionRef: null },
-                        },
+        // Remove promotionRef from products (only if type === 1)
+        if (Number(existData.type) === 1 && Array.isArray(existData.products) && existData.products.length > 0) {
+            tasks.push(
+                Product.updateMany(
+                    {
+                        _id: { $in: existData.products },
+                        promotionRef: req.params.id,
                     },
-                });
-            }
+                    { $set: { promotionRef: null } },
+                ),
+            );
         }
 
-        // Execute bulk operations if any
-        if (bulkOps.length > 0) {
-            await Product.bulkWrite(bulkOps);
+        // Delete image from cloudinary
+        if (existData.imageId) {
+            tasks.push(cloudinary.uploader.destroy(existData.imageId));
         }
 
-        // Delete the promotion
-        const deletedData = await Promotion.deleteOne(qMatch);
+        // Delete promotion
+        tasks.push(Promotion.deleteOne(qMatch));
+
+        const [, , deletedData] = await Promise.all(tasks);
+
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {

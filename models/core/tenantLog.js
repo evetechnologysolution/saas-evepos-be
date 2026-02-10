@@ -35,7 +35,7 @@ const DataSchema = mongoose.Schema(
     { timestamps: true },
 );
 
-DataSchema.index({ tenantRef: 1, userRef: 1 });
+DataSchema.index({ tenantRef: 1, updatedBy: 1 });
 
 DataSchema.plugin(mongoosePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);

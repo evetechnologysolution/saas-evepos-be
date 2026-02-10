@@ -462,12 +462,26 @@ export const deleteProduct = async (req, res) => {
             qMatch.outletRef = req.userData?.outletRef;
         }
         // Check image & delete image
-        const exist = await Product.findOne(qMatch).lean();
-        if (exist?.imageId) {
-            await cloudinary.uploader.destroy(exist.imageId);
+        const existData = await Product.findOne(qMatch).lean();
+
+        if (!existData) {
+            return errorResponse(res, {
+                statusCode: 404,
+                code: "DATA_NOT_FOUND",
+                message: "Data not found!",
+            });
         }
 
-        const deletedData = await Product.deleteOne(qMatch);
+        const tasks = [];
+
+        if (existData?.imageId) {
+            tasks.push(cloudinary.uploader.destroy(existData?.imageId));
+        }
+
+        tasks.push(Product.deleteOne(qMatch));
+
+        const [, deletedData] = await Promise.all(tasks);
+
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {
