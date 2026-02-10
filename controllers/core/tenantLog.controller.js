@@ -102,7 +102,7 @@ export const addData = async (req, res) => {
     try {
         let objData = req.body;
         if (req.userData) {
-            objData.uMastertRef = req.userData?._id;
+            objData.uMasterRef = req.userData?._id;
         }
 
         const data = new Log(objData);

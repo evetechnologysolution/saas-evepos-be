@@ -365,7 +365,8 @@ export const suspendData = async (req, res) => {
 
         const objLog = {
             log: `Tenant disuspend${reason}`,
-            ...(req.userData && { uMastertRef: req.userData._id }),
+            tenantRef: req.params.id,
+            ...(req.userData && { uMasterRef: req.userData._id }),
         };
 
         await Promise.all([Log.create([objLog], { session }), Tenant.updateOne({ _id: req.params.id }, { $set: objData }, { session })]);
@@ -413,7 +414,8 @@ export const activateData = async (req, res) => {
 
         const objLog = {
             log: `Tenant diaktifkan kembali${reason}`,
-            ...(req.userData && { uMastertRef: req.userData._id }),
+            tenantRef: req.params.id,
+            ...(req.userData && { uMasterRef: req.userData._id }),
         };
 
         await Promise.all([Log.create([objLog], { session }), Tenant.updateOne({ _id: req.params.id }, { $set: objData }, { session })]);
