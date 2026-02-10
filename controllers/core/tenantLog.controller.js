@@ -56,7 +56,7 @@ export const getAll = async (req, res) => {
                     select: "tenantId ownerName businessName phone email",
                 },
                 {
-                    path: "uMasterRef",
+                    path: "updatedBy",
                     select: "userId fullname phone email",
                 },
             ],
@@ -82,7 +82,7 @@ export const getDataById = async (req, res) => {
                     select: "tenantId ownerName businessName phone email",
                 },
                 {
-                    path: "uMasterRef",
+                    path: "updatedBy",
                     select: "userId fullname phone email",
                 },
             ])
@@ -102,7 +102,7 @@ export const addData = async (req, res) => {
     try {
         let objData = req.body;
         if (req.userData) {
-            objData.uMasterRef = req.userData?._id;
+            objData.updatedBy = req.userData?._id;
         }
 
         const data = new Log(objData);

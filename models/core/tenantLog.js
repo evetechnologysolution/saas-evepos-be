@@ -25,7 +25,7 @@ const DataSchema = mongoose.Schema(
             default: null,
             set: (val) => (val === "" ? null : val),
         },
-        uMasterRef: {
+        updatedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "UserMasters",
             default: null,
