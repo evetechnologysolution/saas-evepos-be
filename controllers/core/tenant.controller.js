@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import multer from "multer";
 import Tenant from "../../models/core/tenant.js";
 import Log from "../../models/core/tenantLog.js";
 import Bank from "../../models/core/tenantBank.js";
@@ -11,6 +12,7 @@ import Setting from "../../models/setting/settings.js";
 import Tax from "../../models/setting/tax.js";
 import Receipt from "../../models/setting/receipt.js";
 //
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 import { generateRandomId } from "../../lib/generateRandom.js";
 import { convertToE164 } from "../../lib/textSetting.js";
 import { ERROR_CONFIG } from "../../utils/errorMessages.js";
@@ -109,41 +111,75 @@ export const getDataById = async (req, res) => {
 
 // UPDATE A SPECIFIC DATA
 export const editData = async (req, res) => {
-    try {
-        let objData = req.body;
-
-        const spesificData = await Tenant.findById(req.params.id);
-        if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
-
-        // Build duplicate check query
-        const duplicateQuery = [];
-
-        if (objData.phone) {
-            objData.phone = convertToE164(objData.phone);
-            if (objData.phone !== spesificData.phone) {
-                duplicateQuery.push({ phone: objData.phone });
-            }
-        }
-
-        if (objData.email && objData.email !== spesificData.email) {
-            duplicateQuery.push({ email: objData.email });
-        }
-
-        if (duplicateQuery.length > 0) {
-            const exist = await Tenant.findOne({
-                _id: { $ne: req.params.id },
-                $or: duplicateQuery,
+    imageUpload.single("image")(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: "Failed to upload image",
             });
-
-            if (exist) return res.status(400).json({ message: "Phone or email already exists" });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err.message,
+            });
         }
 
-        const updatedData = await Tenant.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
+        try {
+            let objData = req.body;
 
-        return res.json(updatedData);
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+            const spesificData = await Tenant.findById(req.params.id);
+            if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
+
+            // Build duplicate check query
+            const duplicateQuery = [];
+
+            if (objData.phone) {
+                objData.phone = convertToE164(objData.phone);
+                if (objData.phone !== spesificData.phone) {
+                    duplicateQuery.push({ phone: objData.phone });
+                }
+            }
+
+            if (objData.email && objData.email !== spesificData.email) {
+                duplicateQuery.push({ email: objData.email });
+            }
+
+            if (duplicateQuery.length > 0) {
+                const exist = await Tenant.findOne({
+                    _id: { $ne: req.params.id },
+                    $or: duplicateQuery,
+                });
+
+                if (exist) return res.status(400).json({ message: "Phone or email already exists" });
+            }
+
+            if (req.file) {
+                try {
+                    const cloud = await cloudinary.uploader.upload(req.file.path, {
+                        folder: process.env.FOLDER_MAIN,
+                        format: "webp",
+                        transformation: [{ quality: "auto:low" }],
+                    });
+                    objData = {
+                        ...objData,
+                        image: cloud.secure_url,
+                        imageId: cloud.public_id,
+                    };
+                } catch (uploadErr) {
+                    return res.status(400).json({
+                        status: "Failed",
+                        message: "Image upload failed",
+                    });
+                }
+            }
+
+            const updatedData = await Tenant.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
+
+            return res.json(updatedData);
+        } catch (err) {
+            return res.status(500).json({ message: err.message });
+        }
+    });
 };
 
 export const completeData = async (req, res) => {
@@ -460,6 +496,10 @@ export const deleteData = async (req, res) => {
         ]);
 
         await session.commitTransaction();
+
+        if (check.imageId) {
+            await cloudinary.uploader.destroy(check.imageId);
+        }
 
         return res.status(200).json({
             message: "Berhasil hapus data.",
