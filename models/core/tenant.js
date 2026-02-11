@@ -30,6 +30,7 @@ const DataSchema = mongoose.Schema(
         },
         legalStatus: {
             type: String,
+            uppercase: true,
             trim: true,
             default: "",
         },

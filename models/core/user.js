@@ -64,10 +64,12 @@ const DataSchema = mongoose.Schema(
             required: false,
         },
         ktp: {
+            number: { type: String, trim: true, default: "" },
             image: { type: String, default: "" },
             imageId: { type: String, default: "" },
         },
         npwp: {
+            number: { type: String, trim: true, default: "" },
             image: { type: String, default: "" },
             imageId: { type: String, default: "" },
         },
