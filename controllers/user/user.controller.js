@@ -197,6 +197,17 @@ export const editUser = async (req, res) => {
                 return res.json({ status: 400, message: "Username already exists" });
 
             if (objData.password) {
+                if (objData.oldPassword) {
+                    const validPassword = await bcrypt.compare(objData.oldPassword, spesificData.password);
+                    if (!validPassword) return res.status(400).json({ message: "Old password incorrect" });
+                }
+
+                if (objData.confirmPassword) {
+                    if (objData.confirmPassword !== objData.password) {
+                        return res.status(400).json({ message: "Confirm password incorrect" });
+                    }
+                }
+
                 // Hash password
                 const salt = await bcrypt.genSalt(10);
                 const hashedPassword = await bcrypt.hash(objData.password, salt);
