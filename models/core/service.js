@@ -2,40 +2,34 @@ import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 
-const DataSchema = mongoose.Schema(
+/* ===============================
+ * Sub Schemas
+ * =============================== */
+const ModuleSchema = new mongoose.Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    qty: { type: Number, default: 0, min: 0 },
+  },
+  { _id: false },
+);
+
+const DataSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       uppercase: true,
       trim: true,
       required: [true, "Name wajib diisi"],
-      // BASIC, START UP, ENTERPRISE
     },
 
     price: {
-      yearly: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      monthly: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
+      yearly: { type: Number, default: 0, min: 0 },
+      monthly: { type: Number, default: 0, min: 0 },
     },
 
     discount: {
-      yearly: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
-      monthly: {
-        type: Number,
-        default: 0,
-        min: 0,
-      },
+      yearly: { type: Number, default: 0, min: 0 },
+      monthly: { type: Number, default: 0, min: 0 },
     },
 
     description: {
@@ -55,26 +49,42 @@ const DataSchema = mongoose.Schema(
       index: true,
     },
 
-    /**
-     * ===============================
-     * Modul & Hak Akses Plan
-     * ===============================
-     */
+    /* ===============================
+     * Target Customer
+     * =============================== */
+    selectedCustomer: {
+      allCustomer: { type: Boolean, default: false },
+      newCustomer: { type: Boolean, default: false },
+      oldCustomer: { type: Boolean, default: false },
+      autoRenewalCustomer: { type: Boolean, default: false },
+    },
+
+    /* ===============================
+     * Modul & Hak Akses
+     * =============================== */
     modules: {
-      dashboard: { type: Boolean, default: false },
-      pos: { type: Boolean, default: false },
-      orders: { type: Boolean, default: false },
-      pickup: { type: Boolean, default: false },
-      scan_orders: { type: Boolean, default: false },
-      sales_report: { type: Boolean, default: false },
-      popular_product: { type: Boolean, default: false },
-      payment_overview: { type: Boolean, default: false },
-      category: { type: Boolean, default: false },
-      subcategory: { type: Boolean, default: false },
-      product: { type: Boolean, default: false },
-      variant: { type: Boolean, default: false },
-      promotion: { type: Boolean, default: false },
-      user: { type: Boolean, default: false },
+      dashboard: ModuleSchema,
+      dashboardB: ModuleSchema,
+      dashboardC: ModuleSchema,
+      dashboardD: ModuleSchema,
+      dashboardE: ModuleSchema,
+
+      pos: ModuleSchema,
+      orders: ModuleSchema,
+      pickup: ModuleSchema,
+      scan_orders: ModuleSchema,
+
+      sales_report: ModuleSchema,
+      popular_product: ModuleSchema,
+      payment_overview: ModuleSchema,
+
+      category: ModuleSchema,
+      subcategory: ModuleSchema,
+      product: ModuleSchema,
+      variant: ModuleSchema,
+      promotion: ModuleSchema,
+
+      user: ModuleSchema,
     },
   },
   {
@@ -84,11 +94,9 @@ const DataSchema = mongoose.Schema(
   },
 );
 
-/**
- * ===============================
- * Virtual: Total Subscription
- * ===============================
- */
+/* ===============================
+ * Virtuals & Index
+ * =============================== */
 DataSchema.virtual("totalSubscriptions", {
   ref: "Subscriptions",
   localField: "_id",
