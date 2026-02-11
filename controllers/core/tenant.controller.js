@@ -173,6 +173,10 @@ export const editData = async (req, res) => {
                 }
             }
 
+            if (objData?.socialMedia === "reset") {
+                objData.socialMedia = [];
+            }
+
             const updatedData = await Tenant.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
 
             return res.json(updatedData);
