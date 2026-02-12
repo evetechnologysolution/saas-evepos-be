@@ -145,7 +145,7 @@ export const addData = async (req, res) => {
         try {
             let objData = req.body;
             if (req.userData) {
-                objData.tenantRef = req.userData?._id;
+                objData.tenantRef = req.userData?.tenantRef;
                 if (
                     req.userData?.outletRef &&
                     (objData.outletRef === undefined ||
