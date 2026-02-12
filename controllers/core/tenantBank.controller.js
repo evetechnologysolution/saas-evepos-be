@@ -24,7 +24,7 @@ const uploadImage = async (file) => {
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort, outlet } = req.query;
+        const { page, perPage, search, sort, outlet, status } = req.query;
         let qMatch = {};
 
         if (req.userData) {
@@ -59,6 +59,14 @@ export const getAll = async (req, res) => {
 
         if (outlet && mongoose.Types.ObjectId.isValid(outlet)) {
             qMatch.outletRef = outlet;
+        }
+
+        if (status === "active") {
+            qMatch.isActive = { $eq: true };
+        }
+
+        if (["inactive", "nonactive", "notactive"].includes(status)) {
+            qMatch.isActive = { $ne: true };
         }
 
         let sortObj = { createdAt: -1 }; // default

@@ -34,6 +34,10 @@ const DataSchema = mongoose.Schema(
             default: null,
             set: (val) => (val === "" ? null : val),
         },
+        isActive: {
+            type: Boolean,
+            default: true,
+        },
         outletRef: {
             type: [
                 {
