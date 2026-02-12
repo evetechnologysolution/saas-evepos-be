@@ -17,6 +17,7 @@ const DataSchema = mongoose.Schema(
         },
         accountHolderName: {
             type: String,
+            uppercase: true,
             required: true,
             trim: true,
         },
