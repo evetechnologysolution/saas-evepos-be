@@ -29,15 +29,15 @@ const DataSchema = mongoose.Schema(
             image: { type: String, default: "" },
             imageId: { type: String, default: "" },
         },
+        isActive: {
+            type: Boolean,
+            default: true,
+        },
         tenantRef: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Tenants",
             default: null,
             set: (val) => (val === "" ? null : val),
-        },
-        isActive: {
-            type: Boolean,
-            default: true,
         },
         outletRef: {
             type: [

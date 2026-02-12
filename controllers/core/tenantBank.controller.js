@@ -103,6 +103,9 @@ export const getAll = async (req, res) => {
 export const getDataById = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
         const spesificData = await Bank.findOne(qMatch)
             .populate([
                 {
@@ -143,6 +146,14 @@ export const addData = async (req, res) => {
             let objData = req.body;
             if (req.userData) {
                 objData.tenantRef = req.userData?._id;
+                if (
+                    req.userData?.outletRef &&
+                    (objData.outletRef === undefined ||
+                        objData.outletRef === null ||
+                        (Array.isArray(objData.outletRef) && objData.outletRef.length === 0))
+                ) {
+                    objData.outletRef = Array.isArray(req.userData.outletRef) ? req.userData.outletRef : [req.userData.outletRef];
+                }
             }
 
             if (req.files) {
