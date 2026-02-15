@@ -4,6 +4,21 @@ import User from "../../models/core/user.js";
 import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
+const uploadImage = async (file) => {
+    const result = await cloudinary.uploader.upload(file.path, {
+        folder: process.env.FOLDER_MAIN,
+        format: "webp",
+        transformation: [{ quality: "auto:low" }],
+    });
+
+    fs.unlink(file.path, () => {});
+
+    return {
+        image: result.secure_url,
+        imageId: result.public_id,
+    };
+};
+
 // GETTING ALL THE DATA
 export const getAllUser = async (req, res) => {
     try {
@@ -87,7 +102,11 @@ export const getUserById = async (req, res) => {
 
 // CREATE NEW DATA
 export const addUser = async (req, res) => {
-    imageUpload.single("image")(req, res, async function (err) {
+    imageUpload.fields([
+        { name: "image", maxCount: 1 },
+        { name: "imageKtp", maxCount: 1 },
+        { name: "imageNpwp", maxCount: 1 },
+    ])(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             return res.status(400).json({
                 status: "Failed",
@@ -118,17 +137,44 @@ export const addUser = async (req, res) => {
                 objData = Object.assign(objData, { password: hashedPassword });
             }
 
-            if (req.file) {
+            if (req.files) {
                 try {
-                    const cloud = await cloudinary.uploader.upload(req.file.path, {
-                        folder: process.env.FOLDER_MAIN,
-                        format: "webp",
-                        transformation: [{ quality: "auto:low" }],
-                    });
-                    objData = Object.assign(objData, {
-                        image: cloud.secure_url,
-                        imageId: cloud.public_id,
-                    });
+                    const tasks = [];
+
+                    if (req.files.image?.[0]) {
+                        tasks.push(
+                            uploadImage(req.files.image[0]).then((uploaded) => {
+                                objData.image = uploaded.image;
+                                objData.imageId = uploaded.imageId;
+                            }),
+                        );
+                    }
+
+                    if (req.files.imageKtp?.[0]) {
+                        tasks.push(
+                            uploadImage(req.files.imageKtp[0]).then((uploaded) => {
+                                objData.ktp = {
+                                    ...objData.ktp,
+                                    image: uploaded.image,
+                                    imageId: uploaded.imageId,
+                                };
+                            }),
+                        );
+                    }
+
+                    if (req.files.imageNpwp?.[0]) {
+                        tasks.push(
+                            uploadImage(req.files.imageNpwp[0]).then((uploaded) => {
+                                objData.npwp = {
+                                    ...objData.npwp,
+                                    image: uploaded.image,
+                                    imageId: uploaded.imageId,
+                                };
+                            }),
+                        );
+                    }
+
+                    await Promise.all(tasks);
                 } catch (uploadErr) {
                     return res.status(400).json({
                         status: "Failed",
@@ -167,7 +213,11 @@ export const addUser = async (req, res) => {
 
 // UPDATE A SPECIFIC DATA
 export const editUser = async (req, res) => {
-    imageUpload.single("image")(req, res, async function (err) {
+    imageUpload.fields([
+        { name: "image", maxCount: 1 },
+        { name: "imageKtp", maxCount: 1 },
+        { name: "imageNpwp", maxCount: 1 },
+    ])(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             return res.status(400).json({
                 status: "Failed",
@@ -217,24 +267,57 @@ export const editUser = async (req, res) => {
                 objData = Object.assign(objData, objPassword);
             }
 
-            if (req.file) {
+            if (req.files) {
                 try {
-                    // Remove old image from cloudinary if exists
-                    if (spesificData.imageId) {
-                        await cloudinary.uploader.destroy(spesificData.imageId);
+                    const tasks = [];
+
+                    if (req.files.image?.[0]) {
+                        // Remove old image from cloudinary if exists
+                        if (spesificData?.imageId) {
+                            tasks.push(cloudinary.uploader.destroy(spesificData?.imageId));
+                        }
+                        tasks.push(
+                            uploadImage(req.files.image[0]).then((uploaded) => {
+                                objData.image = uploaded.image;
+                                objData.imageId = uploaded.imageId;
+                            }),
+                        );
                     }
 
-                    const cloud = await cloudinary.uploader.upload(req.file.path, {
-                        folder: process.env.FOLDER_MAIN,
-                        format: "webp",
-                        transformation: [{ quality: "auto:low" }],
-                    });
-                    objData = Object.assign(objData, {
-                        image: cloud.secure_url,
-                        imageId: cloud.public_id,
-                    });
+                    if (req.files.imageKtp?.[0]) {
+                        // Remove old image from cloudinary if exists
+                        if (spesificData?.ktp?.imageId) {
+                            tasks.push(cloudinary.uploader.destroy(spesificData?.ktp?.imageId));
+                        }
+                        tasks.push(
+                            uploadImage(req.files.imageKtp[0]).then((uploaded) => {
+                                objData.ktp = {
+                                    ...objData.ktp,
+                                    image: uploaded.image,
+                                    imageId: uploaded.imageId,
+                                };
+                            }),
+                        );
+                    }
+
+                    if (req.files.imageNpwp?.[0]) {
+                        // Remove old image from cloudinary if exists
+                        if (spesificData?.npwp?.imageId) {
+                            tasks.push(cloudinary.uploader.destroy(spesificData?.npwp?.imageId));
+                        }
+                        tasks.push(
+                            uploadImage(req.files.imageNpwp[0]).then((uploaded) => {
+                                objData.npwp = {
+                                    ...objData.npwp,
+                                    image: uploaded.image,
+                                    imageId: uploaded.imageId,
+                                };
+                            }),
+                        );
+                    }
+
+                    await Promise.all(tasks);
                 } catch (uploadErr) {
-                    console.log(uploadErr);
                     return res.status(400).json({
                         status: "Failed",
                         message: "Image upload failed",
@@ -324,6 +407,12 @@ export const deleteUser = async (req, res) => {
         // delete image (jika ada)
         if (existData.imageId) {
             tasks.push(cloudinary.uploader.destroy(existData.imageId));
+        }
+        if (existData?.ktp?.imageId) {
+            tasks.push(cloudinary.uploader.destroy(existData?.ktp?.imageId));
+        }
+        if (existData?.npwp?.imageId) {
+            tasks.push(cloudinary.uploader.destroy(existData?.npwp?.imageId));
         }
 
         // delete user

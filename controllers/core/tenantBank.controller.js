@@ -323,6 +323,9 @@ export const deleteData = async (req, res) => {
         if (existData?.imageAccount?.imageId) {
             tasks.push(cloudinary.uploader.destroy(existData?.imageAccount?.imageId));
         }
+        if (existData?.imageHolder?.imageId) {
+            tasks.push(cloudinary.uploader.destroy(existData?.imageHolder?.imageId));
+        }
 
         tasks.push(Bank.deleteOne(qMatch));
 
