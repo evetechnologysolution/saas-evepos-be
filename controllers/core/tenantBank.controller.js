@@ -157,31 +157,6 @@ export const addData = async (req, res) => {
             }
 
             if (req.files) {
-                // if (req.files["imageAccount"]) {
-                //     const image = req.files["imageAccount"][0];
-                //     const cloud = await cloudinary.uploader.upload(image.path, {
-                //         folder: process.env.FOLDER_MAIN,
-                //         format: "webp",
-                //         transformation: [{ quality: "auto:low" }],
-                //     });
-                //     objData.imageAccount = {
-                //         image: cloud.secure_url,
-                //         imageId: cloud.public_id,
-                //     };
-                // }
-                // if (req.files["imageHolder"]) {
-                //     const image = req.files["imageHolder"][0];
-                //     const cloud = await cloudinary.uploader.upload(image.path, {
-                //         folder: process.env.FOLDER_MAIN,
-                //         format: "webp",
-                //         transformation: [{ quality: "auto:low" }],
-                //     });
-                //     objData.imageHolder = {
-                //         image: cloud.secure_url,
-                //         imageId: cloud.public_id,
-                //     };
-                // }
-
                 try {
                     const tasks = [];
 
@@ -284,6 +259,28 @@ export const editData = async (req, res) => {
                         message: "Image upload failed",
                     });
                 }
+            }
+
+            // reset image
+            const resetImages = [];
+
+            if (objData.imageAccount === "reset" && spesificData?.imageAccount?.imageId) {
+                resetImages.push(cloudinary.uploader.destroy(spesificData.imageAccount.imageId));
+                objData.imageAccount = {
+                    image: "",
+                    imageId: "",
+                };
+            }
+
+            if (objData.imageHolder === "reset" && spesificData?.imageHolder?.imageId) {
+                resetImages.push(cloudinary.uploader.destroy(spesificData.imageHolder.imageId));
+                objData.imageHolder = {
+                    image: "",
+                    imageId: "",
+                };
+            }
+            if (resetImages.length > 0) {
+                await Promise.all(resetImages);
             }
 
             const updatedData = await Bank.updateOne(qMatch, {

@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import multer from "multer";
+import fs from "fs";
 import User from "../../models/core/user.js";
 import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 import { errorResponse } from "../../utils/errorResponse.js";
@@ -323,6 +324,36 @@ export const editUser = async (req, res) => {
                         message: "Image upload failed",
                     });
                 }
+            }
+
+            // reset image
+            const resetImages = [];
+
+            if (objData.image === "reset" && spesificData?.imageId) {
+                resetImages.push(cloudinary.uploader.destroy(spesificData.imageId));
+                objData.image = "";
+                objData.imageId = "";
+            }
+
+            if (objData.imageKtp === "reset" && spesificData?.ktp?.imageId) {
+                resetImages.push(cloudinary.uploader.destroy(spesificData.ktp.imageId));
+                objData.ktp = {
+                    ...objData.ktp,
+                    image: "",
+                    imageId: "",
+                };
+            }
+
+            if (objData.imageNpwp === "reset" && spesificData?.npwp?.imageId) {
+                resetImages.push(cloudinary.uploader.destroy(spesificData.npwp.imageId));
+                objData.npwp = {
+                    ...objData.npwp,
+                    image: "",
+                    imageId: "",
+                };
+            }
+            if (resetImages.length > 0) {
+                await Promise.all(resetImages);
             }
 
             const updatedData = await User.updateOne(qMatch, {
