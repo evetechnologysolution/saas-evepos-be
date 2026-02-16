@@ -9,6 +9,11 @@ const DataSchema = mongoose.Schema(
             required: true,
             trim: true,
         },
+        notes: {
+            type: String,
+            trim: true,
+            default: "",
+        },
         updatedList: {
             type: [
                 {

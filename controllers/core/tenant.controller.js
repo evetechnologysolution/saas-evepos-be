@@ -401,11 +401,11 @@ export const suspendData = async (req, res) => {
             });
         }
 
-        const objData = { ...req.body, status: "suspended" };
-        const reason = objData?.reason ? ` .Alasan : ${objData.reason}` : "";
+        const objData = { ...req.body, status: "suspended", statusReason: req.body?.reason || "" };
 
         const objLog = {
-            log: `Tenant disuspend${reason}`,
+            log: "Tenant disuspend",
+            notes: objData?.reason || "",
             tenantRef: req.params.id,
             ...(req.userData && { updatedBy: req.userData._id }),
         };
@@ -450,11 +450,11 @@ export const activateData = async (req, res) => {
             });
         }
 
-        const objData = { ...req.body, status: "active", reason: "" };
-        const reason = objData?.reason ? ` .Alasan : ${objData?.reason}` : "";
+        const objData = { ...req.body, status: "active", statusReason: req.body?.reason || "" };
 
         const objLog = {
-            log: `Tenant diaktifkan kembali${reason}`,
+            log: "Tenant diaktifkan kembali",
+            notes: objData?.reason || "",
             tenantRef: req.params.id,
             ...(req.userData && { updatedBy: req.userData._id }),
         };
