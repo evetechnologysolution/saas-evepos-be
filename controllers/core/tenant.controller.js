@@ -482,13 +482,37 @@ export const deleteData = async (req, res) => {
     try {
         const tenantId = req.params.id;
 
-        // cek dulu apakah tenant ada
-        const check = await Tenant.findById(tenantId).session(session);
-        if (!check) {
+        const tenant = await Tenant.findById(tenantId).session(session);
+        if (!tenant) {
             throw new Error("DATA_NOT_FOUND");
         }
 
-        // Hapus paralel dalam satu transaction
+        const [users, banks] = await Promise.all([
+            User.find({ tenantRef: tenantId }).select("imageId ktp.imageId npwp.imageId").session(session),
+            Bank.find({ tenantRef: tenantId }).select("imageAccount.imageId imageHolder.imageId").session(session),
+        ]);
+
+        const imageIds = [];
+
+        // tenant image
+        if (tenant.imageId) imageIds.push(tenant.imageId);
+
+        // user images
+        users.forEach((user) => {
+            if (user.imageId) imageIds.push(user.imageId);
+            if (user.ktp?.imageId) imageIds.push(user.ktp.imageId);
+            if (user.npwp?.imageId) imageIds.push(user.npwp.imageId);
+        });
+
+        // bank images
+        banks.forEach((bank) => {
+            if (bank.imageAccount?.imageId) imageIds.push(bank.imageAccount.imageId);
+            if (bank.imageHolder?.imageId) imageIds.push(bank.imageHolder.imageId);
+        });
+
+        // =========================
+        // Hapus semua data dalam transaction
+        // =========================
         await Promise.all([
             Tenant.deleteOne({ _id: tenantId }).session(session),
             Log.deleteMany({ tenantRef: tenantId }).session(session),
@@ -501,12 +525,15 @@ export const deleteData = async (req, res) => {
 
         await session.commitTransaction();
 
-        if (check.imageId) {
-            await cloudinary.uploader.destroy(check.imageId);
+        // =========================
+        // Hapus semua file cloudinary (SETELAH COMMIT)
+        // =========================
+        if (imageIds.length > 0) {
+            await Promise.all(imageIds.map((id) => cloudinary.uploader.destroy(id)));
         }
 
         return res.status(200).json({
-            message: "Berhasil hapus data.",
+            message: "Berhasil hapus tenant.",
         });
     } catch (err) {
         if (session.inTransaction()) {
