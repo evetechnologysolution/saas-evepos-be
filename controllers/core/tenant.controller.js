@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
+import multer from "multer";
 import Tenant from "../../models/core/tenant.js";
 import Log from "../../models/core/tenantLog.js";
+import Bank from "../../models/core/tenantBank.js";
 import User from "../../models/core/user.js";
 import Outlet from "../../models/core/outlet.js";
 import Subs from "../../models/core/subscription.js";
@@ -10,6 +12,7 @@ import Setting from "../../models/setting/settings.js";
 import Tax from "../../models/setting/tax.js";
 import Receipt from "../../models/setting/receipt.js";
 //
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 import { generateRandomId } from "../../lib/generateRandom.js";
 import { convertToE164 } from "../../lib/textSetting.js";
 import { ERROR_CONFIG } from "../../utils/errorMessages.js";
@@ -108,41 +111,79 @@ export const getDataById = async (req, res) => {
 
 // UPDATE A SPECIFIC DATA
 export const editData = async (req, res) => {
-    try {
-        let objData = req.body;
-
-        const spesificData = await Tenant.findById(req.params.id);
-        if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
-
-        // Build duplicate check query
-        const duplicateQuery = [];
-
-        if (objData.phone) {
-            objData.phone = convertToE164(objData.phone);
-            if (objData.phone !== spesificData.phone) {
-                duplicateQuery.push({ phone: objData.phone });
-            }
-        }
-
-        if (objData.email && objData.email !== spesificData.email) {
-            duplicateQuery.push({ email: objData.email });
-        }
-
-        if (duplicateQuery.length > 0) {
-            const exist = await Tenant.findOne({
-                _id: { $ne: req.params.id },
-                $or: duplicateQuery,
+    imageUpload.single("image")(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                status: "Failed",
+                message: "Failed to upload image",
             });
-
-            if (exist) return res.status(400).json({ message: "Phone or email already exists" });
+        } else if (err) {
+            return res.status(400).json({
+                status: "Failed",
+                message: err.message,
+            });
         }
 
-        const updatedData = await Tenant.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
+        try {
+            let objData = req.body;
 
-        return res.json(updatedData);
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
+            const spesificData = await Tenant.findById(req.params.id);
+            if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
+
+            // Build duplicate check query
+            const duplicateQuery = [];
+
+            if (objData.phone) {
+                objData.phone = convertToE164(objData.phone);
+                if (objData.phone !== spesificData.phone) {
+                    duplicateQuery.push({ phone: objData.phone });
+                }
+            }
+
+            if (objData.email && objData.email !== spesificData.email) {
+                duplicateQuery.push({ email: objData.email });
+            }
+
+            if (duplicateQuery.length > 0) {
+                const exist = await Tenant.findOne({
+                    _id: { $ne: req.params.id },
+                    $or: duplicateQuery,
+                });
+
+                if (exist) return res.status(400).json({ message: "Phone or email already exists" });
+            }
+
+            if (req.file) {
+                try {
+                    const cloud = await cloudinary.uploader.upload(req.file.path, {
+                        folder: process.env.FOLDER_MAIN,
+                        format: "webp",
+                        transformation: [{ quality: "auto:low" }],
+                    });
+                    objData = {
+                        ...objData,
+                        image: cloud.secure_url,
+                        imageId: cloud.public_id,
+                    };
+                } catch (uploadErr) {
+                    return res.status(400).json({
+                        status: "Failed",
+                        message: "Image upload failed",
+                    });
+                }
+            }
+
+            if (objData?.socialMedia === "reset") {
+                objData.socialMedia = [];
+            }
+
+            const updatedData = await Tenant.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
+
+            return res.json(updatedData);
+        } catch (err) {
+            return res.status(500).json({ message: err.message });
+        }
+    });
 };
 
 export const completeData = async (req, res) => {
@@ -360,12 +401,13 @@ export const suspendData = async (req, res) => {
             });
         }
 
-        const objData = { ...req.body, status: "suspended" };
-        const reason = objData?.reason ? ` .Alasan : ${objData.reason}` : "";
+        const objData = { ...req.body, status: "suspended", statusReason: req.body?.reason || "" };
 
         const objLog = {
-            log: `Tenant disuspend${reason}`,
-            ...(req.userData && { uMastertRef: req.userData._id }),
+            log: "Tenant disuspend",
+            notes: objData?.reason || "",
+            tenantRef: req.params.id,
+            ...(req.userData && { updatedBy: req.userData._id }),
         };
 
         await Promise.all([Log.create([objLog], { session }), Tenant.updateOne({ _id: req.params.id }, { $set: objData }, { session })]);
@@ -408,12 +450,13 @@ export const activateData = async (req, res) => {
             });
         }
 
-        const objData = { ...req.body, status: "active", reason: "" };
-        const reason = objData?.reason ? ` .Alasan : ${objData?.reason}` : "";
+        const objData = { ...req.body, status: "active", statusReason: req.body?.reason || "" };
 
         const objLog = {
-            log: `Tenant diaktifkan kembali${reason}`,
-            ...(req.userData && { uMastertRef: req.userData._id }),
+            log: "Tenant diaktifkan kembali",
+            notes: objData?.reason || "",
+            tenantRef: req.params.id,
+            ...(req.userData && { updatedBy: req.userData._id }),
         };
 
         await Promise.all([Log.create([objLog], { session }), Tenant.updateOne({ _id: req.params.id }, { $set: objData }, { session })]);
@@ -439,16 +482,41 @@ export const deleteData = async (req, res) => {
     try {
         const tenantId = req.params.id;
 
-        // cek dulu apakah tenant ada
-        const check = await Tenant.findById(tenantId).session(session);
-        if (!check) {
+        const tenant = await Tenant.findById(tenantId).session(session);
+        if (!tenant) {
             throw new Error("DATA_NOT_FOUND");
         }
 
-        // Hapus paralel dalam satu transaction
+        const [users, banks] = await Promise.all([
+            User.find({ tenantRef: tenantId }).select("imageId ktp.imageId npwp.imageId").session(session),
+            Bank.find({ tenantRef: tenantId }).select("imageAccount.imageId imageHolder.imageId").session(session),
+        ]);
+
+        const imageIds = [];
+
+        // tenant image
+        if (tenant.imageId) imageIds.push(tenant.imageId);
+
+        // user images
+        users.forEach((user) => {
+            if (user.imageId) imageIds.push(user.imageId);
+            if (user.ktp?.imageId) imageIds.push(user.ktp.imageId);
+            if (user.npwp?.imageId) imageIds.push(user.npwp.imageId);
+        });
+
+        // bank images
+        banks.forEach((bank) => {
+            if (bank.imageAccount?.imageId) imageIds.push(bank.imageAccount.imageId);
+            if (bank.imageHolder?.imageId) imageIds.push(bank.imageHolder.imageId);
+        });
+
+        // =========================
+        // Hapus semua data dalam transaction
+        // =========================
         await Promise.all([
             Tenant.deleteOne({ _id: tenantId }).session(session),
             Log.deleteMany({ tenantRef: tenantId }).session(session),
+            Bank.deleteMany({ tenantRef: tenantId }).session(session),
             Outlet.deleteMany({ tenantRef: tenantId }).session(session),
             User.deleteMany({ tenantRef: tenantId }).session(session),
             Subs.deleteMany({ tenantRef: tenantId }).session(session),
@@ -457,8 +525,15 @@ export const deleteData = async (req, res) => {
 
         await session.commitTransaction();
 
+        // =========================
+        // Hapus semua file cloudinary (SETELAH COMMIT)
+        // =========================
+        if (imageIds.length > 0) {
+            await Promise.all(imageIds.map((id) => cloudinary.uploader.destroy(id)));
+        }
+
         return res.status(200).json({
-            message: "Berhasil hapus data.",
+            message: "Berhasil hapus tenant.",
         });
     } catch (err) {
         if (session.inTransaction()) {

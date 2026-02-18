@@ -1,16 +1,32 @@
 import mongoose from "mongoose";
-import Log from "../../models/core/tenantLog.js";
+import Outlet from "../../models/core/outlet.js";
 import Tenant from "../../models/core/tenant.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort, tenant } = req.query;
+        const { page, perPage, search, sort, primary, tenant } = req.query;
         let qMatch = {};
 
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+
+        if (["yes", "1", "true"].includes(primary)) {
+            qMatch.isPrimary = { $eq: true };
+        }
+
+        if (["no", "0", "false"].includes(primary)) {
+            qMatch.isPrimary = { $ne: true };
+        }
+
+        if (tenant && mongoose.Types.ObjectId.isValid(tenant)) {
+            qMatch.tenantRef = tenant;
+        }
+
         if (search) {
-            const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
+            const objectId = mongoose.Types.ObjectId.isValid(search) ? search : null;
 
             const tenants = await Tenant.find({
                 $or: [
@@ -27,14 +43,12 @@ export const getAll = async (req, res) => {
                 ...qMatch,
                 $or: [
                     ...(objectId ? [{ _id: objectId }] : []),
-                    { log: { $regex: search, $options: "i" } },
                     { tenantRef: { $in: filteredTenant } },
+                    { name: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
                 ],
             };
-        }
-
-        if (tenant && mongoose.Types.ObjectId.isValid(tenant)) {
-            qMatch.tenantRef = tenant;
         }
 
         let sortObj = { createdAt: -1 }; // default
@@ -50,18 +64,8 @@ export const getAll = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
-            populate: [
-                {
-                    path: "tenantRef",
-                    select: "tenantId ownerName businessName phone email",
-                },
-                {
-                    path: "updatedBy",
-                    select: "userId fullname phone email",
-                },
-            ],
         };
-        const listofData = await Log.paginate(qMatch, options);
+        const listofData = await Outlet.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
@@ -75,18 +79,10 @@ export const getAll = async (req, res) => {
 export const getDataById = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
-        const spesificData = await Log.findOne(qMatch)
-            .populate([
-                {
-                    path: "tenantRef",
-                    select: "tenantId ownerName businessName phone email",
-                },
-                {
-                    path: "updatedBy",
-                    select: "userId fullname phone email",
-                },
-            ])
-            .lean();
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const spesificData = await Outlet.findOne(qMatch).lean();
         return res.json(spesificData);
     } catch (err) {
         return errorResponse(res, {
@@ -102,10 +98,10 @@ export const addData = async (req, res) => {
     try {
         let objData = req.body;
         if (req.userData) {
-            objData.updatedBy = req.userData?._id;
+            objData.tenantRef = req.userData?.tenantRef;
         }
 
-        const data = new Log(objData);
+        const data = new Outlet(objData);
         const newData = await data.save();
         return res.json(newData);
     } catch (err) {
@@ -134,8 +130,11 @@ export const addData = async (req, res) => {
 export const editData = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
         let objData = req.body;
-        const updatedData = await Log.updateOne(qMatch, {
+        const updatedData = await Outlet.updateOne(qMatch, {
             $set: objData,
         });
         return res.json(updatedData);
@@ -152,7 +151,10 @@ export const editData = async (req, res) => {
 export const deleteData = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
-        const deletedData = await Log.deleteOne(qMatch);
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const deletedData = await Outlet.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {

@@ -13,9 +13,7 @@ export const getAllCategory = async (req, res) => {
             qMatch.outletRef = req.userData?.outletRef;
         }
 
-        const listofData = await Category.find(qMatch)
-            .sort({ listNumber: 1 })
-            .lean();
+        const listofData = await Category.find(qMatch).sort({ listNumber: 1 }).lean();
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
@@ -217,13 +215,27 @@ export const deleteCategory = async (req, res) => {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
         }
-        // Check image & delete image
-        const exist = await Category.findOne(qMatch).lean();
-        if (exist?.imageId) {
-            await cloudinary.uploader.destroy(exist.imageId);
+
+        const existData = await Category.findOne(qMatch).lean();
+
+        if (!existData) {
+            return errorResponse(res, {
+                statusCode: 404,
+                code: "DATA_NOT_FOUND",
+                message: "Data not found!",
+            });
         }
 
-        const deletedData = await Category.deleteOne(qMatch);
+        const tasks = [];
+
+        if (existData?.imageId) {
+            tasks.push(cloudinary.uploader.destroy(existData?.imageId));
+        }
+
+        tasks.push(Category.deleteOne(qMatch));
+
+        const [, deletedData] = await Promise.all(tasks);
+
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {

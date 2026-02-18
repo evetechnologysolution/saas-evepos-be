@@ -13,13 +13,13 @@ export const getAllSubcategory = async (req, res) => {
             qMatch.outletRef = req.userData?.outletRef;
         }
 
-        const listofData = await Subcategory.find(qMatch).sort({ "listNumber": 1 }).lean();
+        const listofData = await Subcategory.find(qMatch).sort({ listNumber: 1 }).lean();
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -38,9 +38,9 @@ export const getPaginateSubcategory = async (req, res) => {
         if (search) {
             qMatch = {
                 ...qMatch,
-                name: { $regex: search, $options: 'i' }, // option i for case insensitivity to match upper and lower cases.
+                name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
 
         let sortObj = { name: 1 }; // default
         if (sort && sort.trim() !== "") {
@@ -55,14 +55,14 @@ export const getPaginateSubcategory = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
-        }
+        };
         const listofData = await Subcategory.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -80,7 +80,7 @@ export const getSubcategoryById = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -115,8 +115,8 @@ export const addSubcategory = async (req, res) => {
                     format: "webp",
                     transformation: [
                         { width: 800, height: 800, crop: "fit" }, // Adjust the width and height as needed
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
                 objData = Object.assign(objData, { image: cloud.secure_url, imageId: cloud.public_id });
             }
@@ -124,7 +124,6 @@ export const addSubcategory = async (req, res) => {
             const data = new Subcategory(objData);
             const newData = await data.save();
             return res.json(newData);
-
         } catch (err) {
             if (err.name === "ValidationError") {
                 const errors = {};
@@ -135,14 +134,14 @@ export const addSubcategory = async (req, res) => {
                 return errorResponse(res, {
                     code: "VALIDATION_ERROR",
                     message: "Validasi gagal",
-                    errors
+                    errors,
                 });
             }
 
             return errorResponse(res, {
                 statusCode: 500,
                 code: "SERVER_ERROR",
-                message: err.message || "Terjadi kesalahan pada server"
+                message: err.message || "Terjadi kesalahan pada server",
             });
         }
     });
@@ -182,23 +181,20 @@ export const editSubcategory = async (req, res) => {
                     format: "webp",
                     transformation: [
                         { width: 800, height: 800, crop: "fit" }, // Adjust the width and height as needed
-                        { quality: "auto:low" } // Adjust the compression level if desired
-                    ]
+                        { quality: "auto:low" }, // Adjust the compression level if desired
+                    ],
                 });
                 objData = Object.assign(objData, { image: cloud.secure_url, imageId: cloud.public_id });
             }
-            const updatedData = await Subcategory.updateOne(
-                qMatch,
-                {
-                    $set: objData
-                }
-            );
+            const updatedData = await Subcategory.updateOne(qMatch, {
+                $set: objData,
+            });
             return res.json(updatedData);
         } catch (err) {
             return errorResponse(res, {
                 statusCode: 500,
                 code: "SERVER_ERROR",
-                message: err.message || "Terjadi kesalahan pada server"
+                message: err.message || "Terjadi kesalahan pada server",
             });
         }
     });
@@ -212,19 +208,33 @@ export const deleteSubcategory = async (req, res) => {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
         }
-        // Check image & delete image
-        const exist = await Subcategory.findOne(qMatch).lean();
-        if (exist?.imageId) {
-            await cloudinary.uploader.destroy(exist.imageId);
+
+        const existData = await Subcategory.findOne(qMatch).lean();
+
+        if (!existData) {
+            return errorResponse(res, {
+                statusCode: 404,
+                code: "DATA_NOT_FOUND",
+                message: "Data not found!",
+            });
         }
 
-        const deletedData = await Subcategory.deleteOne(qMatch);
+        const tasks = [];
+
+        if (existData?.imageId) {
+            tasks.push(cloudinary.uploader.destroy(existData?.imageId));
+        }
+
+        tasks.push(Subcategory.deleteOne(qMatch));
+
+        const [, deletedData] = await Promise.all(tasks);
+
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
