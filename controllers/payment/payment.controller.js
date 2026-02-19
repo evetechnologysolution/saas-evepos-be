@@ -101,6 +101,7 @@ export const callbackSuccessPayment = async (req, res) => {
             invoice.subsRef,
             {
                 $set: {
+                    invoiceRef: invoice._id,
                     subsType: invoice.subsType,
                     startDate: invoice.startDate,
                     endDate: invoice.endDate,
@@ -155,6 +156,7 @@ export const successPayment = async (req, res) => {
             invoice.subsRef,
             {
                 $set: {
+                    invoiceRef: invoice._id,
                     subsType: invoice.subsType,
                     startDate: invoice.startDate,
                     endDate: invoice.endDate,

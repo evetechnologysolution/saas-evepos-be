@@ -64,6 +64,10 @@ export const getAll = async (req, res) => {
                     path: "tenantRef",
                     select: "tenantId ownerName businessName businessType phone email",
                 },
+                {
+                    path: "invoiceRef",
+                    select: "-tenantRef -subsRef -serviceRef",
+                },
             ],
         };
 
@@ -90,6 +94,10 @@ export const getDataById = async (req, res) => {
                 {
                     path: "tenantRef",
                     select: "tenantId ownerName businessName businessType phone email",
+                },
+                {
+                    path: "invoiceRef",
+                    select: "-tenantRef -subsRef -serviceRef",
                 },
             ])
             .lean();

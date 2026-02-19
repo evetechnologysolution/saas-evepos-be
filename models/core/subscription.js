@@ -22,6 +22,12 @@ const DataSchema = mongoose.Schema(
             default: null,
             set: (val) => (val === "" ? null : val),
         },
+        invoiceRef: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Invoices",
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
         subsType: {
             type: String,
             trim: true,
@@ -54,7 +60,7 @@ DataSchema.pre("save", async function (next) {
     next();
 });
 
-DataSchema.index({ tenantRef: 1, serviceRef: 1 });
+DataSchema.index({ tenantRef: 1, serviceRef: 1, invoiceRef: 1 });
 
 DataSchema.plugin(mongoosePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);
