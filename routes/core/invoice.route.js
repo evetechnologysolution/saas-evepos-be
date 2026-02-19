@@ -4,19 +4,25 @@ import { getAll, getDataById, addData, editData, deleteData } from "../../contro
 
 const router = express.Router();
 
-// GETTING ALL THE DATA
-router.get("/", isAuthMaster, getAll);
+// ====================
+// TENANT ROUTES
+// ====================
+router.use("/tenant", isAuth);
 
-// GET A SPECIFIC DATA
-router.get("/:id", isAuthMaster, getDataById);
+router.get("/tenant", getAll);
+router.get("/tenant/:id", getDataById);
+router.post("/tenant", addData);
+router.patch("/tenant/:id", editData);
 
-// CREATE NEW DATA
-router.post("/", isAuth, addData);
+// ====================
+// MASTER ROUTES
+// ====================
+router.use(isAuthMaster);
 
-// UPDATE A SPECIFIC DATA
-router.patch("/:id", isAuthMaster, editData);
-
-// DELETE A SPECIFIC DATA
-router.delete("/:id", isAuthMaster, deleteData);
+router.get("/", getAll);
+router.get("/:id", getDataById);
+router.post("/", addData);
+router.patch("/:id", editData);
+router.delete("/:id", deleteData);
 
 export default router;

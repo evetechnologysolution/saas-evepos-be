@@ -98,6 +98,7 @@ import salesOverviewRoute from "./routes/report/sales.route.js";
 import popularRoute from "./routes/report/popular.route.js";
 import paymentRevenueRoute from "./routes/report/paymentRevenue.route.js";
 import auditTrailRoute from "./routes/audit/audit.route.js";
+import paymentRoute from "./routes/payment/payment.route.js";
 
 // import pusherRoute from "./routes/pusher.route.js";
 // import informationRoute from "./routes/information.route.js";
@@ -109,7 +110,6 @@ import auditTrailRoute from "./routes/audit/audit.route.js";
 // import pointHistoryRoute from "./routes/pointHistory.route.js";
 // import gmapRoute from "./routes/gmap.route.js";
 // import voucherUsedRoute from "./routes/voucherUsed.route.js";
-// import paymentRoute from "./routes/payment.route.js";
 // import cartRoute from "./routes/cart.route.js";
 // import discountRoute from "./routes/discount.route.js";
 // import voucherRoute from "./routes/voucher.route.js";
@@ -135,6 +135,7 @@ app.use("/api/auth", authUserRoute);
 app.use("/api/survey", surveyRoute);
 app.use("/api/invoice", invoiceRoute);
 app.use("/api/outlet", outletRoute);
+app.use("/api/payment", paymentRoute);
 
 // setup
 app.use("/api/setup", setupRoute);
@@ -178,7 +179,6 @@ app.use("/api/audit", auditTrailRoute);
 // app.use("/api/point-history", pointHistoryRoute);
 // app.use("/api/gmap", gmapRoute);
 // app.use("/api/voucher-used", voucherUsedRoute);
-// app.use("/api/payment", paymentRoute);
 // app.use("/api/cart", cartRoute);
 // app.use("/api/discount", discountRoute);
 // app.use("/api/vouchers", voucherRoute);

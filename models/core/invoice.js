@@ -28,7 +28,45 @@ const DataSchema = mongoose.Schema(
             default: null,
             set: (val) => (val === "" ? null : val),
         },
-        amount: {
+        serviceName: {
+            type: String,
+            uppercase: true,
+            trim: true,
+            default: "",
+        },
+        subsType: {
+            type: String,
+            trim: true,
+            enum: ["monthly", "yearly"],
+            default: "monthly",
+        },
+        startDate: {
+            type: Date,
+        },
+        endDate: {
+            type: Date,
+        },
+        qty: {
+            type: Number,
+            default: 0,
+        },
+        price: {
+            type: Number,
+            default: 0,
+        },
+        discount: {
+            type: Number,
+            default: 0,
+        },
+        adminFee: {
+            type: Number,
+            default: 0,
+        },
+        tax: {
+            type: Number,
+            default: 0,
+        },
+        billedAmount: {
             type: Number,
             default: 0,
         },
@@ -46,7 +84,7 @@ const DataSchema = mongoose.Schema(
                 trim: true,
                 default: "",
             },
-            url: {
+            invoiceUrl: {
                 type: String,
                 trim: true,
                 default: "",
@@ -61,7 +99,7 @@ const DataSchema = mongoose.Schema(
             type: String,
             lowercase: true,
             trim: true,
-            enum: ["paid", "unpaid"],
+            enum: ["paid", "unpaid", "canceled"],
             default: "unpaid",
         },
     },
@@ -77,7 +115,7 @@ DataSchema.pre("save", async function (next) {
     next();
 });
 
-DataSchema.index({ tenantRef: 1, subsRef: 1 });
+DataSchema.index({ tenantRef: 1, subsRef: 1, serviceRef: 1 });
 
 DataSchema.plugin(mongoosePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);
