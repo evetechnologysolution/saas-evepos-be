@@ -7,7 +7,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort, tenant } = req.query;
+        const { page, perPage, search, tenant, status, sort } = req.query;
         let qMatch = {};
 
         if (req.userData?.tenantRef) {
@@ -43,6 +43,21 @@ export const getAll = async (req, res) => {
 
         if (tenant && mongoose.Types.ObjectId.isValid(tenant)) {
             qMatch.tenantRef = tenant;
+        }
+
+        if (status) {
+            const fixStatus = status.replace(":ne", "").trim();
+            if (fixStatus) {
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
+                if (status.includes(":ne")) {
+                    qMatch.status = { $nin: fixStatusArray };
+                } else {
+                    qMatch.status = { $in: fixStatusArray };
+                }
+            }
         }
 
         let sortObj = { createdAt: -1 }; // default
@@ -113,32 +128,39 @@ export const getDataById = async (req, res) => {
 // CREATE NEW DATA
 export const addData = async (req, res) => {
     try {
-        let objData = req.body;
-        if (req.userData) {
-            objData.tenantRef = req.userData?.tenantRef;
-        }
-
-        // const data = new Invoice(objData);
-        // let newData = await data.save();
-        let newData = await Invoice.create(objData);
+        const objData = {
+            ...req.body,
+            ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+        };
 
         let invoiceUrl = "";
 
+        // Cari invoice unpaid yang sama (misal berdasarkan tenant + service)
+        let invoice = await Invoice.findOne({
+            tenantRef: objData.tenantRef,
+            status: "unpaid",
+        });
+
+        // Jika belum ada → buat baru
+        if (!invoice) {
+            invoice = await Invoice.create(objData);
+        }
+
         // Generate payment jika ada tagihan
-        if (newData.billedAmount > 0) {
+        if (invoice.billedAmount > 0) {
             const payment = await generatePayment({
-                _id: newData._id,
-                paymentId: newData._id,
+                _id: invoice._id,
+                paymentId: invoice._id,
                 baseUrl: req.body?.baseUrl || "",
                 customer: objData.customer,
-                totalPrice: newData.billedAmount,
+                totalPrice: invoice.billedAmount,
             });
 
             if (payment.status === 200) {
                 invoiceUrl = payment.invoiceUrl;
 
-                newData = await Invoice.findByIdAndUpdate(
-                    newData._id,
+                invoice = await Invoice.findOneAndUpdate(
+                    { _id: invoice._id, status: "unpaid" }, // pastikan masih unpaid
                     {
                         $set: {
                             payment: {
@@ -155,15 +177,12 @@ export const addData = async (req, res) => {
         }
 
         return res.json({
-            ...newData.toObject(),
+            ...invoice.toObject(),
             invoiceUrl,
         });
     } catch (err) {
         if (err.name === "ValidationError") {
-            const errors = {};
-            Object.keys(err.errors).forEach((key) => {
-                errors[key] = err.errors[key].message;
-            });
+            const errors = Object.fromEntries(Object.entries(err.errors).map(([key, val]) => [key, val.message]));
 
             return errorResponse(res, {
                 code: "VALIDATION_ERROR",
