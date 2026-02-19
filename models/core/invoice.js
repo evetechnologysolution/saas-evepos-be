@@ -37,8 +37,8 @@ const DataSchema = mongoose.Schema(
         subsType: {
             type: String,
             trim: true,
-            enum: ["monthly", "yearly"],
-            default: "monthly",
+            enum: ["trial", "monthly", "yearly"],
+            default: "trial",
         },
         startDate: {
             type: Date,
