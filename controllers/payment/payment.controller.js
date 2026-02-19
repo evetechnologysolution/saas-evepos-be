@@ -196,53 +196,14 @@ export const callbackSuccessPayment = async (req, res) => {
 };
 
 export const successPayment = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
-    const invoice = await Invoice.findById(req.params.id).session(session);
+    const invoice = await Invoice.findById(req.params.id);
 
     if (!invoice) {
-      await session.abortTransaction();
       return res.status(404).json({ message: "Data not found" });
     }
 
-    // Jika sudah paid, tidak perlu update lagi
-    if (invoice.status !== "unpaid") {
-      await session.commitTransaction();
-      return res.json(invoice);
-    }
-
-    const updateInvoicePromise = Invoice.findByIdAndUpdate(
-      invoice._id,
-      {
-        $set: {
-          status: "paid",
-          "payment.paidAt": new Date(),
-        },
-      },
-      { new: true, session },
-    );
-
-    const updateSubsPromise = Subs.findByIdAndUpdate(
-      invoice.subsRef,
-      {
-        $set: {
-          invoiceRef: invoice._id,
-          serviceName: invoice.serviceName,
-          subsType: invoice.subsType,
-          startDate: invoice.startDate,
-          endDate: invoice.endDate,
-          status: "active",
-        },
-      },
-      { session },
-    );
-
-    const [updatedInvoice] = await Promise.all([
-      updateInvoicePromise,
-      updateSubsPromise,
-    ]);
+    const updatedInvoice = await processSuccessPayment(invoice?._id);
 
     await sendPaymentSuccessEmail({
       email: req.userData?.email,
@@ -250,13 +211,9 @@ export const successPayment = async (req, res) => {
       serviceName: invoice.serviceName,
     });
 
-    await session.commitTransaction();
     return res.json(updatedInvoice);
   } catch (err) {
-    await session.abortTransaction();
     return res.status(500).json({ message: err.message });
-  } finally {
-    session.endSession();
   }
 };
 
