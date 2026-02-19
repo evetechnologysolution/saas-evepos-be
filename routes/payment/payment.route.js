@@ -3,6 +3,7 @@ import { isAuth } from "../../middleware/auth.js";
 import {
     createPayment,
     recreatePayment,
+    checkDataPayment,
     successPayment,
     failedPayment,
     callbackSuccessPayment,
@@ -12,6 +13,7 @@ const router = express.Router();
 
 // CREATE NEW DATA
 router.post("/", isAuth, createPayment);
+router.post("/check/:id", isAuth, checkDataPayment);
 router.post("/recreate/:id", isAuth, recreatePayment);
 
 // UPDATE A SPECIFIC DATA

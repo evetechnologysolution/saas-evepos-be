@@ -115,6 +115,15 @@ DataSchema.pre("save", async function (next) {
     next();
 });
 
+DataSchema.pre("findOneAndUpdate", async function (next) {
+    if (!this.invoiceId) {
+        const currYear = new Date().getFullYear();
+        const number = generateRandomId();
+        this.invoiceId = `INV${currYear}${number}`;
+    }
+    next();
+});
+
 DataSchema.index({ tenantRef: 1, subsRef: 1, serviceRef: 1 });
 
 DataSchema.plugin(mongoosePaginate);
