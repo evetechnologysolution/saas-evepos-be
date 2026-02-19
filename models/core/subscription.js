@@ -28,6 +28,12 @@ const DataSchema = mongoose.Schema(
             default: null,
             set: (val) => (val === "" ? null : val),
         },
+        serviceName: {
+            type: String,
+            uppercase: true,
+            trim: true,
+            default: "",
+        },
         subsType: {
             type: String,
             trim: true,

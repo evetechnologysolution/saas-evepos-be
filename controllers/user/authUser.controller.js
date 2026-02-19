@@ -17,7 +17,7 @@ export const loginUser = async (req, res) => {
                     populate: [
                         {
                             path: "subsRef",
-                            select: "startDate endDate status -tenantRef",
+                            select: "serviceName startDate endDate status -tenantRef",
                         },
                         {
                             path: "surveyRef",
@@ -87,7 +87,7 @@ export const getMyUser = async (req, res) => {
                     populate: [
                         {
                             path: "subsRef",
-                            select: "startDate endDate status -tenantRef",
+                            select: "serviceName startDate endDate status -tenantRef",
                         },
                         {
                             path: "surveyRef",
