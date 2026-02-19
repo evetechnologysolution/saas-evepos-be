@@ -142,6 +142,8 @@ export const addData = async (req, res) => {
                     {
                         $set: {
                             payment: {
+                                createdAt: new Date(),
+                                paidAt: null,
                                 channel: "xendit",
                                 invoiceUrl,
                             },
