@@ -133,18 +133,32 @@ export const addData = async (req, res) => {
             ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
         };
 
+        if (!objData.tenantRef) {
+            return errorResponse(res, {
+                statusCode: 400,
+                code: "TENANT_REQUIRED",
+                message: "tenantRef is required",
+            });
+        }
+
         let invoiceUrl = "";
 
-        // Cari invoice unpaid yang sama (misal berdasarkan tenant + service)
-        let invoice = await Invoice.findOne({
-            tenantRef: objData.tenantRef,
-            status: "unpaid",
-        });
-
-        // Jika belum ada → buat baru
-        if (!invoice) {
-            invoice = await Invoice.create(objData);
-        }
+        // Atomic upsert
+        let invoice = await Invoice.findOneAndUpdate(
+            {
+                tenantRef: objData.tenantRef,
+                status: "unpaid",
+            },
+            {
+                $set: {
+                    ...objData,
+                },
+                $setOnInsert: {
+                    status: "unpaid",
+                },
+            },
+            { new: true, upsert: true },
+        );
 
         // Generate payment jika ada tagihan
         if (invoice.billedAmount > 0) {
@@ -160,7 +174,7 @@ export const addData = async (req, res) => {
                 invoiceUrl = payment.invoiceUrl;
 
                 invoice = await Invoice.findOneAndUpdate(
-                    { _id: invoice._id, status: "unpaid" }, // pastikan masih unpaid
+                    { _id: invoice._id, status: "unpaid" },
                     {
                         $set: {
                             payment: {
@@ -181,16 +195,6 @@ export const addData = async (req, res) => {
             invoiceUrl,
         });
     } catch (err) {
-        if (err.name === "ValidationError") {
-            const errors = Object.fromEntries(Object.entries(err.errors).map(([key, val]) => [key, val.message]));
-
-            return errorResponse(res, {
-                code: "VALIDATION_ERROR",
-                message: "Validasi gagal",
-                errors,
-            });
-        }
-
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
