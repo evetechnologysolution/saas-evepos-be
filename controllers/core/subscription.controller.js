@@ -7,7 +7,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort } = req.query;
+        const { page, perPage, search, subsType, status, sort } = req.query;
         let query = {};
 
         if (req.userData?.tenantRef) {
@@ -38,10 +38,20 @@ export const getAll = async (req, res) => {
                 $or: [
                     ...(objectId ? [{ _id: objectId }] : []),
                     { subsId: { $regex: search, $options: "i" } },
+                    { serviceName: { $regex: search, $options: "i" } },
+                    { subsType: { $regex: search, $options: "i" } },
                     { serviceRef: { $in: filteredService } },
                     { tenantRef: { $in: filteredTenant } },
                 ],
             };
+        }
+
+        if (subsType) {
+            qMatch.subsType = subsType;
+        }
+
+        if (status) {
+            qMatch.status = status;
         }
 
         let sortObj = { createdAt: -1 }; // default
@@ -62,7 +72,7 @@ export const getAll = async (req, res) => {
             populate: [
                 {
                     path: "tenantRef",
-                    select: "tenantId ownerName businessName businessType phone email",
+                    select: "tenantId ownerName businessName businessType phone email status",
                 },
                 {
                     path: "invoiceRef",
@@ -93,7 +103,7 @@ export const getDataById = async (req, res) => {
             .populate([
                 {
                     path: "tenantRef",
-                    select: "tenantId ownerName businessName businessType phone email",
+                    select: "tenantId ownerName businessName businessType phone email status",
                 },
                 {
                     path: "invoiceRef",
