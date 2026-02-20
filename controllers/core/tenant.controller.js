@@ -72,7 +72,7 @@ export const getAll = async (req, res) => {
             populate: [
                 {
                     path: "subsRef",
-                    select: "-tenantRef startDate endDate status",
+                    select: "-tenantRef serviceName subsType startDate endDate status",
                     populate: {
                         path: "serviceRef",
                         select: "name",
@@ -95,7 +95,7 @@ export const getDataById = async (req, res) => {
             .populate([
                 {
                     path: "subsRef",
-                    select: "-tenantRef startDate endDate status",
+                    select: "-tenantRef serviceName subsType startDate endDate status",
                     populate: {
                         path: "serviceRef",
                         select: "name",
