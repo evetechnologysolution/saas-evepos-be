@@ -7,7 +7,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, tenant, status, sort } = req.query;
+        const { page, perPage, search, tenant, subscription, status, sort } = req.query;
         let qMatch = {};
 
         if (req.userData?.tenantRef) {
@@ -43,6 +43,10 @@ export const getAll = async (req, res) => {
 
         if (tenant && mongoose.Types.ObjectId.isValid(tenant)) {
             qMatch.tenantRef = tenant;
+        }
+
+        if (subscription && mongoose.Types.ObjectId.isValid(subscription)) {
+            qMatch.subsRef = subscription;
         }
 
         if (status) {
