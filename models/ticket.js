@@ -12,6 +12,7 @@ const DataSchema = mongoose.Schema(
     title: String,
     body: String,
     reply: String,
+    module: String,
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Users",
