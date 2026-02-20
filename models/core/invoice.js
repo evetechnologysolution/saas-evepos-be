@@ -115,12 +115,29 @@ DataSchema.pre("save", async function (next) {
     next();
 });
 
-DataSchema.pre("findOneAndUpdate", async function (next) {
-    if (!this.invoiceId) {
+DataSchema.pre("findOneAndUpdate", function (next) {
+    const update = this.getUpdate();
+
+    if (!update) return next();
+
+    // cek apakah invoiceId belum ada di $set atau $setOnInsert
+    const hasInvoiceId = update.invoiceId || update?.$set?.invoiceId || update?.$setOnInsert?.invoiceId;
+
+    if (!hasInvoiceId) {
         const currYear = new Date().getFullYear();
         const number = generateRandomId();
-        this.invoiceId = `INV${currYear}${number}`;
+        const newInvoiceId = `INV${currYear}${number}`;
+
+        // Pastikan hanya set saat insert (upsert)
+        this.setUpdate({
+            ...update,
+            $setOnInsert: {
+                ...(update.$setOnInsert || {}),
+                invoiceId: newInvoiceId,
+            },
+        });
     }
+
     next();
 });
 
