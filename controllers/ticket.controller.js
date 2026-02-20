@@ -74,11 +74,15 @@ export const addTicket = async (req, res) => {
 
 export const getAllTicket = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, status } = req.query;
+    const { page = 1, limit = 10, search, status, all } = req.query;
 
     const query = {};
 
     if (status) query.status = status;
+
+    if (all === Number(0)) {
+      query.user = req.userData?._id;
+    }
 
     if (search) {
       query.$or = [
