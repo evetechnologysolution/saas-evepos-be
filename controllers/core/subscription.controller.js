@@ -72,7 +72,7 @@ export const getAll = async (req, res) => {
             populate: [
                 {
                     path: "tenantRef",
-                    select: "tenantId ownerName businessName businessType phone email status",
+                    select: "tenantId ownerName businessName businessType phone email businessType legalStatus status",
                 },
                 {
                     path: "invoiceRef",
@@ -103,7 +103,7 @@ export const getDataById = async (req, res) => {
             .populate([
                 {
                     path: "tenantRef",
-                    select: "tenantId ownerName businessName businessType phone email status",
+                    select: "tenantId ownerName businessName businessType phone email businessType legalStatus status",
                 },
                 {
                     path: "invoiceRef",
