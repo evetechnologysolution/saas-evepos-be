@@ -38,10 +38,10 @@ export const getAll = async (req, res) => {
         }
 
         if (start) {
-            fixStart = new Date(start);
+            const fixStart = new Date(start);
             fixStart.setHours(0, 0, 0, 0);
 
-            fixEnd = new Date(end || start);
+            const fixEnd = new Date(end || start);
             fixEnd.setHours(23, 59, 59, 999);
 
             qMatch.createdAt = {
