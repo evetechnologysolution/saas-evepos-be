@@ -96,7 +96,7 @@ export const getRevenue = async (req, res) => {
                             },
                         },
                     },
-                    donation: { $sum: "$donation" },
+                    roundingAmount: { $sum: "$roundingAmount" },
                     revenue: { $sum: "$billedAmount" },
                     sales: {
                         $sum: {
@@ -112,7 +112,7 @@ export const getRevenue = async (req, res) => {
                     detail: {
                         $push: {
                             type: "$_id.type",
-                            donation: "$donation",
+                            roundingAmount: "$roundingAmount",
                             revenue: "$revenue",
                             sales: "$sales",
                         },
@@ -127,7 +127,7 @@ export const getRevenue = async (req, res) => {
                         start,
                         end,
                     },
-                    totalDonation: { $sum: "$detail.donation" },
+                    totalRounding: { $sum: "$detail.roundingAmount" },
                     totalRevenue: { $sum: "$detail.revenue" },
                     totalSales: { $sum: "$detail.sales" },
                     detail: 1,

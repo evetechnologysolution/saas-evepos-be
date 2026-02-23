@@ -249,7 +249,7 @@ export const getRevenueThisYear = async (_, res) => {
                             }
                         }
                     },
-                    donation: { $sum: "$donation" },
+                    roundingAmount: { $sum: "$roundingAmount" },
                     revenue: { $sum: "$billedAmount" },
                     sales: {
                         $sum: { $cond: { if: { $gt: ["$billedAmount", 0] }, then: 1, else: 0 } }
@@ -264,7 +264,7 @@ export const getRevenueThisYear = async (_, res) => {
                     detail: {
                         $push: {
                             type: "$_id.type",
-                            donation: "$donation",
+                            roundingAmount: "$roundingAmount",
                             revenue: "$revenue",
                             sales: "$sales",
                         }
@@ -275,7 +275,7 @@ export const getRevenueThisYear = async (_, res) => {
                 $project: {
                     _id: 0,
                     filter: "This Year",
-                    totalDonation: { $sum: "$detail.donation" },
+                    totalRounding: { $sum: "$detail.roundingAmount" },
                     totalRevenue: { $sum: "$detail.revenue" },
                     totalSales: { $sum: "$detail.sales" },
                     detail: 1
@@ -335,7 +335,7 @@ export const getRevenueThisMonth = async (_, res) => {
                             }
                         }
                     },
-                    donation: { $sum: "$donation" },
+                    roundingAmount: { $sum: "$roundingAmount" },
                     revenue: { $sum: "$billedAmount" },
                     sales: {
                         $sum: { $cond: { if: { $gt: ["$billedAmount", 0] }, then: 1, else: 0 } }
@@ -349,7 +349,7 @@ export const getRevenueThisMonth = async (_, res) => {
                     detail: {
                         $push: {
                             type: "$_id.type",
-                            donation: "$donation",
+                            roundingAmount: "$roundingAmount",
                             revenue: "$revenue",
                             sales: "$sales",
                         }
@@ -360,7 +360,7 @@ export const getRevenueThisMonth = async (_, res) => {
                 $project: {
                     _id: 0,
                     filter: "This Month",
-                    totalDonation: { $sum: "$detail.donation" },
+                    totalRounding: { $sum: "$detail.roundingAmount" },
                     totalRevenue: { $sum: "$detail.revenue" },
                     totalSales: { $sum: "$detail.sales" },
                     detail: 1
@@ -418,7 +418,7 @@ export const getRevenueThisWeek = async (_, res) => {
                             }
                         }
                     },
-                    donation: { $sum: "$donation" },
+                    roundingAmount: { $sum: "$roundingAmount" },
                     revenue: { $sum: "$billedAmount" },
                     sales: {
                         $sum: { $cond: { if: { $gt: ["$billedAmount", 0] }, then: 1, else: 0 } }
@@ -432,7 +432,7 @@ export const getRevenueThisWeek = async (_, res) => {
                     detail: {
                         $push: {
                             type: "$_id.type",
-                            donation: "$donation",
+                            roundingAmount: "$roundingAmount",
                             revenue: "$revenue",
                             sales: "$sales",
                         }
@@ -443,7 +443,7 @@ export const getRevenueThisWeek = async (_, res) => {
                 $project: {
                     _id: 0,
                     filter: "This Week",
-                    totalDonation: { $sum: "$detail.donation" },
+                    totalRounding: { $sum: "$detail.roundingAmount" },
                     totalRevenue: { $sum: "$detail.revenue" },
                     totalSales: { $sum: "$detail.sales" },
                     detail: 1
@@ -504,7 +504,7 @@ export const getRevenueToday = async (_, res) => {
                             }
                         }
                     },
-                    donation: { $sum: "$donation" },
+                    roundingAmount: { $sum: "$roundingAmount" },
                     revenue: { $sum: "$billedAmount" },
                     sales: {
                         $sum: { $cond: { if: { $gt: ["$billedAmount", 0] }, then: 1, else: 0 } }
@@ -518,7 +518,7 @@ export const getRevenueToday = async (_, res) => {
                     detail: {
                         $push: {
                             type: "$_id.type",
-                            donation: "$donation",
+                            roundingAmount: "$roundingAmount",
                             revenue: "$revenue",
                             sales: "$sales",
                         }
@@ -533,7 +533,7 @@ export const getRevenueToday = async (_, res) => {
                         start: start,
                         end: start,
                     },
-                    totalDonation: { $sum: "$detail.donation" },
+                    totalRounding: { $sum: "$detail.roundingAmount" },
                     totalRevenue: { $sum: "$detail.revenue" },
                     totalSales: { $sum: "$detail.sales" },
                     detail: 1
@@ -606,7 +606,7 @@ export const getRevenueByDate = async (req, res) => {
                             }
                         }
                     },
-                    donation: { $sum: "$donation" },
+                    roundingAmount: { $sum: "$roundingAmount" },
                     revenue: { $sum: "$billedAmount" },
                     sales: {
                         $sum: { $cond: { if: { $gt: ["$billedAmount", 0] }, then: 1, else: 0 } }
@@ -620,7 +620,7 @@ export const getRevenueByDate = async (req, res) => {
                     detail: {
                         $push: {
                             type: "$_id.type",
-                            donation: "$donation",
+                            roundingAmount: "$roundingAmount",
                             revenue: "$revenue",
                             sales: "$sales",
                         }
@@ -635,7 +635,7 @@ export const getRevenueByDate = async (req, res) => {
                         start: start,
                         end: start,
                     },
-                    totalDonation: { $sum: "$detail.donation" },
+                    totalRounding: { $sum: "$detail.roundingAmount" },
                     totalRevenue: { $sum: "$detail.revenue" },
                     totalSales: { $sum: "$detail.sales" },
                     detail: 1

@@ -146,15 +146,7 @@ const DataSchema = mongoose.Schema(
         status: {
             type: String,
             default: "unpaid",
-            enum: [
-                "backlog",
-                "awaiting payment",
-                "unpaid",
-                "paid",
-                "half paid",
-                "refund",
-                "cancel",
-            ],
+            enum: ["backlog", "awaiting payment", "unpaid", "paid", "half paid", "refund", "cancel"],
             lowercase: true,
         },
         dp: {
@@ -193,15 +185,15 @@ const DataSchema = mongoose.Schema(
             type: Number,
             default: 0,
         },
-        donation: {
-            type: Number,
-            default: 0,
-        },
         havePaid: {
             type: Number,
             default: 0,
         },
         billedAmount: {
+            type: Number,
+            default: 0,
+        },
+        roundingAmount: {
             type: Number,
             default: 0,
         },
