@@ -80,7 +80,7 @@ export const getAllTicket = async (req, res) => {
 
     if (status) query.status = status;
 
-    if (all === Number(0)) {
+    if (Number(all) === 0) {
       query.user = req.userData?._id;
     }
 
