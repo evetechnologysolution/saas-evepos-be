@@ -1,6 +1,24 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 
+const MessageSchema = mongoose.Schema(
+  {
+    text: {
+      type: String,
+      required: true,
+    },
+    isAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    isTenant: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true },
+);
+
 const DataSchema = mongoose.Schema(
   {
     ticketId: {
@@ -23,6 +41,7 @@ const DataSchema = mongoose.Schema(
       enum: ["open", "progress", "closed"],
       default: "open",
     },
+    messages: [MessageSchema],
   },
   { timestamps: true },
 );
