@@ -91,15 +91,46 @@ export const getAllTicket = async (req, res) => {
       ];
     }
 
-    const data = await Ticket.paginate(query, {
-      page,
-      limit,
-      sort: { createdAt: -1 },
-      populate: "user",
-      lean: true,
+    const [data, statusCountRaw] = await Promise.all([
+      Ticket.paginate(query, {
+        page,
+        limit,
+        sort: { createdAt: -1 },
+        lean: true,
+
+        populate: {
+          path: "user",
+          populate: {
+            path: "tenantRef",
+          },
+        },
+      }),
+
+      Ticket.aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: "$status",
+            total: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    const statusCount = {
+      open: 0,
+      progress: 0,
+      closed: 0,
+    };
+
+    statusCountRaw.forEach((item) => {
+      statusCount[item._id] = item.total;
     });
 
-    return res.json(data);
+    return res.json({
+      ...data,
+      statusCount,
+    });
   } catch (err) {
     return errorResponse(res, {
       statusCode: 500,
@@ -143,19 +174,65 @@ export const updateTicket = async (req, res) => {
             .status(404)
             .json({ status: "Failed", message: "Ticket not found" });
 
-        let objData = req.body;
+        let objData = { ...req.body };
 
+        const update = {};
+
+        if (req.body.message) {
+          objData.message = JSON.parse(req.body.message);
+        }
+
+        // =========================
+        // ATTACHMENT TICKET
+        // =========================
         if (req.files?.attachment?.[0]) {
-          // hapus file lama
           if (ticket.attachmentId)
             await cloudinary.uploader.destroy(ticket.attachmentId);
 
           const uploaded = await uploadFile(req.files.attachment[0]);
-          objData.attachment = uploaded.fileUrl;
-          objData.attachmentId = uploaded.fileId;
+
+          update.$set = {
+            ...update.$set,
+            attachment: uploaded.fileUrl,
+            attachmentId: uploaded.fileId,
+          };
         }
 
-        const updated = await Ticket.findByIdAndUpdate(req.params.id, objData, {
+        // =========================
+        // APPEND MESSAGE (CHAT)
+        // =========================
+        if (objData.message?.text) {
+          update.$push = update.$push || {};
+
+          update.$push.messages = {
+            text: objData.message.text,
+            isAdmin: Boolean(objData.message.isAdmin),
+            isTenant: Boolean(objData.message.isTenant),
+            createdAt: new Date(),
+          };
+        }
+
+        // =========================
+        // UPDATE FIELD BIASA
+        // =========================
+        const allowedFields = ["title", "module", "status"];
+
+        const normalFields = {};
+
+        allowedFields.forEach((field) => {
+          if (objData[field] !== undefined) {
+            normalFields[field] = objData[field];
+          }
+        });
+
+        if (Object.keys(normalFields).length) {
+          update.$set = {
+            ...update.$set,
+            ...normalFields,
+          };
+        }
+
+        const updated = await Ticket.findByIdAndUpdate(req.params.id, update, {
           new: true,
         });
 
