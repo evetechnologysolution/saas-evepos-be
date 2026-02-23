@@ -6,7 +6,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort, tenant } = req.query;
+        const { page, perPage, search, sort, tenant, start, end } = req.query;
         let qMatch = {};
 
         if (search) {
@@ -35,6 +35,19 @@ export const getAll = async (req, res) => {
 
         if (tenant && mongoose.Types.ObjectId.isValid(tenant)) {
             qMatch.tenantRef = tenant;
+        }
+
+        if (start) {
+            fixStart = new Date(start);
+            fixStart.setHours(0, 0, 0, 0);
+
+            fixEnd = new Date(end || start);
+            fixEnd.setHours(23, 59, 59, 999);
+
+            qMatch.createdAt = {
+                $gte: new Date(fixStart.toISOString()),
+                $lte: new Date(fixEnd.toISOString()),
+            };
         }
 
         let sortObj = { createdAt: -1 }; // default
