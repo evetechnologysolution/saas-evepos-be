@@ -55,15 +55,11 @@ const DataSchema = mongoose.Schema(
                         type: Date,
                         default: Date.now,
                     },
-                    status: {
-                        type: String,
-                        lowercase: true,
-                        trim: true,
-                        default: "",
+                    id: {
+                        type: mongoose.Schema.Types.ObjectId,
                     },
-                    notes: {
+                    name: {
                         type: String,
-                        trim: true,
                         default: "",
                     },
                     qty: {
@@ -73,6 +69,17 @@ const DataSchema = mongoose.Schema(
                     unit: {
                         type: String,
                         lowercase: true,
+                        trim: true,
+                        default: "pcs",
+                    },
+                    status: {
+                        type: String,
+                        lowercase: true,
+                        trim: true,
+                        default: "",
+                    },
+                    notes: {
+                        type: String,
                         trim: true,
                         default: "",
                     },
@@ -147,7 +154,6 @@ DataSchema.pre("findOneAndUpdate", function (next) {
 
     next();
 });
-
 
 DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
