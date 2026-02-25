@@ -372,24 +372,18 @@ DataSchema.virtual("progressDetail").get(function () {
 
         // total qty per status
         const statusSummary = {};
-        let totalProcessed = 0;
 
         logs.forEach((l) => {
             if (!statusSummary[l.status]) {
                 statusSummary[l.status] = 0;
             }
             statusSummary[l.status] += l.qty;
-            totalProcessed += l.qty;
         });
 
-        const remaining = orderItem.qty - orderItem.refundQty - totalProcessed;
-
         return {
-            _prodId: orderItem.id,
+            id: orderItem.id,
             name: orderItem.name,
             orderedQty: orderItem.qty,
-            processedQty: totalProcessed,
-            remainingQty: remaining < 0 ? 0 : remaining,
             progressByStatus: statusSummary,
         };
     });
