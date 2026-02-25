@@ -364,6 +364,37 @@ DataSchema.virtual("progressRef", {
     justOne: true, // karena 1:1
 });
 
+DataSchema.virtual("progressDetail").get(function () {
+    if (!this.progressRef || !this.progressRef.log) return [];
+
+    return this.orders.map((orderItem) => {
+        const logs = this.progressRef.log.filter((l) => String(l.id) === String(orderItem.id));
+
+        // total qty per status
+        const statusSummary = {};
+        let totalProcessed = 0;
+
+        logs.forEach((l) => {
+            if (!statusSummary[l.status]) {
+                statusSummary[l.status] = 0;
+            }
+            statusSummary[l.status] += l.qty;
+            totalProcessed += l.qty;
+        });
+
+        const remaining = orderItem.qty - orderItem.refundQty - totalProcessed;
+
+        return {
+            _prodId: orderItem.id,
+            name: orderItem.name,
+            orderedQty: orderItem.qty,
+            processedQty: totalProcessed,
+            remainingQty: remaining < 0 ? 0 : remaining,
+            progressByStatus: statusSummary,
+        };
+    });
+});
+
 // Agar virtual ikut saat toJSON/toObject
 DataSchema.set("toJSON", { virtuals: true });
 DataSchema.set("toObject", { virtuals: true });
