@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 
 function extractLastPushedLog(update) {
@@ -157,6 +158,7 @@ DataSchema.pre("findOneAndUpdate", function (next) {
 
 DataSchema.index({ tenantRef: 1, outletRef: 1 });
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(aggregatePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("Progress", DataSchema);
