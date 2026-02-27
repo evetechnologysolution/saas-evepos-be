@@ -296,9 +296,12 @@ const DataSchema = mongoose.Schema(
 
 DataSchema.pre("save", function (next) {
     if (!this.orderId) {
-        const currYear = new Date().getFullYear();
-        const number = generateRandomId(6);
-        this.orderId = `ORD${currYear}${number}`;
+        const currYear = new Date().getFullYear().toString().slice(-2); // 2 digit tahun
+        const currMonth = String(new Date().getMonth() + 1).padStart(2, "0"); // 2 digit bulan
+        const currDate = String(new Date().getDate()).padStart(2, "0"); // 2 digit tanggal
+        const number = generateRandomId(5); // 5 digit angka acak
+
+        this.orderId = `OR${currYear}${currMonth}${currDate}${number}`;
     }
     if (this.pickupData?.by) {
         this.pickupData.by = capitalizeFirstLetter(this.pickupData.by);
