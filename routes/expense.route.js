@@ -15,10 +15,10 @@ const router = express.Router();
 router.get("/", isAuth, getAllExpense);
 
 // GETTING ALL THE DATA
-router.get("/total", getExpenseTotal);
+router.get("/total", isAuth, getExpenseTotal);
 
 // GET A SPECIFIC DATA
-router.get("/:id", getExpenseById);
+router.get("/:id", isAuth, getExpenseById);
 
 // CREATE NEW DATA
 router.post("/", isAuth, addExpense);
