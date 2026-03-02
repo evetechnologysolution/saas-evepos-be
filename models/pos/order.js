@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter, convertToE164 } from "../../lib/textSetting.js";
-import { generateRandomId } from "../../lib/generateRandom.js";
+import { generateRandomOrderId } from "../../lib/generateRandom.js";
 
 const DataSchema = mongoose.Schema(
     {
@@ -296,12 +296,9 @@ const DataSchema = mongoose.Schema(
 
 DataSchema.pre("save", function (next) {
     if (!this.orderId) {
-        const currYear = new Date().getFullYear().toString().slice(-2); // 2 digit tahun
-        const currMonth = String(new Date().getMonth() + 1).padStart(2, "0"); // 2 digit bulan
-        const currDate = String(new Date().getDate()).padStart(2, "0"); // 2 digit tanggal
-        const number = generateRandomId(5); // 5 digit angka acak
+        const number = generateRandomOrderId(5);
 
-        this.orderId = `OR${currYear}${currMonth}${currDate}${number}`;
+        this.orderId = number;
     }
     if (this.pickupData?.by) {
         this.pickupData.by = capitalizeFirstLetter(this.pickupData.by);
