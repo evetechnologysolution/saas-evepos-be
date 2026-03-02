@@ -153,7 +153,7 @@ export const getAllOrder = async (req, res) => {
                 },
                 {
                     path: "progressRef",
-                    select: "latestStatus latestNotes",
+                    select: "latestStatus latestNotes log",
                     populate: {
                         path: "log.staffRef",
                         select: "fullname",
