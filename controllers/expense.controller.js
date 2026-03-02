@@ -143,7 +143,7 @@ export const addExpense = async (req, res) => {
     if (req.userData) {
       objData.tenantRef = req.userData?.tenantRef;
       if (req.userData?.outletRef) {
-        objData.outletRef = [req.userData.outletRef];
+        objData.outletRef = req.userData.outletRef;
       }
     }
     const data = new Expense(objData);
@@ -161,7 +161,7 @@ export const editExpense = async (req, res) => {
     if (req.userData) {
       objData.tenantRef = req.userData?.tenantRef;
       if (req.userData?.outletRef) {
-        objData.outletRef = [req.userData.outletRef];
+        objData.outletRef = req.userData.outletRef;
       }
     }
     const updatedData = await Expense.updateOne(
