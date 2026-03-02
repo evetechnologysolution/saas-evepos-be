@@ -5,6 +5,13 @@ export const getAllExpense = async (req, res) => {
   try {
     const { page, perPage, code, search } = req.query;
     let query = {};
+    if (req.userData) {
+      query = {
+        ...query,
+        tenantRef: req.userData.tenantRef,
+        outletRef: req.userData.outletRef,
+      };
+    }
     if (code) {
       query = {
         ...query,
