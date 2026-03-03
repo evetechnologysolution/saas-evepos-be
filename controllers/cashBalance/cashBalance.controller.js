@@ -33,6 +33,8 @@ export const getAllBalance = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: { startDate: -1 },
+            lean: true,
+            leanWithVirtuals: true,
         };
         const listofData = await Balance.paginate(qMatch, options);
         return res.json(listofData);
@@ -127,7 +129,7 @@ export const getBalanceById = async (req, res) => {
             qMatch.outletRef = req.userData?.outletRef;
         }
 
-        const spesificData = await Balance.findOne(qMatch);
+        const spesificData = await Balance.findOne(qMatch).lean({ virtuals: true });
         return res.json(spesificData);
     } catch (err) {
         return errorResponse(res, {
@@ -147,7 +149,7 @@ export const getExistBalance = async (req, res) => {
             qMatch.outletRef = req.userData?.outletRef;
         }
 
-        const spesificData = await Balance.findOne(qMatch);
+        const spesificData = await Balance.findOne(qMatch).lean({ virtuals: true });
         return res.json(spesificData);
     } catch (err) {
         return errorResponse(res, {
