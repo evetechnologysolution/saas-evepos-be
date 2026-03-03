@@ -4,7 +4,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllBalance = async (req, res) => {
     try {
-        const { page, perPage, start, end } = req.query;
+        const { page, perPage, start, end, sort } = req.query;
         let qMatch = {};
 
         if (req.userData) {
@@ -29,10 +29,20 @@ export const getAllBalance = async (req, res) => {
                 },
             };
         }
+
+        let sortObj = { stratDate: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { startDate: -1 },
+            sort: sortObj,
             lean: true,
             leanWithVirtuals: true,
         };

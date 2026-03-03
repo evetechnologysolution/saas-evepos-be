@@ -506,7 +506,7 @@ export const getCountTrackOrder = async (req, res) => {
 // GETTING ORDER BY MEMBER
 export const getOrderByMember = async (req, res) => {
     try {
-        const { page, perPage, search, status, progressStatus, pickup, orderType } = req.query;
+        const { page, perPage, search, status, progressStatus, pickup, orderType, sort } = req.query;
 
         let qMatch = {
             "customer.memberId": req.params.id,
@@ -561,10 +561,19 @@ export const getOrderByMember = async (req, res) => {
             qMatch.orderType = orderType;
         }
 
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { date: -1 },
+            sort: sortObj,
         };
         const listofData = await Order.paginate(qMatch, options);
         return res.json(listofData);

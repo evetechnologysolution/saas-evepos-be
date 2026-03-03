@@ -6,7 +6,7 @@ import { imageUpload } from "../lib/fileUpload.js";
 // GETTING ALL THE DATA
 export const getAllGallery = async (req, res) => {
     try {
-        const { page, perPage, search } = req.query;
+        const { page, perPage, search, sort } = req.query;
         let query = {};
         if (search) {
             query = {
@@ -14,10 +14,20 @@ export const getAllGallery = async (req, res) => {
                 name: { $regex: search, $options: "i" },
             };
         }
+
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { date: -1 },
+            sort: sortObj,
         };
         const listofData = await Gallery.paginate(query, options);
         return res.json(listofData);
