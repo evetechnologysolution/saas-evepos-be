@@ -30,7 +30,7 @@ export const getAllBalance = async (req, res) => {
             };
         }
 
-        let sortObj = { stratDate: -1 }; // default
+        let sortObj = { startDate: -1 }; // default
         if (sort && sort.trim() !== "") {
             sortObj = {};
             sort.split(",").forEach((rule) => {
