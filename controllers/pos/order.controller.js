@@ -112,7 +112,7 @@ export const getAllOrder = async (req, res) => {
 
             qMatch = {
                 ...qMatch,
-                date: {
+                createdAt: {
                     $gte: fixStart,
                     $lte: fixEnd,
                 },
@@ -261,7 +261,7 @@ export const getDeliveryOrder = async (req, res) => {
 
             qMatch = {
                 ...qMatch,
-                date: {
+                createdAt: {
                     $gte: fixStart,
                     $lte: fixEnd,
                 },
@@ -386,7 +386,7 @@ export const getTrackOrder = async (req, res) => {
 
             qMatch = {
                 ...qMatch,
-                date: {
+                createdAt: {
                     $gte: fixStart,
                     $lte: fixEnd,
                 },
@@ -454,7 +454,7 @@ export const getCountTrackOrder = async (req, res) => {
         const result = await Order.aggregate([
             {
                 $match: {
-                    date: {
+                    createdAt: {
                         $gte: fixStart,
                         $lte: fixEnd,
                     },
@@ -622,7 +622,7 @@ export const getPaidOrder = async (req, res) => {
 
             qMatch = {
                 ...qMatch,
-                date: {
+                createdAt: {
                     $gte: fixStart,
                     $lte: fixEnd,
                 },
@@ -688,7 +688,7 @@ export const getCloseCashierOrder = async (req, res) => {
         if (start && end) {
             qMatch = {
                 ...qMatch,
-                date: {
+                paymentDate: {
                     $gte: start,
                     $lte: end,
                 },
@@ -696,7 +696,8 @@ export const getCloseCashierOrder = async (req, res) => {
         }
         const listofData = await Order.find(qMatch)
             .select([
-                "date",
+                "createdAt",
+                "paymentDate",
                 "orderId",
                 "orders",
                 "taxPercentage",
@@ -708,7 +709,7 @@ export const getCloseCashierOrder = async (req, res) => {
                 "billedAmount",
                 "status",
             ])
-            .sort({ date: 1 });
+            .sort({ paymentDate: 1 });
 
         // Hitung total dokumen
         const totalDocuments = listofData.length;
@@ -764,7 +765,7 @@ export const getExportOrder = async (req, res) => {
 
             qMatch = {
                 ...qMatch,
-                date: {
+                createdAt: {
                     $gte: fixStart,
                     $lte: fixEnd,
                 },
