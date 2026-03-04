@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Label from "../../models/pos/progressLabel.js";
+import Progress from "../../models/pos/progress.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
@@ -102,6 +103,14 @@ export const addData = async (req, res) => {
     const newData = await data.save();
     return res.json(newData);
   } catch (err) {
+    if (err.code === 11000) {
+      return errorResponse(res, {
+        statusCode: 400,
+        code: "DUPLICATE_NAME",
+        message: "Nama label sudah digunakan pada tenant ini",
+      });
+    }
+
     return errorResponse(res, {
       statusCode: 500,
       code: "SERVER_ERROR",
@@ -118,9 +127,7 @@ export const editData = async (req, res) => {
       qMatch.tenantRef = req.userData?.tenantRef;
     }
     let objData = req.body;
-
     const oldData = await Label.findOne(qMatch);
-
     if (!oldData) {
       return errorResponse(res, {
         statusCode: 404,
@@ -128,14 +135,34 @@ export const editData = async (req, res) => {
         message: "Data tidak ditemukan",
       });
     }
-
     objData.previousName = oldData.name;
-
     const updatedData = await Label.updateOne(qMatch, {
       $set: objData,
     });
+
+    if (objData.name && objData.name !== oldData.name) {
+      await Progress.updateMany(
+        { "log.statusRef": oldData._id },
+        {
+          $set: {
+            "log.$[entry].name": objData.name,
+          },
+        },
+        {
+          arrayFilters: [{ "entry.statusRef": oldData._id }],
+        },
+      );
+    }
+
     return res.json(updatedData);
   } catch (err) {
+    if (err.code === 11000) {
+      return errorResponse(res, {
+        statusCode: 400,
+        code: "DUPLICATE_NAME",
+        message: "Nama label sudah digunakan pada tenant ini",
+      });
+    }
     return errorResponse(res, {
       statusCode: 500,
       code: "SERVER_ERROR",

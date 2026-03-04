@@ -50,7 +50,7 @@ DataSchema.pre("save", async function (next) {
   });
 });
 
-DataSchema.index({ tenantRef: 1 });
+DataSchema.index({ name: 1, tenantRef: 1 }, { unique: true });
 DataSchema.plugin(mongoosePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);
 

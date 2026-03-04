@@ -340,7 +340,7 @@ export const getLogSummary = async (req, res) => {
       .lean();
 
     const initialActivity = progressLabels.map((item) => ({
-      status: item.name, // GANTI DENGAN _ID
+      status: item.name,
     }));
 
     // ======================================================
@@ -543,7 +543,7 @@ export const getLogSummary = async (req, res) => {
       {
         $group: {
           _id: {
-            status: "$log.status",
+            statusRef: "$log.statusRef", // ← pakai statusRef, bukan status
             staffRef: "$log.staffRef",
           },
           qty: { $sum: "$log.qty" },
@@ -560,12 +560,23 @@ export const getLogSummary = async (req, res) => {
         },
       },
       { $unwind: { path: "$refStaff", preserveNullAndEmptyArrays: true } },
+      // Lookup nama label terbaru dari progresslabels
+      {
+        $lookup: {
+          from: "progresslabels",
+          localField: "_id.statusRef",
+          foreignField: "_id",
+          as: "refLabel",
+        },
+      },
+      { $unwind: { path: "$refLabel", preserveNullAndEmptyArrays: true } },
       {
         $project: {
           _id: 0,
-          status: "$_id.status",
+          statusRef: "$_id.statusRef",
+          status: "$refLabel.name", // ← ambil nama terbaru dari label
           staffRef: {
-            _id: "$staff._id",
+            _id: "$refStaff._id",
             fullname: "$refStaff.fullname",
             role: "$refStaff.role",
             isActive: "$refStaff.isActive",
@@ -575,7 +586,6 @@ export const getLogSummary = async (req, res) => {
           qtyPcs: 1,
         },
       },
-
       { $sort: { status: 1, qty: -1 } },
     ];
 
