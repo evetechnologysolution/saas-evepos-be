@@ -662,11 +662,12 @@ export const getLogSummary = async (req, res) => {
     }
 
     const progressLabels = await ProgressLabel.find(labelMatch)
-      .select("name")
+      .select("_id name")
       .sort({ createdAt: 1 })
       .lean();
 
     const initialActivity = progressLabels.map((item) => ({
+      _id: item._id,
       status: item.name,
     }));
 
@@ -775,33 +776,6 @@ export const getLogSummary = async (req, res) => {
       basePipeline.push({ $match: qMatch });
     }
 
-    // ADD FIELDS QTY KG / PCS
-    // basePipeline.push({
-    //     $addFields: {
-    //         qtyKg: {
-    //             $sum: {
-    //                 $map: {
-    //                     input: "$refOrder.orders",
-    //                     as: "o",
-    //                     in: {
-    //                         $cond: [{ $eq: [{ $strcasecmp: ["$$o.category", "Kiloan"] }, 0] }, "$$o.qty", 0],
-    //                     },
-    //                 },
-    //             },
-    //         },
-    //         qtyPcs: {
-    //             $sum: {
-    //                 $map: {
-    //                     input: "$refOrder.orders",
-    //                     as: "o",
-    //                     in: {
-    //                         $cond: [{ $ne: [{ $strcasecmp: ["$$o.category", "Kiloan"] }, 0] }, "$$o.qty", 0],
-    //                     },
-    //                 },
-    //             },
-    //         },
-    //     },
-    // });
     basePipeline.push({
       $addFields: {
         qtyKg: {
@@ -826,28 +800,28 @@ export const getLogSummary = async (req, res) => {
     // ======================================================
     const summaryPipeline = [
       ...basePipeline,
-      // Lookup staff only for summary
-      {
-        $lookup: {
-          from: "users",
-          localField: "log.staffRef",
-          foreignField: "_id",
-          as: "refStaff",
-        },
-      },
-      { $unwind: { path: "$refStaff", preserveNullAndEmptyArrays: true } },
       {
         $group: {
-          _id: "$log.status",
+          _id: "$log.statusRef", // ← group by statusRef
           qty: { $sum: "$log.qty" },
           qtyKg: { $sum: "$qtyKg" },
           qtyPcs: { $sum: "$qtyPcs" },
         },
       },
       {
+        $lookup: {
+          from: "progresslabels",
+          localField: "_id",
+          foreignField: "_id",
+          as: "refLabel",
+        },
+      },
+      { $unwind: { path: "$refLabel", preserveNullAndEmptyArrays: true } },
+      {
         $project: {
           _id: 0,
-          status: "$_id",
+          statusRef: "$_id", // ← expose statusRef
+          status: "$refLabel.name", // ← nama terbaru dari label
           qty: 1,
           qtyKg: 1,
           qtyPcs: 1,
@@ -924,7 +898,7 @@ export const getLogSummary = async (req, res) => {
     const merged = initialActivity
       .map((act) => {
         const found = summaryResult.find(
-          (r) => r.status?.toLowerCase() === act.status?.toLowerCase(),
+          (r) => r.statusRef?.toString() === act._id?.toString(), // ← match by statusRef
         );
         return {
           status: act.status,
