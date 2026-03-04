@@ -4,44 +4,53 @@ import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
 const DataSchema = mongoose.Schema(
-    {
-        name: {
-            type: String,
-            trim: true,
-            default: "",
-        },
-        tenantRef: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Tenants",
-            default: null,
-            set: (val) => (val === "" ? null : val),
-        },
+  {
+    name: {
+      type: String,
+      trim: true,
+      default: "",
     },
-    { timestamps: true },
+    previousName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    listNumber: {
+      type: Number,
+      default: null,
+    },
+    tenantRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenants",
+      default: null,
+      set: (val) => (val === "" ? null : val),
+    },
+  },
+  { timestamps: true },
 );
 
 DataSchema.pre("save", async function (next) {
-    if (this.name) {
-        this.name = capitalizeFirstLetter(this.name);
-    }
-    next();
+  if (this.name) {
+    this.name = capitalizeFirstLetter(this.name);
+  }
+  next();
 });
 
 ["updateOne", "findByIdAndUpdate", "findOneAndUpdate"].forEach((method) => {
-    DataSchema.pre(method, async function (next) {
-        const update = this.getUpdate();
-        if (!update || !update.$set) return next();
+  DataSchema.pre(method, async function (next) {
+    const update = this.getUpdate();
+    if (!update || !update.$set) return next();
 
-        const set = update.$set;
+    const set = update.$set;
 
-        if (set.name) {
-            set.name = capitalizeFirstLetter(set.name);
-        }
-        next();
-    });
+    if (set.name) {
+      set.name = capitalizeFirstLetter(set.name);
+    }
+    next();
+  });
 });
 
-DataSchema.index({ tenantRef: 1 });
+DataSchema.index({ name: 1, tenantRef: 1 }, { unique: true });
 DataSchema.plugin(mongoosePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);
 
