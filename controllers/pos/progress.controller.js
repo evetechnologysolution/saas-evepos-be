@@ -543,7 +543,7 @@ export const getLogSummary = async (req, res) => {
       {
         $group: {
           _id: {
-            statusRef: "$log.statusRef", // ← pakai statusRef, bukan status
+            statusRef: "$log.statusRef",
             staffRef: "$log.staffRef",
           },
           qty: { $sum: "$log.qty" },
@@ -560,7 +560,7 @@ export const getLogSummary = async (req, res) => {
         },
       },
       { $unwind: { path: "$refStaff", preserveNullAndEmptyArrays: true } },
-      // Lookup nama label terbaru dari progresslabels
+
       {
         $lookup: {
           from: "progresslabels",
@@ -574,7 +574,7 @@ export const getLogSummary = async (req, res) => {
         $project: {
           _id: 0,
           statusRef: "$_id.statusRef",
-          status: "$refLabel.name", // ← ambil nama terbaru dari label
+          status: "$refLabel.name",
           staffRef: {
             _id: "$refStaff._id",
             fullname: "$refStaff.fullname",
