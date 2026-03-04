@@ -180,6 +180,7 @@ export const getAllRawProduct = async (req, res) => {
                         amount: "$promo.amount",
                         qtyMin: "$promo.qtyMin",
                         qtyFree: "$promo.qtyFree",
+                        conditional: "$promo.conditional",
                         isDailyPromotion: "$discount.isAvailable",
                         isAvailable: "$discount.isAvailable",
                     },
