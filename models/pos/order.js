@@ -86,6 +86,12 @@ const DataSchema = mongoose.Schema(
                     type: Number,
                     default: 0,
                 },
+                promotionLabel: {
+                    type: String,
+                    trim: true,
+                    set: capitalizeFirstLetter,
+                    default: "",
+                },
                 promotionQtyMin: {
                     type: Number,
                     default: 0,
