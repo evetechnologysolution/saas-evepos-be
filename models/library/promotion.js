@@ -106,6 +106,11 @@ const DataSchema = mongoose.Schema(
                 trim: true,
                 default: "",
             },
+            otherNotes: {
+                type: String,
+                trim: true,
+                default: "",
+            },
             isActive: {
                 type: Boolean,
                 default: false,
