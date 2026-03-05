@@ -25,6 +25,10 @@ const DataSchema = mongoose.Schema(
       default: null,
       set: (val) => (val === "" ? null : val),
     },
+    archived: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true },
 );
