@@ -108,6 +108,10 @@ const DataSchema = mongoose.Schema(
             trim: true,
             default: "",
         },
+        isEvewash: {
+            type: Boolean,
+            default: false,
+        },
     },
     { timestamps: true },
 );
