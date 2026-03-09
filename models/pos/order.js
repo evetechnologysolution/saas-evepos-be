@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter, convertToE164 } from "../../lib/textSetting.js";
-import { generateRandomId } from "../../lib/generateRandom.js";
+import { generateRandomOrderId } from "../../lib/generateRandom.js";
 
 const DataSchema = mongoose.Schema(
     {
@@ -86,6 +86,12 @@ const DataSchema = mongoose.Schema(
                     type: Number,
                     default: 0,
                 },
+                promotionLabel: {
+                    type: String,
+                    trim: true,
+                    set: capitalizeFirstLetter,
+                    default: "",
+                },
                 promotionQtyMin: {
                     type: Number,
                     default: 0,
@@ -146,15 +152,7 @@ const DataSchema = mongoose.Schema(
         status: {
             type: String,
             default: "unpaid",
-            enum: [
-                "backlog",
-                "awaiting payment",
-                "unpaid",
-                "paid",
-                "half paid",
-                "refund",
-                "cancel",
-            ],
+            enum: ["backlog", "awaiting payment", "unpaid", "paid", "half paid", "refund", "cancel"],
             lowercase: true,
         },
         dp: {
@@ -193,15 +191,15 @@ const DataSchema = mongoose.Schema(
             type: Number,
             default: 0,
         },
-        donation: {
-            type: Number,
-            default: 0,
-        },
         havePaid: {
             type: Number,
             default: 0,
         },
         billedAmount: {
+            type: Number,
+            default: 0,
+        },
+        roundingAmount: {
             type: Number,
             default: 0,
         },
@@ -304,9 +302,9 @@ const DataSchema = mongoose.Schema(
 
 DataSchema.pre("save", function (next) {
     if (!this.orderId) {
-        const currYear = new Date().getFullYear();
-        const number = generateRandomId(6);
-        this.orderId = `ORD${currYear}${number}`;
+        const number = generateRandomOrderId(5);
+
+        this.orderId = number;
     }
     if (this.pickupData?.by) {
         this.pickupData.by = capitalizeFirstLetter(this.pickupData.by);
@@ -370,6 +368,31 @@ DataSchema.virtual("progressRef", {
     localField: "_id", // field di schema ini
     foreignField: "orderRef", // field di model tujuan
     justOne: true, // karena 1:1
+});
+
+DataSchema.virtual("progressDetail").get(function () {
+    if (!this.progressRef || !this.progressRef.log) return [];
+
+    return this.orders.map((orderItem) => {
+        const logs = this.progressRef.log.filter((l) => String(l.id) === String(orderItem.id));
+
+        // total qty per status
+        const statusSummary = {};
+
+        logs.forEach((l) => {
+            if (!statusSummary[l.status]) {
+                statusSummary[l.status] = 0;
+            }
+            statusSummary[l.status] += l.qty;
+        });
+
+        return {
+            id: orderItem.id,
+            name: orderItem.name,
+            orderedQty: orderItem.qty,
+            progressByStatus: statusSummary,
+        };
+    });
 });
 
 // Agar virtual ikut saat toJSON/toObject

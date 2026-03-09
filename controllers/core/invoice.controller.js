@@ -1,22 +1,67 @@
 import mongoose from "mongoose";
 import Invoice from "../../models/core/invoice.js";
+import Tenant from "../../models/core/tenant.js";
+import { generatePayment } from "../../lib/xendit.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort, tenant } = req.query;
+        const { page, perPage, search, tenant, subscription, status, sort } = req.query;
         let qMatch = {};
 
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+
         if (search) {
+            const objectId = mongoose.Types.ObjectId.isValid(search) ? search : null;
+
+            const tenants = await Tenant.find({
+                $or: [
+                    { tenantId: { $regex: search, $options: "i" } },
+                    { ownerName: { $regex: search, $options: "i" } },
+                    { businessName: { $regex: search, $options: "i" } },
+                    { phone: { $regex: search, $options: "i" } },
+                    { email: { $regex: search, $options: "i" } },
+                ],
+            });
+            const filteredTenant = tenants.map((item) => item._id);
+
             qMatch = {
                 ...qMatch,
-                name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
+                $or: [
+                    ...(objectId ? [{ _id: objectId }] : []),
+                    { tenantRef: { $in: filteredTenant } },
+                    { invoiceId: { $regex: search, $options: "i" } },
+                    { notes: { $regex: search, $options: "i" } },
+                    { "payment.channel": { $regex: search, $options: "i" } },
+                    { status: { $regex: search, $options: "i" } },
+                ], // option i for case insensitivity to match upper and lower cases.
             };
         }
 
         if (tenant && mongoose.Types.ObjectId.isValid(tenant)) {
             qMatch.tenantRef = tenant;
+        }
+
+        if (subscription && mongoose.Types.ObjectId.isValid(subscription)) {
+            qMatch.subsRef = subscription;
+        }
+
+        if (status) {
+            const fixStatus = status.replace(":ne", "").trim();
+            if (fixStatus) {
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
+                if (status.includes(":ne")) {
+                    qMatch.status = { $nin: fixStatusArray };
+                } else {
+                    qMatch.status = { $in: fixStatusArray };
+                }
+            }
         }
 
         let sortObj = { createdAt: -1 }; // default
@@ -59,6 +104,9 @@ export const getAll = async (req, res) => {
 export const getDataById = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
         const spesificData = await Invoice.findOne(qMatch)
             .populate([
                 {
@@ -84,28 +132,73 @@ export const getDataById = async (req, res) => {
 // CREATE NEW DATA
 export const addData = async (req, res) => {
     try {
-        let objData = req.body;
-        if (req.userData) {
-            objData.tenantRef = req.userData?.tenantRef;
-        }
+        const objData = {
+            ...req.body,
+            ...(req.userData?.tenantRef && { tenantRef: req.userData.tenantRef }),
+        };
 
-        const data = new Invoice(objData);
-        const newData = await data.save();
-        return res.json(newData);
-    } catch (err) {
-        if (err.name === "ValidationError") {
-            const errors = {};
-            Object.keys(err.errors).forEach((key) => {
-                errors[key] = err.errors[key].message;
-            });
-
+        if (!objData.tenantRef) {
             return errorResponse(res, {
-                code: "VALIDATION_ERROR",
-                message: "Validasi gagal",
-                errors,
+                statusCode: 400,
+                code: "TENANT_REQUIRED",
+                message: "tenantRef is required",
             });
         }
 
+        let invoiceUrl = "";
+
+        // Atomic upsert
+        let invoice = await Invoice.findOneAndUpdate(
+            {
+                tenantRef: objData.tenantRef,
+                status: "unpaid",
+            },
+            {
+                $set: {
+                    ...objData,
+                },
+                $setOnInsert: {
+                    status: "unpaid",
+                },
+            },
+            { new: true, upsert: true },
+        );
+
+        // Generate payment jika ada tagihan
+        if (invoice.billedAmount > 0) {
+            const payment = await generatePayment({
+                _id: invoice._id,
+                paymentId: invoice._id,
+                baseUrl: req.body?.baseUrl || "",
+                customer: objData.customer,
+                totalPrice: invoice.billedAmount,
+            });
+
+            if (payment.status === 200) {
+                invoiceUrl = payment.invoiceUrl;
+
+                invoice = await Invoice.findOneAndUpdate(
+                    { _id: invoice._id, status: "unpaid" },
+                    {
+                        $set: {
+                            payment: {
+                                createdAt: new Date(),
+                                paidAt: null,
+                                channel: "xendit",
+                                invoiceUrl,
+                            },
+                        },
+                    },
+                    { new: true },
+                );
+            }
+        }
+
+        return res.json({
+            ...invoice.toObject(),
+            invoiceUrl,
+        });
+    } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
@@ -118,6 +211,11 @@ export const addData = async (req, res) => {
 export const editData = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
+
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+
         let objData = req.body;
         const updatedData = await Invoice.updateOne(qMatch, {
             $set: objData,
@@ -136,6 +234,9 @@ export const editData = async (req, res) => {
 export const deleteData = async (req, res) => {
     try {
         let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
         const deletedData = await Invoice.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {

@@ -13,11 +13,11 @@ export const loginUser = async (req, res) => {
             .populate([
                 {
                     path: "tenantRef",
-                    select: "ownerName businessName status",
+                    select: "ownerName businessName phone email status isEvewash",
                     populate: [
                         {
                             path: "subsRef",
-                            select: "startDate endDate status -tenantRef",
+                            select: "serviceName startDate endDate status -tenantRef",
                         },
                         {
                             path: "surveyRef",
@@ -83,11 +83,11 @@ export const getMyUser = async (req, res) => {
             .populate([
                 {
                     path: "tenantRef",
-                    select: "ownerName businessName status",
+                    select: "ownerName businessName phone email status isEvewash",
                     populate: [
                         {
                             path: "subsRef",
-                            select: "startDate endDate status -tenantRef",
+                            select: "serviceName startDate endDate status -tenantRef",
                         },
                         {
                             path: "surveyRef",

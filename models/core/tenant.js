@@ -28,17 +28,58 @@ const DataSchema = mongoose.Schema(
             trim: true,
             default: "",
         },
+        legalStatus: {
+            type: String,
+            uppercase: true,
+            trim: true,
+            default: "",
+        },
         operatingSince: {
             type: String,
             uppercase: true,
             trim: true,
             default: "",
         },
+        image: {
+            type: String,
+            default: "",
+        },
+        imageId: {
+            type: String,
+            default: "",
+        },
+        description: {
+            type: String,
+            default: "",
+        },
+        website: {
+            type: String,
+            default: "",
+        },
+        socialMedia: {
+            type: [
+                {
+                    platform: String,
+                    account: String,
+                },
+            ],
+            default: [],
+        },
         phone: {
             type: String,
             unique: true,
             trim: true,
             required: [true, "Phone wajib diisi"],
+        },
+        phone2: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        phone3: {
+            type: String,
+            trim: true,
+            default: "",
         },
         email: {
             type: String,
@@ -61,6 +102,15 @@ const DataSchema = mongoose.Schema(
             trim: true,
             enum: ["pending", "active", "inactive", "suspended"],
             default: "pending",
+        },
+        statusReason: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        isEvewash: {
+            type: Boolean,
+            default: false,
         },
     },
     { timestamps: true },

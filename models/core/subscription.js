@@ -3,38 +3,59 @@ import mongoosePaginate from "mongoose-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { generateRandomId } from "../../lib/generateRandom.js";
 
-const DataSchema = mongoose.Schema({
-    subsId: {
-        type: String,
-        trim: true,
-        default: ""
+const DataSchema = mongoose.Schema(
+    {
+        subsId: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        serviceRef: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Services",
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
+        tenantRef: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Tenants",
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
+        invoiceRef: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Invoices",
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
+        serviceName: {
+            type: String,
+            uppercase: true,
+            trim: true,
+            default: "TRIAL",
+        },
+        subsType: {
+            type: String,
+            trim: true,
+            enum: ["trial", "monthly", "yearly"],
+            default: "trial",
+        },
+        startDate: {
+            type: Date,
+        },
+        endDate: {
+            type: Date,
+        },
+        status: {
+            type: String,
+            lowercase: true,
+            trim: true,
+            enum: ["pending", "trial", "canceled", "active", "expired"],
+            default: "trial",
+        },
     },
-    serviceRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Services",
-        default: null,
-        set: val => val === "" ? null : val
-    },
-    tenantRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Tenants",
-        default: null,
-        set: val => val === "" ? null : val
-    },
-    startDate: {
-        type: Date
-    },
-    endDate: {
-        type: Date,
-    },
-    status: {
-        type: String,
-        lowercase: true,
-        trim: true,
-        enum: ["pending", "trial", "canceled", "active", "expired"],
-        default: "trial"
-    }
-}, { timestamps: true });
+    { timestamps: true },
+);
 
 DataSchema.pre("save", async function (next) {
     if (!this.subsId) {
@@ -45,7 +66,7 @@ DataSchema.pre("save", async function (next) {
     next();
 });
 
-DataSchema.index({ tenantRef: 1, serviceRef: 1 });
+DataSchema.index({ tenantRef: 1, serviceRef: 1, invoiceRef: 1 });
 
 DataSchema.plugin(mongoosePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);

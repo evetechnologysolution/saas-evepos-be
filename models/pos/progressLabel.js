@@ -10,11 +10,24 @@ const DataSchema = mongoose.Schema(
             trim: true,
             default: "",
         },
+        previousName: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        listNumber: {
+            type: Number,
+            default: null,
+        },
         tenantRef: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Tenants",
             default: null,
             set: (val) => (val === "" ? null : val),
+        },
+        archived: {
+            type: Boolean,
+            default: false,
         },
     },
     { timestamps: true },
@@ -23,6 +36,9 @@ const DataSchema = mongoose.Schema(
 DataSchema.pre("save", async function (next) {
     if (this.name) {
         this.name = capitalizeFirstLetter(this.name);
+    }
+    if (this.previousName) {
+        this.previousName = capitalizeFirstLetter(this.previousName);
     }
     next();
 });
@@ -37,11 +53,14 @@ DataSchema.pre("save", async function (next) {
         if (set.name) {
             set.name = capitalizeFirstLetter(set.name);
         }
+        if (set.previousName) {
+            set.previousName = capitalizeFirstLetter(set.previousName);
+        }
         next();
     });
 });
 
-DataSchema.index({ tenantRef: 1 });
+DataSchema.index({ name: 1, tenantRef: 1 }, { unique: true });
 DataSchema.plugin(mongoosePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);
 

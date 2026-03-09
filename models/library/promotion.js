@@ -94,6 +94,28 @@ const DataSchema = mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        conditional: {
+            label: {
+                type: String,
+                set: capitalizeFirstLetter,
+                trim: true,
+                default: "",
+            },
+            notes: {
+                type: String,
+                trim: true,
+                default: "",
+            },
+            otherNotes: {
+                type: String,
+                trim: true,
+                default: "",
+            },
+            isActive: {
+                type: Boolean,
+                default: false,
+            },
+        },
         tenantRef: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Tenants",

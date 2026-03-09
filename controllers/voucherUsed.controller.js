@@ -4,7 +4,7 @@ import Member from "../models/member.js";
 // GETTING ALL THE DATA
 export const getAllUsed = async (req, res) => {
     try {
-        const { page, perPage, search } = req.query;
+        const { page, perPage, search, sort } = req.query;
         let query = {};
         if (search) {
             const members = await Member.find({
@@ -13,8 +13,8 @@ export const getAllUsed = async (req, res) => {
                     { cardId: { $regex: search, $options: "i" } },
                     { name: { $regex: search, $options: "i" } },
                     { phone: { $regex: search, $options: "i" } },
-                    { email: { $regex: search, $options: "i" } }
-                ]
+                    { email: { $regex: search, $options: "i" } },
+                ],
             });
             const filteredMember = members.map((item) => item._id);
 
@@ -24,9 +24,19 @@ export const getAllUsed = async (req, res) => {
                     { _id: { $regex: search, $options: "i" } },
                     { voucher: { $regex: search, $options: "i" } },
                     { memberRef: { $in: filteredMember } },
-                ],  // option i for case insensitivity to match upper and lower cases.
+                ], // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
+
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
         const options = {
             populate: [
                 {
@@ -36,8 +46,8 @@ export const getAllUsed = async (req, res) => {
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { date: -1 },
-        }
+            sort: sortObj,
+        };
         const listofData = await Used.paginate(query, options);
         return res.json(listofData);
     } catch (err) {
@@ -65,7 +75,7 @@ export const checkUsed = async (req, res) => {
         const spesificData = await Used.findOne({ member, voucher });
 
         return res.json({
-            used: !!spesificData // Simplified to convert truthy value to boolean
+            used: !!spesificData, // Simplified to convert truthy value to boolean
         });
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -83,7 +93,7 @@ export const checkUsedByPhone = async (req, res) => {
         const spesificData = await Used.findOne({ phone, voucher });
 
         return res.json({
-            used: !!spesificData // Simplified to convert truthy value to boolean
+            used: !!spesificData, // Simplified to convert truthy value to boolean
         });
     } catch (err) {
         return res.status(500).json({ message: err.message });

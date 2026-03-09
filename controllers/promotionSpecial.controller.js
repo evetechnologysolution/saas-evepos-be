@@ -31,7 +31,7 @@ export const getAllPromotion = async (req, res) => {
                     as: "products",
                 },
             },
-            { $sort: { date: -1 } },
+            { $sort: { createdAt: -1 } },
             {
                 $project: {
                     _id: 1,

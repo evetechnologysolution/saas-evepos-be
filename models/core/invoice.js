@@ -28,7 +28,45 @@ const DataSchema = mongoose.Schema(
             default: null,
             set: (val) => (val === "" ? null : val),
         },
-        amount: {
+        serviceName: {
+            type: String,
+            uppercase: true,
+            trim: true,
+            default: "TRIAL",
+        },
+        subsType: {
+            type: String,
+            trim: true,
+            enum: ["trial", "monthly", "yearly"],
+            default: "trial",
+        },
+        startDate: {
+            type: Date,
+        },
+        endDate: {
+            type: Date,
+        },
+        qty: {
+            type: Number,
+            default: 0,
+        },
+        price: {
+            type: Number,
+            default: 0,
+        },
+        discount: {
+            type: Number,
+            default: 0,
+        },
+        adminFee: {
+            type: Number,
+            default: 0,
+        },
+        tax: {
+            type: Number,
+            default: 0,
+        },
+        billedAmount: {
             type: Number,
             default: 0,
         },
@@ -46,7 +84,7 @@ const DataSchema = mongoose.Schema(
                 trim: true,
                 default: "",
             },
-            url: {
+            invoiceUrl: {
                 type: String,
                 trim: true,
                 default: "",
@@ -61,7 +99,7 @@ const DataSchema = mongoose.Schema(
             type: String,
             lowercase: true,
             trim: true,
-            enum: ["paid", "unpaid"],
+            enum: ["paid", "unpaid", "canceled"],
             default: "unpaid",
         },
     },
@@ -77,7 +115,33 @@ DataSchema.pre("save", async function (next) {
     next();
 });
 
-DataSchema.index({ tenantRef: 1, subsRef: 1 });
+DataSchema.pre("findOneAndUpdate", function (next) {
+    const update = this.getUpdate();
+
+    if (!update) return next();
+
+    // cek apakah invoiceId belum ada di $set atau $setOnInsert
+    const hasInvoiceId = update.invoiceId || update?.$set?.invoiceId || update?.$setOnInsert?.invoiceId;
+
+    if (!hasInvoiceId) {
+        const currYear = new Date().getFullYear();
+        const number = generateRandomId();
+        const newInvoiceId = `INV${currYear}${number}`;
+
+        // Pastikan hanya set saat insert (upsert)
+        this.setUpdate({
+            ...update,
+            $setOnInsert: {
+                ...(update.$setOnInsert || {}),
+                invoiceId: newInvoiceId,
+            },
+        });
+    }
+
+    next();
+});
+
+DataSchema.index({ tenantRef: 1, subsRef: 1, serviceRef: 1 });
 
 DataSchema.plugin(mongoosePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);

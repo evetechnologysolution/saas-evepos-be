@@ -4,16 +4,13 @@ import Product from "../models/library/product.js";
 import Member from "../models/member.js";
 import MemberVoucher from "../models/voucherMember.js";
 import { cloudinary, imageUpload } from "../lib/cloudinary.js";
-import {
-    adjustPointHistories,
-    createPointHistory,
-} from "../lib/handlePoint.js";
+import { adjustPointHistories, createPointHistory } from "../lib/handlePoint.js";
 import { generateVoucherCode } from "../lib/generateRandom.js";
 
 // GETTING ALL THE DATA
 export const getAllVoucher = async (req, res) => {
     try {
-        const { page, perPage, search, voucherType } = req.query;
+        const { page, perPage, search, voucherType, sort } = req.query;
         let query = {};
 
         if (voucherType) {
@@ -28,11 +25,17 @@ export const getAllVoucher = async (req, res) => {
 
             query = {
                 ...query,
-                $or: [
-                    { name: { $regex: search, $options: "i" } },
-                    { product: { $in: filteredProd } },
-                ],
+                $or: [{ name: { $regex: search, $options: "i" } }, { product: { $in: filteredProd } }],
             };
+        }
+
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
         }
 
         const options = {
@@ -44,7 +47,7 @@ export const getAllVoucher = async (req, res) => {
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { date: -1 },
+            sort: sortObj,
         };
         const listofData = await Voucher.paginate(query, options);
 
@@ -57,14 +60,10 @@ export const getAllVoucher = async (req, res) => {
 // GETTING AVAILABE DATA
 export const getAllAvailableVoucher = async (req, res) => {
     try {
-        const { page, perPage, search, voucherType } = req.query;
+        const { page, perPage, search, voucherType, sort } = req.query;
 
         const now = new Date();
-        const today = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate(),
-        );
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
         let query = {
             start: { $lte: today },
@@ -84,11 +83,17 @@ export const getAllAvailableVoucher = async (req, res) => {
 
             query = {
                 ...query,
-                $or: [
-                    { name: { $regex: search, $options: "i" } },
-                    { product: { $in: filteredProd } },
-                ],
+                $or: [{ name: { $regex: search, $options: "i" } }, { product: { $in: filteredProd } }],
             };
+        }
+
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
         }
 
         const options = {
@@ -100,7 +105,7 @@ export const getAllAvailableVoucher = async (req, res) => {
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { date: -1 },
+            sort: sortObj,
         };
         const listofData = await Voucher.paginate(query, options);
 
@@ -127,16 +132,10 @@ export const getVoucherById = async (req, res) => {
 export const redeemVoucher = async (req, res) => {
     try {
         const now = new Date();
-        const today = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate(),
-        );
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
         if (!req.body.voucher || !req.body.member) {
-            return res
-                .status(404)
-                .json({ message: "Key voucher and member is required!" });
+            return res.status(404).json({ message: "Key voucher and member is required!" });
         }
 
         const checkVoucher = await Voucher.findOne({
@@ -166,20 +165,10 @@ export const redeemVoucher = async (req, res) => {
         );
 
         // Kurangi poin yang masih bisa digunakan
-        await adjustPointHistories(
-            checkMember._id,
-            checkVoucher.worthPoint,
-            "",
-            "reduce",
-        );
+        await adjustPointHistories(checkMember._id, checkVoucher.worthPoint, "", "reduce");
 
         // Buat riwayat poin
-        await createPointHistory(
-            checkMember._id,
-            "",
-            checkVoucher.worthPoint,
-            "out",
-        );
+        await createPointHistory(checkMember._id, "", checkVoucher.worthPoint, "out");
 
         const randCode = await generateVoucherCode(16);
 
@@ -222,19 +211,11 @@ export const addVoucher = async (req, res) => {
 
             if (objData.start) {
                 const now = new Date(objData.start);
-                objData.start = new Date(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    now.getDate(),
-                );
+                objData.start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             }
             if (objData.end) {
                 const now = new Date(objData.end);
-                objData.end = new Date(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    now.getDate(),
-                );
+                objData.end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             }
 
             if (req.file) {
@@ -281,19 +262,11 @@ export const editVoucher = async (req, res) => {
 
             if (objData.start) {
                 const now = new Date(objData.start);
-                objData.start = new Date(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    now.getDate(),
-                );
+                objData.start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             }
             if (objData.end) {
                 const now = new Date(objData.end);
-                objData.end = new Date(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    now.getDate(),
-                );
+                objData.end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             }
 
             if (objData.product === "reset") {

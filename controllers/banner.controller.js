@@ -5,7 +5,7 @@ import { cloudinary, imageUpload, limitFileSize } from "../lib/cloudinary.js";
 // GETTING ALL THE DATA
 export const getAllBanner = async (req, res) => {
     try {
-        const { page, perPage, search } = req.query;
+        const { page, perPage, search, sort } = req.query;
         let query = {};
         if (search) {
             query = {
@@ -13,10 +13,20 @@ export const getAllBanner = async (req, res) => {
                 name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
         }
+
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
         const options = {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { date: -1 },
+            sort: sortObj,
         };
         const listofData = await Banner.paginate(query, options);
         return res.json(listofData);
@@ -27,11 +37,7 @@ export const getAllBanner = async (req, res) => {
 
 export const getAvailableBanner = async (req, res) => {
     try {
-        const listofData = await Banner.find()
-            .select("-imageId -imageMobileId")
-            .where("isAvailable")
-            .equals(true)
-            .sort({ listNumber: 1 });
+        const listofData = await Banner.find().select("-imageId -imageMobileId").where("isAvailable").equals(true).sort({ listNumber: 1 });
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -74,14 +80,11 @@ export const addBanner = async (req, res) => {
                 if (req.files["image"]) {
                     const image = req.files["image"][0];
                     if (image.size <= limitFileSize) {
-                        const cloudImage = await cloudinary.uploader.upload(
-                            image.path,
-                            {
-                                folder: process.env.FOLDER_MAIN,
-                                format: "webp",
-                                transformation: [{ quality: "auto:low" }],
-                            },
-                        );
+                        const cloudImage = await cloudinary.uploader.upload(image.path, {
+                            folder: process.env.FOLDER_MAIN,
+                            format: "webp",
+                            transformation: [{ quality: "auto:low" }],
+                        });
                         objData = Object.assign(objData, {
                             image: cloudImage.secure_url,
                             imageId: cloudImage.public_id,
@@ -92,14 +95,11 @@ export const addBanner = async (req, res) => {
                 if (req.files["imageMobile"]) {
                     const imgMobile = req.files["imageMobile"][0];
                     if (imgMobile.size <= limitFileSize) {
-                        const cloudMobile = await cloudinary.uploader.upload(
-                            imgMobile.path,
-                            {
-                                folder: process.env.FOLDER_MAIN,
-                                format: "webp",
-                                transformation: [{ quality: "auto:low" }],
-                            },
-                        );
+                        const cloudMobile = await cloudinary.uploader.upload(imgMobile.path, {
+                            folder: process.env.FOLDER_MAIN,
+                            format: "webp",
+                            transformation: [{ quality: "auto:low" }],
+                        });
                         objData = Object.assign(objData, {
                             imageMobile: cloudMobile.secure_url,
                             imageMobileId: cloudMobile.public_id,
@@ -148,14 +148,11 @@ export const editBanner = async (req, res) => {
                         if (existing.imageId) {
                             await cloudinary.uploader.destroy(existing.imageId);
                         }
-                        const cloudImage = await cloudinary.uploader.upload(
-                            image.path,
-                            {
-                                folder: process.env.FOLDER_MAIN,
-                                format: "webp",
-                                transformation: [{ quality: "auto:low" }],
-                            },
-                        );
+                        const cloudImage = await cloudinary.uploader.upload(image.path, {
+                            folder: process.env.FOLDER_MAIN,
+                            format: "webp",
+                            transformation: [{ quality: "auto:low" }],
+                        });
                         objData = Object.assign(objData, {
                             image: cloudImage.secure_url,
                             imageId: cloudImage.public_id,
@@ -167,18 +164,13 @@ export const editBanner = async (req, res) => {
                     const imgMobile = req.files["imageMobile"][0];
                     if (imgMobile.size <= limitFileSize) {
                         if (existing.imageMobileId) {
-                            await cloudinary.uploader.destroy(
-                                existing.imageMobileId,
-                            );
+                            await cloudinary.uploader.destroy(existing.imageMobileId);
                         }
-                        const cloudMobile = await cloudinary.uploader.upload(
-                            imgMobile.path,
-                            {
-                                folder: process.env.FOLDER_MAIN,
-                                format: "webp",
-                                transformation: [{ quality: "auto:low" }],
-                            },
-                        );
+                        const cloudMobile = await cloudinary.uploader.upload(imgMobile.path, {
+                            folder: process.env.FOLDER_MAIN,
+                            format: "webp",
+                            transformation: [{ quality: "auto:low" }],
+                        });
                         objData = Object.assign(objData, {
                             imageMobile: cloudMobile.secure_url,
                             imageMobileId: cloudMobile.public_id,

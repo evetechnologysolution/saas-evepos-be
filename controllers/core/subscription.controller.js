@@ -7,8 +7,12 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort } = req.query;
+        const { page, perPage, search, subsType, status, sort } = req.query;
         let query = {};
+
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
 
         if (search) {
             const objectId = mongoose.Types.ObjectId.isValid(search) ? new mongoose.Types.createFromHexString(search) : null;
@@ -20,7 +24,8 @@ export const getAll = async (req, res) => {
 
             const tenants = await Tenant.find({
                 $or: [
-                    { fullname: { $regex: search, $options: "i" } },
+                    { tenantId: { $regex: search, $options: "i" } },
+                    { ownerName: { $regex: search, $options: "i" } },
                     { businessName: { $regex: search, $options: "i" } },
                     { phone: { $regex: search, $options: "i" } },
                     { email: { $regex: search, $options: "i" } },
@@ -33,10 +38,20 @@ export const getAll = async (req, res) => {
                 $or: [
                     ...(objectId ? [{ _id: objectId }] : []),
                     { subsId: { $regex: search, $options: "i" } },
+                    { serviceName: { $regex: search, $options: "i" } },
+                    { subsType: { $regex: search, $options: "i" } },
                     { serviceRef: { $in: filteredService } },
                     { tenantRef: { $in: filteredTenant } },
                 ],
             };
+        }
+
+        if (subsType) {
+            qMatch.subsType = subsType;
+        }
+
+        if (status) {
+            qMatch.status = status;
         }
 
         let sortObj = { createdAt: -1 }; // default
@@ -57,7 +72,11 @@ export const getAll = async (req, res) => {
             populate: [
                 {
                     path: "tenantRef",
-                    select: "tenantId ownerName businessName businessType phone email",
+                    select: "tenantId ownerName businessName businessType phone email businessType legalStatus status",
+                },
+                {
+                    path: "invoiceRef",
+                    select: "-tenantRef -subsRef -serviceRef",
                 },
             ],
         };
@@ -76,11 +95,19 @@ export const getAll = async (req, res) => {
 // GET A SPECIFIC DATA
 export const getDataById = async (req, res) => {
     try {
-        const spesificData = await Subs.findById(req.params.id)
+        let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const spesificData = await Subs.findOne(qMatch)
             .populate([
                 {
                     path: "tenantRef",
-                    select: "tenantId ownerName businessName businessType phone email",
+                    select: "tenantId ownerName businessName businessType phone email businessType legalStatus status",
+                },
+                {
+                    path: "invoiceRef",
+                    select: "-tenantRef -subsRef -serviceRef",
                 },
             ])
             .lean();
@@ -98,6 +125,9 @@ export const getDataById = async (req, res) => {
 export const addData = async (req, res) => {
     try {
         let objData = req.body;
+        if (req.userData?.tenantRef) {
+            objData.tenantRef = req.userData?.tenantRef;
+        }
 
         const data = new Subs(objData);
         const newData = await data.save();
@@ -114,9 +144,14 @@ export const addData = async (req, res) => {
 // UPDATE A SPECIFIC DATA
 export const editData = async (req, res) => {
     try {
+        let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+
         let objData = req.body;
 
-        const spesificData = await Subs.findById(req.params.id);
+        const spesificData = await Subs.findOne(qMatch);
         if (!spesificData) return res.status(404).json({ status: 404, message: "Data not found" });
 
         const updatedData = await Subs.findOneAndUpdate({ _id: req.params.id }, { $set: objData }, { upsert: false, new: true });
@@ -134,7 +169,11 @@ export const editData = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteData = async (req, res) => {
     try {
-        const deletedData = await Subs.deleteOne({ _id: req.params.id });
+        let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const deletedData = await Subs.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return errorResponse(res, {

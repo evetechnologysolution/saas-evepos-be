@@ -23,10 +23,10 @@ app.use(cors({ origin: "*" }));
 
 // Error handling middleware untuk menangani error CORS
 app.use((err, req, res, next) => {
-    if (err instanceof Error && err.message.includes("CORS")) {
-        return res.status(403).json({ error: err.message });
-    }
-    next(err); // Lanjutkan ke middleware error lainnya jika bukan error CORS
+  if (err instanceof Error && err.message.includes("CORS")) {
+    return res.status(403).json({ error: err.message });
+  }
+  next(err); // Lanjutkan ke middleware error lainnya jika bukan error CORS
 });
 
 // app.use(express.json({ limit: "50mb" }));
@@ -38,13 +38,13 @@ app.use(logger("dev"));
 
 // koneksi database tiap request, hanya 1x per instance
 app.use(async (req, res, next) => {
-    try {
-        await dbConnect();
-        next();
-    } catch (err) {
-        console.error("❌ DB Connect failed:", err.message);
-        res.status(500).json({ error: "Database connection failed" });
-    }
+  try {
+    await dbConnect();
+    next();
+  } catch (err) {
+    console.error("❌ DB Connect failed:", err.message);
+    res.status(500).json({ error: "Database connection failed" });
+  }
 });
 
 // ROUTES
@@ -58,11 +58,14 @@ import userMasterRoute from "./routes/userMaster/userMaster.route.js";
 // core
 import serviceRoutes from "./routes/core/service.route.js";
 import tenantRoute from "./routes/core/tenant.route.js";
+import tenantLogRoute from "./routes/core/tenantLog.route.js";
+import tenantBankRoute from "./routes/core/tenantBank.route.js";
 import subscriptionRoutes from "./routes/core/subscription.route.js";
 import authTenantRoute from "./routes/core/authTenant.route.js";
 import authUserRoute from "./routes/user/authUser.route.js";
 import surveyRoute from "./routes/core/survey.route.js";
 import invoiceRoute from "./routes/core/invoice.route.js";
+import outletRoute from "./routes/core/outlet.route.js";
 
 // setup
 import setupRoute from "./routes/setup/setup.route.js";
@@ -94,18 +97,20 @@ import revenueRoute from "./routes/report/revenue.route.js";
 import salesOverviewRoute from "./routes/report/sales.route.js";
 import popularRoute from "./routes/report/popular.route.js";
 import paymentRevenueRoute from "./routes/report/paymentRevenue.route.js";
+import auditTrailRoute from "./routes/audit/audit.route.js";
+import paymentRoute from "./routes/payment/payment.route.js";
+import ticketRoute from "./routes/ticket.route.js";
 
 // import pusherRoute from "./routes/pusher.route.js";
 // import informationRoute from "./routes/information.route.js";
 // import promotionSpecialRoute from "./routes/promotionSpecial.route.js";
 // import bannerRoute from "./routes/banner.route.js";
 // import reportRoute from "./routes/report.route.js";
-// import expenseRoute from "./routes/expense.route.js";
+import expenseRoute from "./routes/expense.route.js";
 // import customerRoute from "./routes/customer.route.js";
 // import pointHistoryRoute from "./routes/pointHistory.route.js";
 // import gmapRoute from "./routes/gmap.route.js";
 // import voucherUsedRoute from "./routes/voucherUsed.route.js";
-// import paymentRoute from "./routes/payment.route.js";
 // import cartRoute from "./routes/cart.route.js";
 // import discountRoute from "./routes/discount.route.js";
 // import voucherRoute from "./routes/voucher.route.js";
@@ -123,11 +128,15 @@ app.use("/api/user-master", userMasterRoute);
 // core
 app.use("/api/service", serviceRoutes);
 app.use("/api/tenant", tenantRoute);
+app.use("/api/tenant-log", tenantLogRoute);
+app.use("/api/tenant-bank", tenantBankRoute);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/auth-tenant", authTenantRoute);
 app.use("/api/auth", authUserRoute);
 app.use("/api/survey", surveyRoute);
 app.use("/api/invoice", invoiceRoute);
+app.use("/api/outlet", outletRoute);
+app.use("/api/payment", paymentRoute);
 
 // setup
 app.use("/api/setup", setupRoute);
@@ -159,18 +168,19 @@ app.use("/api/revenue", revenueRoute);
 app.use("/api/sales-overview", salesOverviewRoute);
 app.use("/api/popular", popularRoute);
 app.use("/api/payment-revenue", paymentRevenueRoute);
+app.use("/api/audit", auditTrailRoute);
+app.use("/api/ticket", ticketRoute);
 
 // app.use("/api/pusher", pusherRoute);
 // app.use("/api/informations", informationRoute);
 // app.use("/api/special-promotions", promotionSpecialRoute);
 // app.use("/api/banners", bannerRoute);
 // app.use("/api/report", reportRoute);
-// app.use("/api/expense", expenseRoute);
+app.use("/api/expense", expenseRoute);
 // app.use("/api/customers", customerRoute);
 // app.use("/api/point-history", pointHistoryRoute);
 // app.use("/api/gmap", gmapRoute);
 // app.use("/api/voucher-used", voucherUsedRoute);
-// app.use("/api/payment", paymentRoute);
 // app.use("/api/cart", cartRoute);
 // app.use("/api/discount", discountRoute);
 // app.use("/api/vouchers", voucherRoute);
@@ -179,20 +189,20 @@ app.use("/api/payment-revenue", paymentRevenueRoute);
 // app.use("/api/messages", messageRoute);
 
 app.get("/", (_, res) => {
-    res.send("We are on home");
+  res.send("We are on home");
 });
 
 app.get("/healthz", (_, res) => {
-    res.status(200).send("Ok");
+  res.status(200).send("Ok");
 });
 
 // === HANYA LISTEN DI LOCAL ===
 if (process.env.NODE_ENV !== "production") {
-    app.listen(port, () => {
-        console.log(`🚀 Server running locally on http://localhost:${port}`);
-    });
+  app.listen(port, () => {
+    console.log(`🚀 Server running locally on http://localhost:${port}`);
+  });
 } else {
-    console.log("🟢 Running in server");
+  console.log("🟢 Running in server");
 }
 
 export default app;

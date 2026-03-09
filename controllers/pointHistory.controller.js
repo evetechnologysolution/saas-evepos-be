@@ -37,10 +37,7 @@ export const getHistory = async (req, res) => {
 
             pipeline.push({
                 $match: {
-                    $or: [
-                        { memberRef: { $in: memberIds } },
-                        { orderRef: { $in: orderIds } },
-                    ],
+                    $or: [{ memberRef: { $in: memberIds } }, { orderRef: { $in: orderIds } }],
                 },
             });
         }
@@ -121,7 +118,7 @@ export const getHistory = async (req, res) => {
         });
 
         // Sortir data berdasarkan tanggal
-        pipeline.push({ $sort: { date: -1 } });
+        pipeline.push({ $sort: { createdAt: -1 } });
 
         // Pagination dengan `mongoose-aggregation-paginate`
         const options = {
@@ -137,10 +134,9 @@ export const getHistory = async (req, res) => {
     }
 };
 
-
 export const getHistoryOld = async (req, res) => {
     try {
-        const { page, perPage, search, fromDate, toDate, member } = req.query;
+        const { page, perPage, search, fromDate, toDate, member, sort } = req.query;
         let query = {};
 
         // filtered by member
@@ -154,7 +150,7 @@ export const getHistoryOld = async (req, res) => {
                 $or: [
                     { name: { $regex: search, $options: "i" } },
                     { memberId: { $regex: search, $options: "i" } }, // Filter berdasarkan memberId
-                    { cardId: { $regex: search, $options: "i" } } // Filter berdasarkan cardId
+                    { cardId: { $regex: search, $options: "i" } }, // Filter berdasarkan cardId
                 ],
             });
             const filteredMember = members.map((item) => item._id);
@@ -196,6 +192,15 @@ export const getHistoryOld = async (req, res) => {
             };
         }
 
+        let sortObj = { createdAt: -1 }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
         const options = {
             populate: [
                 {
@@ -209,13 +214,12 @@ export const getHistoryOld = async (req, res) => {
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
-            sort: { date: -1 },
+            sort: sortObj,
         };
 
         const listofData = await History.paginate(query, options);
 
         return res.json(listofData);
-
     } catch (err) {
         return res.status(500).json({ message: err.message });
     }
@@ -267,7 +271,7 @@ export const editHistory = async (req, res) => {
             { _id: req.params.id },
             {
                 $set: objData,
-            }
+            },
         );
 
         return res.json(updatedData);
