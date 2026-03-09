@@ -4,54 +4,60 @@ import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
 const DataSchema = mongoose.Schema(
-  {
-    name: {
-      type: String,
-      trim: true,
-      default: "",
+    {
+        name: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        previousName: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        listNumber: {
+            type: Number,
+            default: null,
+        },
+        tenantRef: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Tenants",
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
+        archived: {
+            type: Boolean,
+            default: false,
+        },
     },
-    previousName: {
-      type: String,
-      trim: true,
-      default: "",
-    },
-    listNumber: {
-      type: Number,
-      default: null,
-    },
-    tenantRef: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Tenants",
-      default: null,
-      set: (val) => (val === "" ? null : val),
-    },
-    archived: {
-      type: Boolean,
-      default: false,
-    },
-  },
-  { timestamps: true },
+    { timestamps: true },
 );
 
 DataSchema.pre("save", async function (next) {
-  if (this.name) {
-    this.name = capitalizeFirstLetter(this.name);
-  }
-  next();
+    if (this.name) {
+        this.name = capitalizeFirstLetter(this.name);
+    }
+    if (this.previousName) {
+        this.previousName = capitalizeFirstLetter(this.previousName);
+    }
+    next();
 });
 
 ["updateOne", "findByIdAndUpdate", "findOneAndUpdate"].forEach((method) => {
-  DataSchema.pre(method, async function (next) {
-    const update = this.getUpdate();
-    if (!update || !update.$set) return next();
+    DataSchema.pre(method, async function (next) {
+        const update = this.getUpdate();
+        if (!update || !update.$set) return next();
 
-    const set = update.$set;
+        const set = update.$set;
 
-    if (set.name) {
-      set.name = capitalizeFirstLetter(set.name);
-    }
-    next();
-  });
+        if (set.name) {
+            set.name = capitalizeFirstLetter(set.name);
+        }
+        if (set.previousName) {
+            set.previousName = capitalizeFirstLetter(set.previousName);
+        }
+        next();
+    });
 });
 
 DataSchema.index({ name: 1, tenantRef: 1 }, { unique: true });
