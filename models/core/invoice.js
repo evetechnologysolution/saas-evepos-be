@@ -32,7 +32,7 @@ const DataSchema = mongoose.Schema(
             type: String,
             uppercase: true,
             trim: true,
-            default: "",
+            default: "TRIAL",
         },
         subsType: {
             type: String,
