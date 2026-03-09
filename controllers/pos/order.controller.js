@@ -1377,7 +1377,7 @@ export const editOrder = async (req, res) => {
     }
 };
 
-exports.generatePoint = async (req, res) => {
+export const generatePoint = async (req, res) => {
     try {
         let qMatch = { $or: [{ _id: req.params.id }, { orderId: req.params.id }] };
 
