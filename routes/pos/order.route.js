@@ -13,6 +13,7 @@ import {
     getOrderById,
     getOrderProgressById,
     addOrder,
+    generatePoint,
     editOrder,
     editOrderRaw,
     editPrintCount,
@@ -45,6 +46,7 @@ router.post("/", isAuth, addOrder);
 
 // UPDATE A SPECIFIC DATA
 router.patch("/:id", isAuth, editOrder);
+router.patch("/generate-point/:id", isAuth, generatePoint);
 router.patch("/raw/:id", isAuth, editOrderRaw);
 router.patch("/print-count/:id", isAuth, editPrintCount);
 router.patch("/print-laundry/:id", isAuth, editPrintLaundry);

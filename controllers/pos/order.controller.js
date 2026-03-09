@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Order from "../../models/pos/order.js";
 import Member from "../../models/member/member.js";
 import MemberVoucher from "../../models/member/voucherMember.js";
+import PointHistory from "../../models/point/pointHistory.js";
 import Balance from "../../models/cashBalance/cashBalance.js";
 import { generateRandomId } from "../../lib/generateRandom.js";
 import { checkPoint, adjustPointHistories, createPointHistory } from "../../lib/handlePoint.js";
@@ -1373,6 +1374,64 @@ export const editOrder = async (req, res) => {
             code: "SERVER_ERROR",
             message: err.message || "Terjadi kesalahan pada server",
         });
+    }
+};
+
+exports.generatePoint = async (req, res) => {
+    try {
+        let qMatch = { $or: [{ _id: req.params.id }, { orderId: req.params.id }] };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            // qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        const check = await Order.findOne(qMatch);
+        if (!check) {
+            return res.status(404).json({ message: "Data not found" });
+        }
+        if (check?.isScan || check?.status !== "paid") {
+            return res.status(400).json({ message: "Failed generate point." });
+        }
+
+        const checkMember = await Member.findOne({ phone: check.customer.phone });
+        if (!checkMember) {
+            return res.status(404).json({ message: "Member not found" });
+        }
+
+        const pointsIncrement = checkPoint(check.billedAmount);
+
+        await Order.updateOne({ _id: check._id }, { $set: { isScan: true } });
+
+        const updatedMember = await Member.findOneAndUpdate(
+            { _id: checkMember._id },
+            { $inc: { point: pointsIncrement } },
+            { new: true }, // Opsi new: true untuk mendapatkan dokumen yang diperbarui
+        );
+
+        // create point history
+        if (pointsIncrement > 0) {
+            const expiryDate = check?.paymentDate ? new Date(check?.paymentDate) : new Date();
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1); // Add 1 year
+            expiryDate.setHours(0, 0, 0, 0);
+
+            const objHistory = {
+                memberRef: checkMember._id,
+                orderRef: check._id,
+                tenantRef: req.userData?.tenantRef,
+                point: pointsIncrement,
+                pointRemaining: pointsIncrement,
+                createdAt: check?.paymentDate || new Date(),
+                pointExpiry: expiryDate,
+                status: "in",
+            };
+
+            await PointHistory.create(objHistory);
+        }
+
+        return res.json(updatedMember);
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
     }
 };
 
