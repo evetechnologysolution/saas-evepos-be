@@ -6,16 +6,7 @@ import Product from "../../models/library/product.js";
 // GETTING ALL THE DATA
 export const getAllVoucher = async (req, res) => {
     try {
-        const {
-            page,
-            perPage,
-            search,
-            voucherType,
-            status,
-            member,
-            sortBy,
-            sortType,
-        } = req.query;
+        const { page, perPage, search, voucherType, status, member, sortBy, sortType } = req.query;
 
         const today = new Date();
 
@@ -35,7 +26,7 @@ export const getAllVoucher = async (req, res) => {
         }
 
         if (member) {
-            qMatch.member = mongoose.Types.ObjectId(member);
+            qMatch.memberRef = new mongoose.Types.ObjectId(String(member));
         }
 
         if (voucherType) {
@@ -50,10 +41,7 @@ export const getAllVoucher = async (req, res) => {
             if (status === "used") {
                 qMatch.$and = [
                     {
-                        $or: [
-                            { isUsed: { $eq: true } },
-                            { expiry: { $lt: today } },
-                        ],
+                        $or: [{ isUsed: { $eq: true } }, { expiry: { $lt: today } }],
                     },
                 ];
             }
@@ -81,16 +69,12 @@ export const getAllVoucher = async (req, res) => {
                 { name: { $regex: search, $options: "i" } },
                 {
                     product: {
-                        $in: prod.map((item) =>
-                            mongoose.Types.ObjectId(item._id),
-                        ),
+                        $in: prod.map((item) => new mongoose.Types.ObjectId(String(item._id))),
                     },
                 },
                 {
                     memberRef: {
-                        $in: mem.map((item) =>
-                            mongoose.Types.ObjectId(item._id),
-                        ),
+                        $in: mem.map((item) => new mongoose.Types.ObjectId(String(item._id))),
                     },
                 },
             ];
@@ -177,10 +161,7 @@ export const getAllVoucher = async (req, res) => {
             },
         ];
 
-        const result = await MemberVoucher.aggregatePaginate(
-            MemberVoucher.aggregate(aggregationPipeline),
-            options,
-        );
+        const result = await MemberVoucher.aggregatePaginate(MemberVoucher.aggregate(aggregationPipeline), options);
 
         return res.json(result);
     } catch (err) {
@@ -213,9 +194,7 @@ export const getVoucherById = async (req, res) => {
 
         // Tambahkan isExpired berdasarkan today > expiry
         const today = new Date();
-        const isExpired = spesificData.expiry
-            ? today > spesificData.expiry
-            : false;
+        const isExpired = spesificData.expiry ? today > spesificData.expiry : false;
 
         return res.json({ ...spesificData, isExpired });
     } catch (err) {
@@ -248,9 +227,7 @@ export const getVoucherByScan = async (req, res) => {
 
         // Tambahkan isExpired berdasarkan today > expiry
         const today = new Date();
-        const isExpired = spesificData.expiry
-            ? today > spesificData.expiry
-            : false;
+        const isExpired = spesificData.expiry ? today > spesificData.expiry : false;
 
         return res.json({ ...spesificData, isExpired });
     } catch (err) {

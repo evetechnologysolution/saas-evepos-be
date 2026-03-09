@@ -22,9 +22,7 @@ export const getAllMember = async (req, res) => {
                     { name: { $regex: search, $options: "i" } },
                     {
                         phone: {
-                            $regex: isNaN(search)
-                                ? search
-                                : convertToE164(search),
+                            $regex: isNaN(search) ? search : convertToE164(search),
                             $options: "i",
                         },
                     },
@@ -60,9 +58,7 @@ export const getAllMemberPending = async (req, res) => {
                     { name: { $regex: search, $options: "i" } },
                     {
                         phone: {
-                            $regex: isNaN(search)
-                                ? search
-                                : convertToE164(search),
+                            $regex: isNaN(search) ? search : convertToE164(search),
                             $options: "i",
                         },
                     },
@@ -98,10 +94,7 @@ export const getMemberById = async (req, res) => {
             qVoucher.tenantRef = req.userData?.tenantRef;
         }
 
-        const [memberResult, voucherCount] = await Promise.all([
-            Member.findOne(qMatch).lean(),
-            MemberVoucher.countDocuments(qVoucher),
-        ]);
+        const [memberResult, voucherCount] = await Promise.all([Member.findOne(qMatch).lean(), MemberVoucher.countDocuments(qVoucher)]);
 
         if (!memberResult) {
             return res.status(404).json({ message: "Member not found" });
@@ -125,26 +118,19 @@ export const checkMember = async (req, res) => {
         }
 
         let qMatch = {
-            $or: [
-                { email: { $regex: `^${search}$`, $options: "i" } },
-                { phone: convertToE164(search) },
-            ],
+            $or: [{ email: { $regex: `^${search}$`, $options: "i" } }, { phone: convertToE164(search) }],
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
         }
 
         const spesificData = await Member.findOne(qMatch)
-            .select(
-                "_id memberId cardId name firstName lastName phone email isVerified",
-            )
+            .select("_id memberId cardId name firstName lastName phone email isVerified")
             .lean();
 
         if (!spesificData) {
             if (req.query.onlyCheck) {
-                return res
-                    .status(200)
-                    .json({ message: "Can register as a member" });
+                return res.status(200).json({ message: "Can register as a member" });
             }
             return res.status(400).json({ message: "Data not found" });
         }
@@ -208,7 +194,7 @@ export const getMemberBySearch = async (req, res) => {
 export const addMember = async (req, res) => {
     try {
         let objData = req.body;
-        let qCheck = { phone: objData.phone };
+        let qCheck = { phone: convertToE164(objData.phone) };
 
         if (req.userData) {
             objData.tenantRef = req.userData?.tenantRef;
@@ -217,8 +203,7 @@ export const addMember = async (req, res) => {
 
         // Chek member
         const exist = await Member.findOne(qCheck);
-        if (exist)
-            return res.json({ status: 400, message: "Phone already exists" });
+        if (exist) return res.status(400).json({ status: 400, message: "Phone already exists" });
 
         if (typeof objData.password === "string") {
             if (objData.password.trim() === "") {
@@ -243,7 +228,7 @@ export const editMember = async (req, res) => {
         let objData = req.body;
         const _memberId = req.params.id;
         let qCheck = {
-            phone: objData.phone,
+            phone: convertToE164(objData.phone),
             _id: { $ne: _memberId },
         };
 
@@ -254,17 +239,13 @@ export const editMember = async (req, res) => {
         // Cek apakah member ada
         const spesificData = await Member.findById(_memberId);
         if (!spesificData) {
-            return res
-                .status(404)
-                .json({ status: 404, message: "Member not found" });
+            return res.status(404).json({ status: 404, message: "Member not found" });
         }
 
         if (objData.phone) {
             const exist = await Member.findOne(qCheck);
             if (exist) {
-                return res
-                    .status(400)
-                    .json({ status: 400, message: "Phone already exists" });
+                return res.status(400).json({ status: 400, message: "Phone already exists" });
             }
         }
 
@@ -284,17 +265,7 @@ export const editMember = async (req, res) => {
             delete objData.clearAddresses;
         }
 
-        const updatedData = await Member.findByIdAndUpdate(
-            _memberId,
-            { $set: objData },
-            { new: true, fields: { password: 0, otp: 0 } },
-        );
-
-        const checkVoucher = await MemberVoucher.find({
-            memberRef: _memberId,
-            isUsed: { $ne: true },
-            expiry: { $gt: new Date() },
-        });
+        const updatedData = await Member.findByIdAndUpdate(_memberId, { $set: objData }, { new: true, fields: { password: 0, otp: 0 } });
 
         if (updatedData?.memberId) {
             await Order.updateMany(
@@ -309,9 +280,15 @@ export const editMember = async (req, res) => {
             );
         }
 
+        const [activeVouchers, hasOrder] = await Promise.all([
+            MemberVoucher.countDocuments({ member: updatedData?._id, isUsed: { $ne: true }, expiry: { $gt: new Date() } }),
+            Order.exists({ "customer.memberId": updatedData?.memberId }),
+        ]);
+
         return res.json({
             ...updatedData.toObject(),
-            voucher: checkVoucher.length || 0,
+            voucher: activeVouchers || 0,
+            firstWash: !hasOrder,
         });
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -327,25 +304,16 @@ export const changeMemberPassword = async (req, res) => {
             qMatch.tenantRef = req.userData?.tenantRef;
         }
         const exist = await Member.findOne(qMatch);
-        if (!exist)
-            return res.status(400).json({ message: "Member is not found" });
+        if (!exist) return res.status(400).json({ message: "Member is not found" });
 
         if (req.body.oldPassword) {
-            const validPassword = await bcrypt.compare(
-                req.body.oldPassword,
-                exist.password,
-            );
-            if (!validPassword)
-                return res
-                    .status(400)
-                    .json({ message: "Old password incorrect" });
+            const validPassword = await bcrypt.compare(req.body.oldPassword, exist.password);
+            if (!validPassword) return res.status(400).json({ message: "Old password incorrect" });
         }
 
         if (req.body.confirmPassword) {
             if (req.body.confirmPassword !== req.body.password) {
-                return res
-                    .status(400)
-                    .json({ message: "Confirm password incorrect" });
+                return res.status(400).json({ message: "Confirm password incorrect" });
             }
         }
 

@@ -1,12 +1,6 @@
 import express from "express";
-import { isAuth } from "../middleware/auth.js";
-import {
-    getHistory,
-    getHistoryById,
-    addHistory,
-    editHistory,
-    deleteHistory
-} from "../controllers/pointHistory.controller.js";
+import { isAuth } from "../../middleware/auth.js";
+import { getHistory, getHistoryById, addHistory, editHistory, deleteHistory } from "../../controllers/point/pointHistory.controller.js";
 
 const router = express.Router();
 

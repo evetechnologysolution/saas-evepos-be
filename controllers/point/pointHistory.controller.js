@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import History from "../models/pointHistory.js";
-import Member from "../models/member.js";
-import Order from "../models/order.js";
+import History from "../../models/point/pointHistory.js";
+import Member from "../../models/member/member.js";
+import Order from "../../models/pos/order.js";
 
 export const getHistory = async (req, res) => {
     try {
@@ -10,10 +10,16 @@ export const getHistory = async (req, res) => {
         // Buat pipeline agregasi
         const pipeline = [];
 
+        if (req.userData) {
+            pipeline.push({
+                $match: { tenantRef: new mongoose.Types.ObjectId(String(req.userData?.tenantRef)) },
+            });
+        }
+
         // Filter berdasarkan member
         if (member) {
             pipeline.push({
-                $match: { memberRef: mongoose.Types.ObjectId(member) },
+                $match: { memberRef: new mongoose.Types.ObjectId(String(member)) },
             });
         }
 
@@ -54,7 +60,7 @@ export const getHistory = async (req, res) => {
 
             pipeline.push({
                 $match: {
-                    date: { $gte: start, $lte: end },
+                    createdAt: { $gte: start, $lte: end },
                 },
             });
         }
@@ -63,7 +69,7 @@ export const getHistory = async (req, res) => {
         pipeline.push({
             $lookup: {
                 from: "members",
-                localField: "member",
+                localField: "memberRef",
                 foreignField: "_id",
                 as: "memberDetails",
             },
@@ -73,7 +79,7 @@ export const getHistory = async (req, res) => {
         pipeline.push({
             $lookup: {
                 from: "orders",
-                localField: "order",
+                localField: "orderRef",
                 foreignField: "_id",
                 as: "orderDetails",
             },
@@ -83,7 +89,7 @@ export const getHistory = async (req, res) => {
         pipeline.push({
             $project: {
                 _id: 1,
-                date: 1,
+                createdAt: 1,
                 memberRef: {
                     $cond: {
                         if: { $gt: [{ $size: "$memberDetails" }, 0] }, // Jika tidak kosong
@@ -134,100 +140,15 @@ export const getHistory = async (req, res) => {
     }
 };
 
-export const getHistoryOld = async (req, res) => {
-    try {
-        const { page, perPage, search, fromDate, toDate, member, sort } = req.query;
-        let query = {};
-
-        // filtered by member
-        if (member) {
-            query.member = member;
-        }
-
-        // Search by name
-        if (search) {
-            const members = await Member.find({
-                $or: [
-                    { name: { $regex: search, $options: "i" } },
-                    { memberId: { $regex: search, $options: "i" } }, // Filter berdasarkan memberId
-                    { cardId: { $regex: search, $options: "i" } }, // Filter berdasarkan cardId
-                ],
-            });
-            const filteredMember = members.map((item) => item._id);
-
-            const orders = await Order.find({
-                orderId: { $regex: search, $options: "i" },
-            });
-            const filteredOrder = orders.map((item) => item._id);
-
-            query = {
-                ...query,
-                $or: [
-                    {
-                        memberRef: { $in: filteredMember },
-                    },
-                    {
-                        orderRef: { $in: filteredOrder },
-                    },
-                ],
-            };
-        }
-
-        // Date range filter
-        if (fromDate) {
-            const dStart = new Date(fromDate);
-            dStart.setHours(0, 0, 0, 0);
-            const fixStart = new Date(dStart.toISOString()); // Konversi ke UTC string
-
-            const dEnd = new Date(toDate || fromDate);
-            dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
-            const fixEnd = new Date(dEnd.toISOString());
-
-            query = {
-                ...query,
-                date: {
-                    $gte: fixStart,
-                    $lte: fixEnd,
-                },
-            };
-        }
-
-        let sortObj = { createdAt: -1 }; // default
-        if (sort && sort.trim() !== "") {
-            sortObj = {};
-            sort.split(",").forEach((rule) => {
-                const [field, type] = rule.split(":");
-                sortObj[field] = type === "asc" ? 1 : -1;
-            });
-        }
-
-        const options = {
-            populate: [
-                {
-                    path: "member",
-                    select: ["_id", "memberId", "cardId", "name"],
-                },
-                {
-                    path: "order",
-                    select: ["_id", "orderId", "billedAmount"],
-                },
-            ],
-            page: parseInt(page, 10) || 1,
-            limit: parseInt(perPage, 10) || 10,
-            sort: sortObj,
-        };
-
-        const listofData = await History.paginate(query, options);
-
-        return res.json(listofData);
-    } catch (err) {
-        return res.status(500).json({ message: err.message });
-    }
-};
-
 export const getHistoryById = async (req, res) => {
     try {
-        const spesificData = await History.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+
+        const spesificData = await History.findOne(qMatch);
 
         if (!spesificData) {
             return res.status(404).json({
@@ -246,6 +167,11 @@ export const addHistory = async (req) => {
     try {
         let objData = req.body;
 
+        if (req.userData) {
+            objData.tenantRef = req.userData?.tenantRef;
+            objData.outletRef = req.userData?.outletRef;
+        }
+
         const createData = await History.create(objData);
 
         return res.json(createData);
@@ -256,7 +182,13 @@ export const addHistory = async (req) => {
 
 export const editHistory = async (req, res) => {
     try {
-        const exist = await History.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+
+        const exist = await History.findOne(qMatch);
 
         if (!exist) {
             return res.status(404).json({
@@ -267,12 +199,9 @@ export const editHistory = async (req, res) => {
 
         let objData = req.body;
 
-        const updatedData = await History.updateOne(
-            { _id: req.params.id },
-            {
-                $set: objData,
-            },
-        );
+        const updatedData = await History.updateOne(qMatch, {
+            $set: objData,
+        });
 
         return res.json(updatedData);
     } catch (err) {
@@ -282,7 +211,13 @@ export const editHistory = async (req, res) => {
 
 export const deleteHistory = async (req, res) => {
     try {
-        const exist = await History.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+
+        const exist = await History.findOne(qMatch);
 
         if (!exist) {
             return res.status(404).json({
@@ -291,7 +226,7 @@ export const deleteHistory = async (req, res) => {
             });
         }
 
-        const deletedData = await History.deleteOne({ _id: req.params.id });
+        const deletedData = await History.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
