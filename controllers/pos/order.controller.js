@@ -1336,18 +1336,18 @@ export const editOrder = async (req, res) => {
 
                     // update member point
                     if (objData.usedPoint) {
-                        await adjustPointHistories(checkMember._id, selectedTenant, objData.usedPoint, newData._id, "reduce", session);
+                        await adjustPointHistories(checkMember._id, selectedTenant, objData.usedPoint, exist._id, "reduce", session);
                     }
 
                     // create point history
                     if (pointsIncrement > 0) {
-                        await createPointHistory(checkMember._id, newData._id, selectedTenant, pointsIncrement, "in", session);
+                        await createPointHistory(checkMember._id, exist._id, selectedTenant, pointsIncrement, "in", session);
                     }
                 }
 
                 if (objData.usedPoint) {
                     if (!isPaid) {
-                        await adjustPointHistories(checkMember._id, selectedTenant, objData.usedPoint, newData._id, "reserve");
+                        await adjustPointHistories(checkMember._id, selectedTenant, objData.usedPoint, exist._id, "reserve");
                     }
                     await Member.findOneAndUpdate(
                         { _id: checkMember._id },
@@ -1356,7 +1356,7 @@ export const editOrder = async (req, res) => {
                         },
                         { session },
                     );
-                    await createPointHistory(checkMember._id, newData._id, selectedTenant, objData.usedPoint, "out", session);
+                    await createPointHistory(checkMember._id, exist._id, selectedTenant, objData.usedPoint, "out", session);
                 }
             }
         }
