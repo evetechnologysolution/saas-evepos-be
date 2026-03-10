@@ -76,6 +76,7 @@ import subcategoryRoute from "./routes/library/subcategory.route.js";
 import variantRoute from "./routes/library/variant.route.js";
 import productRoute from "./routes/library/product.route.js";
 import promotionRoute from "./routes/library/promotion.route.js";
+import voucherRoute from "./routes/library/voucher.route.js";
 
 // pos
 import orderRoute from "./routes/pos/order.route.js";
@@ -97,6 +98,8 @@ import revenueRoute from "./routes/report/revenue.route.js";
 import salesOverviewRoute from "./routes/report/sales.route.js";
 import popularRoute from "./routes/report/popular.route.js";
 import paymentRevenueRoute from "./routes/report/paymentRevenue.route.js";
+import profitLossRoute from "./routes/report/profitLoss.route.js";
+
 import auditTrailRoute from "./routes/audit/audit.route.js";
 import paymentRoute from "./routes/payment/payment.route.js";
 import ticketRoute from "./routes/ticket.route.js";
@@ -105,16 +108,10 @@ import voucherMemberRoute from "./routes/member/voucherMember.route.js";
 import expenseRoute from "./routes/expense.route.js";
 
 // import pusherRoute from "./routes/pusher.route.js";
-// import informationRoute from "./routes/information.route.js";
-// import promotionSpecialRoute from "./routes/promotionSpecial.route.js";
 // import bannerRoute from "./routes/banner.route.js";
-// import reportRoute from "./routes/report.route.js";
-// import customerRoute from "./routes/customer.route.js";
 // import gmapRoute from "./routes/gmap.route.js";
-// import voucherUsedRoute from "./routes/voucherUsed.route.js";
 // import cartRoute from "./routes/cart.route.js";
 // import discountRoute from "./routes/discount.route.js";
-// import voucherRoute from "./routes/voucher.route.js";
 // import helpRoute from "./routes/help.route.js";
 // import messageRoute from "./routes/message.route.js";
 
@@ -147,6 +144,7 @@ app.use("/api/subcategory", subcategoryRoute);
 app.use("/api/variant", variantRoute);
 app.use("/api/product", productRoute);
 app.use("/api/promotion", promotionRoute);
+app.use("/api/voucher", voucherRoute);
 
 // pos
 app.use("/api/order", orderRoute);
@@ -174,21 +172,19 @@ app.use("/api/revenue", revenueRoute);
 app.use("/api/sales-overview", salesOverviewRoute);
 app.use("/api/popular", popularRoute);
 app.use("/api/payment-revenue", paymentRevenueRoute);
+app.use("/api/profit-loss", profitLossRoute);
+
 app.use("/api/audit", auditTrailRoute);
 app.use("/api/ticket", ticketRoute);
 
+app.use("/api/expense", expenseRoute);
+
 // app.use("/api/pusher", pusherRoute);
-// app.use("/api/informations", informationRoute);
-// app.use("/api/special-promotions", promotionSpecialRoute);
 // app.use("/api/banners", bannerRoute);
 // app.use("/api/report", reportRoute);
-app.use("/api/expense", expenseRoute);
-// app.use("/api/customers", customerRoute);
 // app.use("/api/gmap", gmapRoute);
-// app.use("/api/voucher-used", voucherUsedRoute);
 // app.use("/api/cart", cartRoute);
 // app.use("/api/discount", discountRoute);
-// app.use("/api/vouchers", voucherRoute);
 // app.use("/api/help", helpRoute);
 // app.use("/api/messages", messageRoute);
 

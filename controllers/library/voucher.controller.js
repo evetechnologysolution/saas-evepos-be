@@ -1,20 +1,27 @@
 import multer from "multer";
-import Voucher from "../models/voucher.js";
-import Product from "../models/library/product.js";
-import Member from "../models/member.js";
-import MemberVoucher from "../models/voucherMember.js";
-import { cloudinary, imageUpload } from "../lib/cloudinary.js";
-import { adjustPointHistories, createPointHistory } from "../lib/handlePoint.js";
-import { generateVoucherCode } from "../lib/generateRandom.js";
+import mongoose from "mongoose";
+import Voucher from "../../models/library/voucher.js";
+import Product from "../../models/library/product.js";
+import Member from "../../models/member/member.js";
+import MemberVoucher from "../../models/member/voucherMember.js";
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
+import { adjustPointHistories, createPointHistory } from "../../lib/handlePoint.js";
+import { generateVoucherCode } from "../../lib/generateRandom.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllVoucher = async (req, res) => {
     try {
         const { page, perPage, search, voucherType, sort } = req.query;
-        let query = {};
+        let qMatch = {};
 
         if (voucherType) {
-            query.voucherType = Number(voucherType);
+            qMatch.voucherType = Number(voucherType);
+        }
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            // qMatch.outletRef = req.userData?.outletRef;
         }
 
         if (search) {
@@ -23,8 +30,8 @@ export const getAllVoucher = async (req, res) => {
             });
             const filteredProd = prod.map((item) => item._id);
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 $or: [{ name: { $regex: search, $options: "i" } }, { product: { $in: filteredProd } }],
             };
         }
@@ -49,11 +56,15 @@ export const getAllVoucher = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
         };
-        const listofData = await Voucher.paginate(query, options);
+        const listofData = await Voucher.paginate(qMatch, options);
 
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -65,14 +76,19 @@ export const getAllAvailableVoucher = async (req, res) => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-        let query = {
+        let qMatch = {
             start: { $lte: today },
             end: { $gte: today },
             isAvailable: { $eq: true },
         };
 
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            // qMatch.outletRef = req.userData?.outletRef;
+        }
+
         if (voucherType) {
-            query.voucherType = Number(voucherType);
+            qMatch.voucherType = Number(voucherType);
         }
 
         if (search) {
@@ -81,8 +97,8 @@ export const getAllAvailableVoucher = async (req, res) => {
             });
             const filteredProd = prod.map((item) => item._id);
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 $or: [{ name: { $regex: search, $options: "i" } }, { product: { $in: filteredProd } }],
             };
         }
@@ -107,17 +123,26 @@ export const getAllAvailableVoucher = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
         };
-        const listofData = await Voucher.paginate(query, options);
+        const listofData = await Voucher.paginate(qMatch, options);
 
         return res.json(listofData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
 export const getVoucherById = async (req, res) => {
     try {
-        const spesificData = await Voucher.findById(req.params.id).populate([
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            // qMatch.outletRef = req.userData?.outletRef;
+        }
+        const spesificData = await Voucher.findOne(qMatch).populate([
             {
                 path: "product",
                 select: ["name", "price"],
@@ -125,50 +150,77 @@ export const getVoucherById = async (req, res) => {
         ]);
         return res.json(spesificData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
 export const redeemVoucher = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
         if (!req.body.voucher || !req.body.member) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).json({ message: "Key voucher and member is required!" });
         }
 
-        const checkVoucher = await Voucher.findOne({
+        let qMatch = {
             _id: req.body.voucher,
             start: { $lte: today },
             end: { $gte: today },
-            isAvailable: { $eq: true },
-        });
+            isAvailable: true,
+        };
+
+        let qMemberMatch = {
+            _id: req.body.member,
+        };
+
+        // di sisi memberData, auth member
+        if (req.memberData?.tenantRef) {
+            qMatch.tenantRef = req.memberData.tenantRef;
+            qMemberMatch.tenantRef = req.memberData.tenantRef;
+        }
+
+        const checkVoucher = await Voucher.findOne(qMatch).session(session);
         if (!checkVoucher) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).json({ message: "Voucher not found!" });
         }
 
-        const checkMember = await Member.findById(req.body.member);
+        const checkMember = await Member.findOne(qMemberMatch).session(session);
         if (!checkMember) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(404).json({ message: "Member not found!" });
         }
 
         if (checkVoucher.worthPoint > checkMember.point) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(400).json({ message: "Poin tidak mencukupi!" });
         }
 
         // Kurangi poin member
         await Member.findOneAndUpdate(
-            { _id: checkMember._id },
+            qMemberMatch,
             { $inc: { point: -Number(checkVoucher.worthPoint) } },
-            { new: true, upsert: false },
+            { new: true, upsert: false, session },
         );
 
-        // Kurangi poin yang masih bisa digunakan
-        await adjustPointHistories(checkMember._id, checkVoucher.worthPoint, "", "reduce");
+        // Kurangi histori poin
+        await adjustPointHistories(checkMember._id, req.userData?.tenantRef, checkVoucher.worthPoint, "", "reduce", session);
 
         // Buat riwayat poin
-        await createPointHistory(checkMember._id, "", checkVoucher.worthPoint, "out");
+        await createPointHistory(checkMember._id, null, req.userData?.tenantRef, checkVoucher.worthPoint, "out", session);
 
         const randCode = await generateVoucherCode(16);
 
@@ -176,6 +228,7 @@ export const redeemVoucher = async (req, res) => {
             voucherCode: randCode,
             voucherRef: checkVoucher._id,
             memberRef: checkMember._id,
+            tenantRef: req.userData?.tenantRef,
             name: checkVoucher.name,
             image: checkVoucher.image,
             description: checkVoucher.description,
@@ -183,11 +236,21 @@ export const redeemVoucher = async (req, res) => {
             product: checkVoucher.product,
             qtyProduct: checkVoucher.qtyProduct,
         });
-        const newData = await newObj.save();
+
+        const newData = await newObj.save({ session });
+
+        await session.commitTransaction();
+        session.endSession();
 
         return res.json(newData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        await session.abortTransaction();
+        session.endSession();
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -209,6 +272,10 @@ export const addVoucher = async (req, res) => {
         try {
             let objData = req.body;
 
+            if (req.userData) {
+                objData.tenantRef = req.userData?.tenantRef;
+            }
+
             if (objData.start) {
                 const now = new Date(objData.start);
                 objData.start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -216,6 +283,14 @@ export const addVoucher = async (req, res) => {
             if (objData.end) {
                 const now = new Date(objData.end);
                 objData.end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            }
+
+            let convertId = [];
+            if (req.body.product === "reset") {
+                objData.product = null;
+            } else if (req.body.product) {
+                convertId = typeof req.body.product === "string" ? JSON.parse(req.body.product) : req.body.product;
+                objData.product = convertId;
             }
 
             if (req.file) {
@@ -237,7 +312,11 @@ export const addVoucher = async (req, res) => {
             const newData = await data.save();
             return res.json(newData);
         } catch (err) {
-            return res.status(500).json({ message: err.message });
+            return errorResponse(res, {
+                statusCode: 500,
+                code: "SERVER_ERROR",
+                message: err.message || "Terjadi kesalahan pada server",
+            });
         }
     });
 };
@@ -258,6 +337,11 @@ export const editVoucher = async (req, res) => {
         }
 
         try {
+            let qMatch = { _id: req.params.id };
+            if (req.userData) {
+                qMatch.tenantRef = req.userData?.tenantRef;
+            }
+
             let objData = req.body;
 
             if (objData.start) {
@@ -269,13 +353,17 @@ export const editVoucher = async (req, res) => {
                 objData.end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             }
 
-            if (objData.product === "reset") {
+            let convertId = [];
+            if (req.body.product === "reset") {
                 objData.product = null;
+            } else if (req.body.product) {
+                convertId = typeof req.body.product === "string" ? JSON.parse(req.body.product) : req.body.product;
+                objData.product = convertId;
             }
 
             if (req.file) {
                 // Chek image & delete image
-                const check = await Voucher.findById(req.params.id);
+                const check = await Voucher.findOne(qMatch).lean();
                 if (check.imageId) {
                     await cloudinary.uploader.destroy(check.imageId);
                 }
@@ -294,15 +382,16 @@ export const editVoucher = async (req, res) => {
                 });
             }
 
-            const updatedData = await Voucher.updateOne(
-                { _id: req.params.id },
-                {
-                    $set: objData,
-                },
-            );
+            const updatedData = await Voucher.updateOne(qMatch, {
+                $set: objData,
+            });
             return res.json(updatedData);
         } catch (err) {
-            return res.status(500).json({ message: err.message });
+            return errorResponse(res, {
+                statusCode: 500,
+                code: "SERVER_ERROR",
+                message: err.message || "Terjadi kesalahan pada server",
+            });
         }
     });
 };
@@ -310,15 +399,37 @@ export const editVoucher = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteVoucher = async (req, res) => {
     try {
-        // Check image & delete image
-        const exist = await Voucher.findById(req.params.id);
-        if (exist?.imageId) {
-            await cloudinary.uploader.destroy(exist.imageId);
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
         }
 
-        const deletedData = await Voucher.deleteOne({ _id: req.params.id });
+        const existData = await Voucher.findOne(qMatch).lean();
+
+        if (!existData) {
+            return errorResponse(res, {
+                statusCode: 404,
+                code: "DATA_NOT_FOUND",
+                message: "Data not found!",
+            });
+        }
+
+        const tasks = [];
+
+        if (existData?.imageId) {
+            tasks.push(cloudinary.uploader.destroy(existData?.imageId));
+        }
+
+        tasks.push(Voucher.deleteOne(qMatch));
+
+        const [, deletedData] = await Promise.all(tasks);
+
         return res.json(deletedData);
     } catch (err) {
-        return res.status(500).json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };

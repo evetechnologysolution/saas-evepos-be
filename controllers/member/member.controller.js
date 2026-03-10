@@ -160,6 +160,7 @@ export const getMemberBySearch = async (req, res) => {
                 { phone: { $regex: `^${phoneSearch}$`, $options: "i" } },
             ],
         };
+
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
         }
@@ -184,6 +185,112 @@ export const getMemberBySearch = async (req, res) => {
         return res.json({
             ...member,
             voucher: voucherCount,
+        });
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
+    }
+};
+
+export const getMemberByPoint = async (req, res) => {
+    try {
+        const { page, perPage, search, sort } = req.query;
+
+        // --- SEARCH / FILTER ---
+        let qMatch = { point: { $gt: 0 } };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+
+        if (search && search.trim() !== "") {
+            qMatch.$or = [
+                { memberId: { $regex: search, $options: "i" } },
+                { cardId: { $regex: search, $options: "i" } },
+                { name: { $regex: search, $options: "i" } },
+                { phone: { $regex: isNaN(search) ? search : convertToE164(search), $options: "i" } },
+                { email: { $regex: search, $options: "i" } },
+            ];
+        }
+
+        // --- SORT DINAMIS ---
+        let sortObj = { date: -1 }; // default
+
+        if (sort && sort.trim() !== "") {
+            sortObj = {}; // reset
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+
+                // Mendukung nested sort seperti latestOrder.date
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
+        // --- AGGREGATION ---
+        const pipeline = [
+            { $match: qMatch },
+
+            // Lookup all orders by memberId
+            {
+                $lookup: {
+                    from: "orders",
+                    let: { mid: "$memberId" },
+                    pipeline: [
+                        // { $match: { $expr: { $eq: ["$customer.memberId", "$$mid"] } } },
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [{ $eq: ["$customer.memberId", "$$mid"] }, { $eq: ["$status", "paid"] }],
+                                },
+                            },
+                        },
+                        { $sort: { date: -1 } },
+                        { $limit: 1 },
+                        { $project: { orderId: 1, date: 1 } },
+                    ],
+                    as: "latestOrder",
+                },
+            },
+
+            // Add latestOrder (ambil 1 order terbaru)
+            {
+                $addFields: {
+                    latestOrder: { $arrayElemAt: ["$latestOrder", 0] },
+                },
+            },
+
+            // Sort by dynamic fields
+            { $sort: sortObj },
+
+            // Remove fields
+            {
+                $project: {
+                    password: 0,
+                    otp: 0,
+                    resetToken: 0,
+                    resetTokenExpiry: 0,
+                    orders: 0,
+                },
+            },
+        ];
+
+        // --- PAGINATE ---
+        const options = {
+            page: parseInt(page, 10) || 1,
+            limit: parseInt(perPage, 10) || 10,
+        };
+
+        const aggregate = Member.aggregate(pipeline);
+
+        // --- HITUNG TOTAL POINT (GLOBAL) ---
+        const totalPointPipeline = Member.aggregate([{ $match: qMatch }, { $group: { _id: null, totalPoint: { $sum: "$point" } } }]);
+
+        // --- JALANKAN PARALEL ---
+        const [listData, totalPointAgg] = await Promise.all([Member.aggregatePaginate(aggregate, options), totalPointPipeline]);
+
+        // --- RETURN RESPONSE DITAMBAH totalPoint ---
+        return res.json({
+            ...listData,
+            totalPoint: totalPointAgg[0]?.totalPoint || 0,
         });
     } catch (err) {
         return res.status(500).json({ message: err.message });

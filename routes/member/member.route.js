@@ -4,6 +4,7 @@ import {
     getAllMember,
     getAllMemberPending,
     getMemberBySearch,
+    getMemberByPoint,
     checkMember,
     getMemberById,
     addMember,
@@ -18,6 +19,7 @@ const router = express.Router();
 router.get("/", isAuth, getAllMember);
 router.get("/pending", isAuth, getAllMemberPending);
 router.get("/track", isAuth, getMemberBySearch);
+router.get("/point", isAuth, getMemberByPoint);
 
 // GET A SPECIFIC DATA
 router.get("/:id", isAuth, getMemberById);

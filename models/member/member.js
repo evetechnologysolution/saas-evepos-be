@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
+import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import bcrypt from "bcrypt";
 import { capitalizeFirstLetter, convertToE164, splitName } from "../../lib/textSetting.js";
@@ -154,6 +155,7 @@ DataSchema.pre("save", async function (next) {
 
 DataSchema.index({ tenantRef: 1, phone: 1 }, { unique: true });
 DataSchema.plugin(mongoosePaginate);
+DataSchema.plugin(aggregatePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);
 
 export default mongoose.model("Members", DataSchema);
