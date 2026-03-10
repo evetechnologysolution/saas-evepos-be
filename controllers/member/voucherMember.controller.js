@@ -10,7 +10,7 @@ export const getAllVoucher = async (req, res) => {
 
         const today = new Date();
 
-        const sortField = sortBy || "date";
+        const sortField = sortBy || "createdAt";
         const sortDirection = sortType === "asc" ? 1 : -1;
 
         const options = {
@@ -119,7 +119,7 @@ export const getAllVoucher = async (req, res) => {
             {
                 $project: {
                     _id: 1,
-                    date: 1,
+                    createdAt: 1,
                     expiry: 1,
                     scanDate: 1,
                     usedAt: 1,
@@ -182,7 +182,7 @@ export const getVoucherById = async (req, res) => {
                     select: ["name", "price"],
                 },
                 {
-                    path: "member",
+                    path: "memberRef",
                     select: ["memberId", "cardId", "name", "phone"],
                 },
             ])
@@ -215,7 +215,7 @@ export const getVoucherByScan = async (req, res) => {
                     select: ["name", "price"],
                 },
                 {
-                    path: "member",
+                    path: "memberRef",
                     select: ["memberId", "cardId", "name", "phone"],
                 },
             ])

@@ -85,7 +85,7 @@ export const isAuthMember = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
             const data = await Member.findById(decoded._id).select("-password -otp").lean();
             if (data) {
-                req.memberData = data;
+                req.userData = data;
             }
             next();
         } else {

@@ -166,7 +166,7 @@ export const redeemVoucher = async (req, res) => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-        if (!req.body.voucher || !req.body.member) {
+        if (!req.body?.voucher || !req.body?.member) {
             await session.abortTransaction();
             session.endSession();
             return res.status(404).json({ message: "Key voucher and member is required!" });
@@ -183,10 +183,17 @@ export const redeemVoucher = async (req, res) => {
             _id: req.body.member,
         };
 
-        // di sisi memberData, auth member
-        if (req.memberData?.tenantRef) {
-            qMatch.tenantRef = req.memberData.tenantRef;
-            qMemberMatch.tenantRef = req.memberData.tenantRef;
+        // di sisi member, auth member
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData.tenantRef;
+            qMemberMatch.tenantRef = req.userData.tenantRef;
+        }
+
+        const selectedTenant = req.body?.tenantRef || req.userData?.tenantRef;
+        if (!selectedTenant) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({ message: "tenantRef wajib diisi!" });
         }
 
         const checkVoucher = await Voucher.findOne(qMatch).session(session);
@@ -228,7 +235,7 @@ export const redeemVoucher = async (req, res) => {
             voucherCode: randCode,
             voucherRef: checkVoucher._id,
             memberRef: checkMember._id,
-            tenantRef: req.userData?.tenantRef,
+            tenantRef: selectedTenant,
             name: checkVoucher.name,
             image: checkVoucher.image,
             description: checkVoucher.description,

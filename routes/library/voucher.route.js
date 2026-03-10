@@ -22,6 +22,7 @@ router.get("/available", isAuth, getAllAvailableVoucher);
 router.get("/:id", isAuth, getVoucherById);
 
 router.post("/redeem", isAuthMember, redeemVoucher);
+router.post("/redeem-bypass", redeemVoucher);
 
 // CREATE NEW DATA
 router.post("/", isAuth, addVoucher);
