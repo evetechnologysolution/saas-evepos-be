@@ -1,7 +1,7 @@
 import Disc from "../../models/globalDiscount/discount.js";
 
 // GETTING ALL THE DATA
-export const getAllDisc = async (_, res) => {
+export const getAllDisc = async (req, res) => {
     try {
         let qMatch = {};
         if (req.userData?.tenantRef) {
@@ -14,7 +14,7 @@ export const getAllDisc = async (_, res) => {
     }
 };
 
-export const getAvailableDisc = async (_, res) => {
+export const getAvailableDisc = async (req, res) => {
     try {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
