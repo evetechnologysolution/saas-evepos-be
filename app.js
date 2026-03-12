@@ -3,6 +3,9 @@ import serverless from "serverless-http";
 import cors from "cors";
 import path from "path";
 import logger from "morgan";
+import MongoStore from "connect-mongo";
+import session from "express-session";
+import passport from "passport";
 import "dotenv/config.js";
 import dbConnect from "./utils/dbConnect.js";
 
@@ -18,8 +21,57 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// jika tidak menggunakan login by google
-app.use(cors({ origin: "*" }));
+// Aktifkan CORS ketat hanya di production
+const isProduction = process.env.NODE_ENV === "production";
+
+// Middlewares
+const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:3060",
+    "https://evewash-cms.vercel.app",
+    "https://evewash-cms-dev.vercel.app",
+    "https://evewash-dev.vercel.app",
+    "https://evewash-staging.vercel.app",
+    "https://evewash-saas.vercel.app",
+    "https://evewash.vercel.app",
+    "https://evewash-pos-dev.vercel.app",
+    "https://evewash-pos-staging.vercel.app",
+    "https://evewash-pos.vercel.app",
+    "https://evewash.com",
+    "https://evewash-pos.com",
+    "https://cms.evewash.com",
+    "https://saas-evepos.vercel.app",
+    "https://evepos-saas-dev.vercel.app",
+    "https://evepos-saas.vercel.app",
+    "https://evepos-office-dev.vercel.app",
+    "https://evepos-office.vercel.app",
+    "https://api.xendit.co",
+    "https://api.sandbox.midtrans.com",
+    "https://api.midtrans.com",
+];
+
+if (isProduction) {
+    // jika menggunakan login by google
+    app.use(
+        cors({
+            origin: (origin, callback) => {
+                // Izinkan akses jika origin ada di daftar yang diizinkan atau tidak ada origin (permintaan server)
+                if (!origin || allowedOrigins.includes(origin)) {
+                    callback(null, true);
+                } else {
+                    // Kembalikan error jika origin tidak diizinkan
+                    callback(new Error(`Origin ${origin} tidak diizinkan oleh CORS`));
+                }
+            },
+            methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+            credentials: true, // Pastikan aplikasi memang membutuhkan opsi ini
+        }),
+    );
+} else {
+    // jika tidak menggunakan login by google
+    app.use(cors({ origin: "*" }));
+}
 
 // Error handling middleware untuk menangani error CORS
 app.use((err, req, res, next) => {
@@ -35,6 +87,30 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(logger("dev"));
+
+app.set("trust proxy", 1);
+
+// Passport
+app.use(
+    session({
+        secret: process.env.SECRET_KEY,
+        resave: false,
+        saveUninitialized: false,
+        store: MongoStore.create({
+            mongoUrl: process.env.DB_CONNECTION, // URL MongoDB (dari MongoDB Atlas atau lokal)
+            collectionName: "sessions", // Nama koleksi tempat session disimpan
+            autoRemove: "native",
+            // ttl: 14 * 24 * 60 * 60, // Durasi session (14 hari dalam detik)
+        }),
+        cookie: {
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "none",
+            httpOnly: true,
+        },
+    }),
+);
+app.use(passport.initialize());
+app.use(passport.session());
 
 // koneksi database tiap request, hanya 1x per instance
 app.use(async (req, res, next) => {
