@@ -8,6 +8,8 @@ import { generateRandomId } from "../../lib/generateRandom.js";
 import { checkPoint, adjustPointHistories, createPointHistory } from "../../lib/handlePoint.js";
 import { convertToE164 } from "../../lib/textSetting.js";
 import { errorResponse } from "../../utils/errorResponse.js";
+import { sendOrderMail } from "../../lib/nodemailer.js";
+import { pusherNotif } from "../../lib/pusher.js";
 
 // GETTING ALL THE DATA
 export const getAllOrder = async (req, res) => {
@@ -1136,6 +1138,28 @@ export const addOrder = async (req, res) => {
 
         await session.commitTransaction();
         session.endSession();
+
+        // ================= NOTIFICATION =================
+        if (newData && req.userData?.isEvewash) {
+            if (objData.orderType === "delivery" && objData.status === "backlog") {
+                try {
+                    const channel = "admin-notif";
+                    const event = "order-new";
+                    const newObj = newData.toObject();
+                    const roles = ["owner", "super admin", "admin", "cashier"];
+                    const message =
+                        newObj?.customer?.name && newObj?.customer?.phone
+                            ? `New Delivery Order from ${newObj.customer.name} (${newObj.customer.phone})!`
+                            : "New Delivery Order!";
+                    const notifPayload = { ...newObj, message, roles };
+
+                    // kirim email + pusher parallel
+                    await Promise.allSettled([sendOrderMail(newObj), pusherNotif(channel, event, notifPayload)]);
+                } catch (err) {
+                    console.error("Notification error:", err.message);
+                }
+            }
+        }
 
         return res.json(newData);
     } catch (err) {

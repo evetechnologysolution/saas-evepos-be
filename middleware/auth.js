@@ -55,12 +55,12 @@ export const isAuth = async (req, res, next) => {
         let outletResult = null;
 
         // check user
-        const userResult = await User.findById(decoded._id).lean();
+        const userResult = await User.findById(decoded._id).populate({ path: "tenantRef", select: "isEvewash" }).lean();
 
         if (userResult) {
             if (userResult?.tenantRef) {
                 outletResult = await Outlet.findOne({
-                    tenantRef: userResult.tenantRef,
+                    tenantRef: userResult.tenantRef?._id,
                     isPrimary: true,
                 }).lean();
             }
@@ -72,7 +72,8 @@ export const isAuth = async (req, res, next) => {
                 email: userResult.email,
                 phone: userResult.phone,
                 role: userResult.role,
-                tenantRef: userResult?.tenantRef || null,
+                isEvewash: userResult?.tenantRef?.isEvewash || false,
+                tenantRef: userResult?.tenantRef?._id || null,
                 outletRef: userResult?.outletRef || outletResult?._id || null,
             };
 
@@ -80,18 +81,23 @@ export const isAuth = async (req, res, next) => {
         }
 
         // check member
-        const memberResult = await Member.findById(decoded._id).select("-password -otp").lean();
+        const memberResult = await Member.findById(decoded._id)
+            .select("-password -otp")
+            .populate({ path: "tenantRef", select: "isEvewash" })
+            .lean();
 
         if (memberResult) {
             if (memberResult?.tenantRef) {
                 outletResult = await Outlet.findOne({
-                    tenantRef: memberResult.tenantRef,
+                    tenantRef: memberResult.tenantRef?._id,
                     isPrimary: true,
                 }).lean();
             }
 
             req.userData = {
                 ...memberResult,
+                isEvewash: memberResult?.tenantRef?.isEvewash || false,
+                tenantRef: memberResult?.tenantRef?._id || null,
                 outletRef: outletResult?._id || null,
             };
 
@@ -115,10 +121,18 @@ export const isAuthMember = async (req, res, next) => {
         if (req.headers && req.headers.authorization) {
             const token = req.headers.authorization.split(" ")[1];
             const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-            const data = await Member.findById(decoded._id).select("-password -otp").lean();
+            const data = await Member.findById(decoded._id)
+                .select("-password -otp")
+                .populate({ path: "tenantRef", select: "isEvewash" })
+                .lean();
             if (data) {
-                const outletResult = await Outlet.findOne({ tenantRef: data?.tenantRef, isPrimary: true }).lean();
-                req.userData = { ...data, outletRef: outletResult?._id || null };
+                const outletResult = await Outlet.findOne({ tenantRef: data?.tenantRef?._id, isPrimary: true }).lean();
+                req.userData = {
+                    ...data,
+                    isEvewash: data?.tenantRef?.isEvewash || false,
+                    tenantRef: data?.tenantRef?._id || null,
+                    outletRef: outletResult?._id || null,
+                };
             }
             next();
         } else {

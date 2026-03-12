@@ -375,23 +375,23 @@ export const addMember = async (req, res) => {
 export const editMember = async (req, res) => {
     try {
         let objData = req.body;
-        const _memberId = req.params.id;
-        let qCheck = {
-            phone: convertToE164(objData.phone),
-            _id: { $ne: _memberId },
-        };
+        let qMatch = { _id: req.params.id };
+        let qCheck = { _id: { $ne: req.params.id } };
 
         if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
             qCheck.tenantRef = req.userData?.tenantRef;
         }
 
         // Cek apakah member ada
-        const spesificData = await Member.findById(_memberId);
+        const spesificData = await Member.findOne(qMatch);
         if (!spesificData) {
             return res.status(404).json({ status: 404, message: "Member not found" });
         }
 
         if (objData.phone) {
+            qCheck.phone = convertToE164(objData.phone);
+
             const exist = await Member.findOne(qCheck);
             if (exist) {
                 return res.status(400).json({ status: 400, message: "Phone already exists" });
@@ -408,13 +408,13 @@ export const editMember = async (req, res) => {
         }
 
         if (objData.clearAddresses) {
-            await Member.findByIdAndUpdate(_memberId, {
+            await Member.findOneAndUpdate(qMatch, {
                 $set: { addresses: [] },
             });
             delete objData.clearAddresses;
         }
 
-        const updatedData = await Member.findByIdAndUpdate(_memberId, { $set: objData }, { new: true, fields: { password: 0, otp: 0 } });
+        const updatedData = await Member.findOneAndUpdate(qMatch, { $set: objData }, { new: true, fields: { password: 0, otp: 0 } });
 
         if (updatedData?.memberId) {
             await Order.updateMany(

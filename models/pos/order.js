@@ -9,6 +9,10 @@ const DataSchema = mongoose.Schema(
         orderId: {
             type: String,
         },
+        bookingDate: {
+            type: Date,
+            default: null,
+        },
         paymentDate: {
             type: Date,
         },
@@ -305,6 +309,9 @@ DataSchema.pre("save", function (next) {
         const number = generateRandomOrderId(5);
 
         this.orderId = number;
+    }
+    if (this.orderType === "delivery") {
+        this.bookingDate = new Date();
     }
     if (this.pickupData?.by) {
         this.pickupData.by = capitalizeFirstLetter(this.pickupData.by);
