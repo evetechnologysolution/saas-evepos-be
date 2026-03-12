@@ -21,7 +21,7 @@ router.get("/:id", isAuth, getVariantById);
 
 // CREATE NEW DATA
 router.post("/", isAuth, addVariant);
-router.post("/", isAuth, addVariantPerfume); // khusus parfume
+router.post("/perfume", isAuth, addVariantPerfume); // khusus parfume
 
 // UPDATE A SPECIFIC DATA
 router.patch("/:id", isAuth, editVariant);
