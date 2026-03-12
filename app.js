@@ -8,6 +8,7 @@ import session from "express-session";
 import passport from "passport";
 import "dotenv/config.js";
 import dbConnect from "./utils/dbConnect.js";
+import "./lib/passport.js";
 
 process.env.TZ = "Asia/Jakarta";
 
@@ -186,13 +187,29 @@ import pointHistoryRoute from "./routes/point/pointHistory.route.js";
 import voucherMemberRoute from "./routes/member/voucherMember.route.js";
 import expenseRoute from "./routes/expense.route.js";
 
-// import pusherRoute from "./routes/pusher.route.js";
-// import bannerRoute from "./routes/banner.route.js";
-// import gmapRoute from "./routes/gmap.route.js";
-// import cartRoute from "./routes/cart.route.js";
-// import discountRoute from "./routes/discount.route.js";
-// import helpRoute from "./routes/help.route.js";
-// import messageRoute from "./routes/message.route.js";
+// cart
+import cartRoute from "./routes/cart/cart.route.js";
+
+// gmap
+import gmapRoute from "./routes/gmap/gmap.route.js";
+
+// banner
+import bannerRoute from "./routes/banner/banner.route.js";
+
+// global discount
+import discountRoute from "./routes/globalDiscount/discount.route.js";
+
+// help
+import helpRoute from "./routes/help.route.js";
+
+// message
+import messageRoute from "./routes/message/message.route.js";
+
+// pusher
+import pusherRoute from "./routes/pusher.route.js";
+
+// blog
+import blogRoute from "./routes/article/article.route.js";
 
 // cron
 app.use("/api/cron", cronRoute); // disambungkan ke cron-job.org atau github actions
@@ -261,14 +278,29 @@ app.use("/api/ticket", ticketRoute);
 
 app.use("/api/expense", expenseRoute);
 
-// app.use("/api/pusher", pusherRoute);
-// app.use("/api/banners", bannerRoute);
-// app.use("/api/report", reportRoute);
-// app.use("/api/gmap", gmapRoute);
-// app.use("/api/cart", cartRoute);
-// app.use("/api/discount", discountRoute);
-// app.use("/api/help", helpRoute);
-// app.use("/api/messages", messageRoute);
+// cart
+app.use("/api/cart", cartRoute);
+
+// banner
+app.use("/api/banner", bannerRoute);
+
+// gmap
+app.use("/api/gmap", gmapRoute);
+
+// global discount
+app.use("/api/discount", discountRoute);
+
+// help
+app.use("/api/help", helpRoute);
+
+// message
+app.use("/api/message", messageRoute);
+
+// pusher
+app.use("/api/pusher", pusherRoute);
+
+// blog
+app.use("/api/blog", blogRoute);
 
 app.get("/", (_, res) => {
     res.send("We are on home");

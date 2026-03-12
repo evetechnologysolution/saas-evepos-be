@@ -1,4 +1,4 @@
-import Member from "../models/member.js";
+import Member from "../models/member/member.js";
 import { convertToE164 } from "../lib/textSetting.js";
 import { sendRequestDelete } from "../lib/nodemailer.js";
 
@@ -15,9 +15,11 @@ export const sendEmailDelete = async (req, res) => {
         const formattedPhone = convertToE164(phone);
 
         // Cari member berdasarkan nomor telepon
-        const member = await Member.findOne({ phone: formattedPhone });
+        const member = await Member.findOne({ phone: formattedPhone })
+            .populate([{ path: "tenantRef", select: "isEvewash" }])
+            .lean();
 
-        if (!member) {
+        if (!member || !member?.isEvewash) {
             return res.status(404).json({ message: "Member not found!" });
         }
 

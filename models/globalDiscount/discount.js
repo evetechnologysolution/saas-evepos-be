@@ -1,37 +1,27 @@
 import mongoose from "mongoose";
-import mongoosePaginate from "mongoose-paginate-v2";
-import mongooseLeanVirtuals from "mongoose-lean-virtuals";
-import { capitalizeFirstLetter } from "../lib/textSetting.js";
+import { capitalizeFirstLetter } from "../../lib/textSetting.js";
+
+const onlyDate = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
 
 const DataSchema = mongoose.Schema({
+    start: {
+        type: Date,
+        default: onlyDate
+    },
+    end: {
+        type: Date
+    },
     name: {
         type: String,
-        required: true,
+        default: "Global Discount",
         trim: true
     },
-    image: {
-        type: String,
-        default: ""
-    },
-    imageId: {
-        type: String,
-        default: ""
-    },
-    imageMobile: {
-        type: String,
-        default: ""
-    },
-    imageMobileId: {
-        type: String,
-        default: ""
-    },
-    isAvailable: {
-        type: Boolean,
-        default: true
-    },
-    listNumber: {
+    amount: {
         type: Number,
-        required: true
+        default: 0
     },
     tenantRef: {
         type: mongoose.Schema.Types.ObjectId,
@@ -40,11 +30,12 @@ const DataSchema = mongoose.Schema({
         set: val => val === "" ? null : val
     },
     outletRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Outlets",
-        default: null,
-        set: val => val === "" ? null : val
-    },
+        type: [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Outlets",
+        }],
+        default: []
+    }
 }, { timestamps: true });
 
 DataSchema.pre("save", function (next) {
@@ -71,7 +62,5 @@ DataSchema.pre("findOneAndUpdate", function (next) {
 });
 
 DataSchema.index({ tenantRef: 1, outletRef: 1 });
-DataSchema.plugin(mongoosePaginate);
-DataSchema.plugin(mongooseLeanVirtuals);
 
-export default mongoose.model("Banners", DataSchema);
+export default mongoose.model("Discounts", DataSchema);

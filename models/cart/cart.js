@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { capitalizeFirstLetter } from "../lib/textSetting.js";
+import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
 const DataSchema = new mongoose.Schema(
     {
@@ -65,10 +65,6 @@ const DataSchema = new mongoose.Schema(
                     default: 0,
                 },
                 discountAmount: {
-                    type: Number,
-                    default: 0,
-                },
-                discountLaundryBag: {
                     type: Number,
                     default: 0,
                 },

@@ -1,15 +1,20 @@
 import multer from "multer";
-import Banner from "../models/banner.js";
-import { cloudinary, imageUpload, limitFileSize } from "../lib/cloudinary.js";
+import Banner from "../../models/banner/banner.js";
+import { cloudinary, imageUpload, limitFileSize } from "../../lib/cloudinary.js";
 
 // GETTING ALL THE DATA
 export const getAllBanner = async (req, res) => {
     try {
         const { page, perPage, search, sort } = req.query;
-        let query = {};
+        let qMatch = {};
+
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
         }
@@ -28,7 +33,7 @@ export const getAllBanner = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
         };
-        const listofData = await Banner.paginate(query, options);
+        const listofData = await Banner.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -37,7 +42,15 @@ export const getAllBanner = async (req, res) => {
 
 export const getAvailableBanner = async (req, res) => {
     try {
-        const listofData = await Banner.find().select("-imageId -imageMobileId").where("isAvailable").equals(true).sort({ listNumber: 1 });
+        let qMatch = {};
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const listofData = await Banner.find(qMatch)
+            .select("-imageId -imageMobileId")
+            .where("isAvailable")
+            .equals(true)
+            .sort({ listNumber: 1 });
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -47,7 +60,11 @@ export const getAvailableBanner = async (req, res) => {
 // GET A SPECIFIC DATA
 export const getBannerById = async (req, res) => {
     try {
-        const spesificData = await Banner.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const spesificData = await Banner.findOne(qMatch);
         return res.json(spesificData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -74,6 +91,10 @@ export const addBanner = async (req, res) => {
 
         try {
             let objData = req.body;
+
+            if (req.userData?.tenantRef) {
+                objData.tenantRef = req.userData?.tenantRef;
+            }
 
             if (req.files) {
                 // Process image
@@ -136,7 +157,12 @@ export const editBanner = async (req, res) => {
         }
 
         try {
-            const existing = await Banner.findById(req.params.id);
+            let qMatch = { _id: req.params.id };
+            if (req.userData?.tenantRef) {
+                qMatch.tenantRef = req.userData?.tenantRef;
+            }
+
+            const existing = await Banner.findOne(qMatch);
 
             let objData = req.body;
 
@@ -179,12 +205,9 @@ export const editBanner = async (req, res) => {
                 }
             }
 
-            const updatedData = await Banner.updateOne(
-                { _id: req.params.id },
-                {
-                    $set: objData,
-                },
-            );
+            const updatedData = await Banner.updateOne(qMatch, {
+                $set: objData,
+            });
             return res.json(updatedData);
         } catch (err) {
             return res.status(500).json({ message: err.message });
@@ -195,8 +218,12 @@ export const editBanner = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteBanner = async (req, res) => {
     try {
+        let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
         // Chek product image & delete image
-        const existData = await Banner.findById(req.params.id);
+        const existData = await Banner.findOne(qMatch);
         if (existData.imageId) {
             await cloudinary.uploader.destroy(existData.imageId);
         }
@@ -204,7 +231,7 @@ export const deleteBanner = async (req, res) => {
             await cloudinary.uploader.destroy(existData.imageMobileId);
         }
 
-        const deletedData = await Banner.deleteOne({ _id: req.params.id });
+        const deletedData = await Banner.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });

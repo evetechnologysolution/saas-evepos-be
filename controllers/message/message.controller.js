@@ -1,17 +1,21 @@
 import mongoose from "mongoose";
 import multer from "multer";
-import Convers from "../models/conversation.js";
-import Message from "../models/message.js";
-import Member from "../models/member.js";
-import { cloudinary, imageUpload } from "../lib/cloudinary.js";
-import { messageNotif } from "../lib/pusher.js";
+import Convers from "../../models/message/conversation.js";
+import Message from "../../models/message/message.js";
+import Member from "../../models/member/member.js";
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
+import { pusherNotif } from "../../lib/pusher.js";
 
 // GETTING ALL THE DATA
 export const getAllConvers = async (req, res) => {
     try {
         const { page, perPage, search, start, end } = req.query;
 
-        let query = {};
+        let qMatch = {};
+
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
 
         if (search) {
             const members = await Member.find({
@@ -30,12 +34,9 @@ export const getAllConvers = async (req, res) => {
             });
             const filteredMessages = messages.map((item) => item._id);
 
-            query = {
-                ...query,
-                $or: [
-                    { memberRef: { $in: filteredMember } },
-                    { lastMessage: { $in: filteredMessages } },
-                ], // option i for case insensitivity to match upper and lower cases.
+            qMatch = {
+                ...qMatch,
+                $or: [{ memberRef: { $in: filteredMember } }, { lastMessage: { $in: filteredMessages } }], // option i for case insensitivity to match upper and lower cases.
             };
         }
 
@@ -48,8 +49,8 @@ export const getAllConvers = async (req, res) => {
             dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixEnd = new Date(dEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 updatedAt: {
                     $gte: fixStart,
                     $lte: fixEnd,
@@ -63,7 +64,7 @@ export const getAllConvers = async (req, res) => {
             sort: { updatedAt: -1 },
             populate: [
                 {
-                    path: "member",
+                    path: "memberRef",
                     select: "memberId cardId name firstName lastName phone email",
                 },
                 {
@@ -72,7 +73,7 @@ export const getAllConvers = async (req, res) => {
                 },
             ],
         };
-        const listofData = await Convers.paginate(query, options);
+        const listofData = await Convers.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -83,7 +84,11 @@ export const getAllConversByMember = async (req, res) => {
     try {
         const { page, perPage, search, start, end } = req.query;
 
-        let query = { memberRef: req.params.id };
+        let qMatch = { memberRef: req.params.id };
+
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
 
         if (search) {
             const messages = await Message.find({
@@ -91,8 +96,8 @@ export const getAllConversByMember = async (req, res) => {
             });
             const filteredMessages = messages.map((item) => item._id);
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 lastMessage: { $in: filteredMessages },
             };
         }
@@ -106,8 +111,8 @@ export const getAllConversByMember = async (req, res) => {
             dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixEnd = new Date(dEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 updatedAt: {
                     $gte: fixStart,
                     $lte: fixEnd,
@@ -121,7 +126,7 @@ export const getAllConversByMember = async (req, res) => {
             sort: { updatedAt: -1 },
             populate: [
                 {
-                    path: "member",
+                    path: "memberRef",
                     select: "memberId cardId name firstName lastName phone email",
                 },
                 {
@@ -130,7 +135,7 @@ export const getAllConversByMember = async (req, res) => {
                 },
             ],
         };
-        const listofData = await Convers.paginate(query, options);
+        const listofData = await Convers.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -141,7 +146,11 @@ export const getAllMessages = async (req, res) => {
     try {
         const { page, perPage, search, start, end } = req.query;
 
-        let query = {};
+        let qMatch = {};
+
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
 
         if (search) {
             const members = await Member.find({
@@ -155,12 +164,9 @@ export const getAllMessages = async (req, res) => {
             });
             const filteredMember = members.map((item) => item._id);
 
-            query = {
-                ...query,
-                $or: [
-                    { memberRef: { $in: filteredMember } },
-                    { text: { $regex: search, $options: "i" } },
-                ], // option i for case insensitivity to match upper and lower cases.
+            qMatch = {
+                ...qMatch,
+                $or: [{ memberRef: { $in: filteredMember } }, { text: { $regex: search, $options: "i" } }], // option i for case insensitivity to match upper and lower cases.
             };
         }
 
@@ -173,8 +179,8 @@ export const getAllMessages = async (req, res) => {
             dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixEnd = new Date(dEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 updatedAt: {
                     $gte: fixStart,
                     $lte: fixEnd,
@@ -188,7 +194,7 @@ export const getAllMessages = async (req, res) => {
             sort: { createdAt: -1 },
             populate: [
                 // {
-                //     path: "member",
+                //     path: "memberRef",
                 //     select: "memberId cardId name firstName lastName phone email",
                 // },
                 {
@@ -197,7 +203,7 @@ export const getAllMessages = async (req, res) => {
                 },
             ],
         };
-        const listofData = await Message.paginate(query, options);
+        const listofData = await Message.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -208,11 +214,15 @@ export const getAllMessagesByMember = async (req, res) => {
     try {
         const { page, perPage, search, start, end, latestId } = req.query;
 
-        let query = { memberRef: req.params.id };
+        let qMatch = { memberRef: req.params.id };
+
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
 
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 text: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
         }
@@ -226,8 +236,8 @@ export const getAllMessagesByMember = async (req, res) => {
             dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
             const fixEnd = new Date(dEnd.toISOString());
 
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 updatedAt: {
                     $gte: fixStart,
                     $lte: fixEnd,
@@ -236,9 +246,7 @@ export const getAllMessagesByMember = async (req, res) => {
         }
 
         if (latestId) {
-            const objectId = mongoose.Types.ObjectId.isValid(latestId)
-                ? new mongoose.Types.ObjectId(latestId)
-                : null;
+            const objectId = mongoose.Types.ObjectId.isValid(latestId) ? new mongoose.Types.ObjectId(String(latestId)) : null;
             if (objectId) {
                 query = {
                     ...query,
@@ -255,7 +263,7 @@ export const getAllMessagesByMember = async (req, res) => {
             sort: { createdAt: -1 },
             populate: [
                 // {
-                //     path: "member",
+                //     path: "memberRef",
                 //     select: "memberId cardId name firstName lastName phone email",
                 // },
                 {
@@ -264,7 +272,7 @@ export const getAllMessagesByMember = async (req, res) => {
                 },
             ],
         };
-        const listofData = await Message.paginate(query, options);
+        const listofData = await Message.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -274,7 +282,11 @@ export const getAllMessagesByMember = async (req, res) => {
 // GETTING A SPECIFIC DATA BY ID
 export const getConversById = async (req, res) => {
     try {
-        const spesificData = await Convers.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const spesificData = await Convers.findOne(qMatch);
         return res.json(spesificData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -284,7 +296,11 @@ export const getConversById = async (req, res) => {
 // GETTING A SPECIFIC DATA BY ID
 export const getMessageById = async (req, res) => {
     try {
-        const spesificData = await Message.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const spesificData = await Message.findOne(qMatch);
         return res.json(spesificData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -311,7 +327,11 @@ export const createMessage = async (req, res) => {
 
             let objData = { _id: _messageId, ...req.body };
 
-            if (objData.admin) {
+            if (req.userData?.tenantRef) {
+                objData.tenantRef = req.userData?.tenantRef;
+            }
+
+            if (objData.adminRef) {
                 objData.isAdmin = true;
             }
 
@@ -348,14 +368,10 @@ export const createMessage = async (req, res) => {
             const newData = await data.save();
 
             if (newData) {
-                const channel = newData.isAdmin
-                    ? `chat-${newData.member}`
-                    : "chat-admin";
+                const channel = newData.isAdmin ? `chat-${newData.member}` : "admin-notif";
                 const event = "chat-received";
-                await messageNotif(channel, event, {
-                    ...newData.toObject(),
-                    message: "Pesan Baru!",
-                });
+                const roles = ["super admin", "admin"];
+                await pusherNotif(channel, event, { ...newData.toObject(), message: "Pesan Baru!", roles });
             }
 
             return res.json(newData);
@@ -368,11 +384,11 @@ export const createMessage = async (req, res) => {
 // UPDATE MESSAGE
 export const editMessage = async (req, res) => {
     try {
-        const updatedData = await Message.findOneAndUpdate(
-            { _id: req.params.id },
-            { $set: req.body },
-            { new: true, upsert: false },
-        );
+        let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const updatedData = await Message.findOneAndUpdate(qMatch, { $set: req.body }, { new: true, upsert: false });
         return res.json(updatedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -382,8 +398,12 @@ export const editMessage = async (req, res) => {
 // UPDATE MESSAGE STATUS
 export const editMessageStatusForAdmin = async (req, res) => {
     try {
+        let qMatch = { memberRef: req.params.id, isAdmin: false, isRead: false };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
         const updatedData = await Message.updateMany(
-            { memberRef: req.params.id, isAdmin: false, isRead: false }, // update status pesan yang dikirim member
+            qMatch, // update status pesan yang dikirim member
             {
                 $set: { isRead: true },
             },
@@ -397,8 +417,12 @@ export const editMessageStatusForAdmin = async (req, res) => {
 // UPDATE MESSAGE STATUS
 export const editMessageStatusForMember = async (req, res) => {
     try {
+        let qMatch = { memberRef: req.params.id, isAdmin: true, isRead: false };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
         const updatedData = await Message.updateMany(
-            { memberRef: req.params.id, isAdmin: true, isRead: false }, // update status pesan yang dikirim admin
+            qMatch, // update status pesan yang dikirim admin
             {
                 $set: { isRead: true },
             },
@@ -412,7 +436,11 @@ export const editMessageStatusForMember = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteConvers = async (req, res) => {
     try {
-        await Message.deleteMany({ conversation: req.params.id });
+        let qMatch = { conversation: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        await Message.deleteMany(qMatch);
         const deletedData = await Convers.deleteOne({ _id: req.params.id });
         return res.json(deletedData);
     } catch (err) {
@@ -423,12 +451,16 @@ export const deleteConvers = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteMessage = async (req, res) => {
     try {
+        let qMatch = { _id: req.params.id };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
         // Chek image & delete image
-        const check = await Message.findById(req.params.id);
+        const check = await Message.findOne(qMatch);
         if (check.imageId) {
             await cloudinary.uploader.destroy(check.imageId);
         }
-        const deletedData = await Message.deleteOne({ _id: req.params.id });
+        const deletedData = await Message.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });

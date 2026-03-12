@@ -1,9 +1,13 @@
-import Disc from "../models/discount.js";
+import Disc from "../../models/globalDiscount/discount.js";
 
 // GETTING ALL THE DATA
 export const getAllDisc = async (_, res) => {
     try {
-        const listofData = await Disc.findOne();
+        let qMatch = {};
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const listofData = await Disc.findOne(qMatch);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -14,10 +18,16 @@ export const getAvailableDisc = async (_, res) => {
     try {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const listofData = await Disc.findOne({
+
+        let qMatch = {
             start: { $lte: today },
-            end: { $gte: today }
-        });
+            end: { $gte: today },
+        };
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+
+        const listofData = await Disc.findOne(qMatch);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -27,6 +37,7 @@ export const getAvailableDisc = async (_, res) => {
 // CREATE NEW DATA
 export const saveDisc = async (req, res) => {
     try {
+        let qMatch = { _id: { $ne: null } };
         let objData = req.body;
         if (objData.start) {
             const now = new Date(objData.start);
@@ -36,13 +47,13 @@ export const saveDisc = async (req, res) => {
             const now = new Date(objData.end);
             objData.end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         }
-        const data = await Disc.findOneAndUpdate(
-            {
-                _id: { $ne: null }
-            },
-            objData,
-            { new: true, upsert: true }
-        );
+
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            objData.tenantRef = req.userData?.tenantRef;
+        }
+
+        const data = await Disc.findOneAndUpdate(qMatch, objData, { new: true, upsert: true });
         return res.json(data);
     } catch (err) {
         return res.status(500).json({ message: err.message });

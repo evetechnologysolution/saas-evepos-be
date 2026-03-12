@@ -1,9 +1,13 @@
 import axios from "axios";
-import Setting from "../models/settings.js";
+import Tenant from "../../models/core/tenant.js";
+import Setting from "../../models/setting/settings.js";
 
 export const getDeliveryByPlaceId = async (req, res) => {
     try {
-        const dataSetting = await Setting.findOne();
+        const checkTenant = await Tenant.findOne({ isEvewash: true }).lean();
+        if (!checkTenant) return res.status(400).json({ message: "Tenant Evewash not found" });
+
+        const dataSetting = await Setting.findOne({ tenantRef: checkTenant?._id }).lean();
 
         let baseRate = 5000;
         let ratePerMinute = 1500;
@@ -22,7 +26,7 @@ export const getDeliveryByPlaceId = async (req, res) => {
         const config = {
             method: "GET",
             url: `https://maps.googleapis.com/maps/api/directions/json?destination=place_id:${req.body.placeId}&origin=place_id:${fromOrigin}&key=${process.env.GMAP_API_KEY}`,
-            headers: {}
+            headers: {},
         };
 
         const response = await axios(config);
@@ -30,14 +34,12 @@ export const getDeliveryByPlaceId = async (req, res) => {
         const duration = response?.data?.routes[0]?.legs[0]?.duration?.value || 0;
         const distanceMeters = response?.data?.routes[0]?.legs[0]?.distance?.value || 0;
         const distanceKm = distanceMeters / 1000; // Convert meters to kilometers
-        res.status(response.status).json(
-            {
-                estimate,
-                duration,
-                distanceKm: Number(distanceKm.toFixed(1)),
-                deliveryPrice: baseRate + (Math.ceil(duration / 60) * ratePerMinute)
-            }
-        );
+        res.status(response.status).json({
+            estimate,
+            duration,
+            distanceKm: Number(distanceKm.toFixed(1)),
+            deliveryPrice: baseRate + Math.ceil(duration / 60) * ratePerMinute,
+        });
     } catch (error) {
         res.status(500).json({ message: error.message || "Failed to check delivery" });
     }
@@ -45,7 +47,10 @@ export const getDeliveryByPlaceId = async (req, res) => {
 
 export const getDeliveryByLocation = async (req, res) => {
     try {
-        const dataSetting = await Setting.findOne();
+        const checkTenant = await Tenant.findOne({ isEvewash: true }).lean();
+        if (!checkTenant) return res.status(400).json({ message: "Tenant Evewash not found" });
+
+        const dataSetting = await Setting.findOne({ tenantRef: checkTenant?._id }).lean();
 
         let baseRate = 5000;
         let ratePerMinute = 1500;
@@ -77,7 +82,7 @@ export const getDeliveryByLocation = async (req, res) => {
         const config = {
             method: "GET",
             url: `https://maps.googleapis.com/maps/api/distancematrix/json?destinations=latlng:${lat},${lng}&origins=latlng:${fromOrigin.lat},${fromOrigin.lng}&key=${process.env.GMAP_API_KEY}`,
-            headers: {}
+            headers: {},
         };
 
         const response = await axios(config);
@@ -86,15 +91,13 @@ export const getDeliveryByLocation = async (req, res) => {
         const distanceMeters = response?.data?.routes[0]?.legs[0]?.distance?.value || 0;
         const distanceKm = distanceMeters / 1000; // Convert meters to kilometers
 
-        res.status(response.status).json(
-            {
-                estimate,
-                duration,
-                distanceKm: Number(distanceKm.toFixed(1)),
-                deliveryPrice: baseRate + (Math.ceil(duration / 60) * ratePerMinute),
-                data: response?.data
-            }
-        );
+        res.status(response.status).json({
+            estimate,
+            duration,
+            distanceKm: Number(distanceKm.toFixed(1)),
+            deliveryPrice: baseRate + Math.ceil(duration / 60) * ratePerMinute,
+            data: response?.data,
+        });
     } catch (error) {
         res.status(500).json({ message: error.message || "Failed to check delivery" });
     }
