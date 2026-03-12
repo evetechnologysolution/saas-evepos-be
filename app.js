@@ -132,13 +132,13 @@ import authUserMasterRoute from "./routes/userMaster/authUserMaster.route.js";
 import userMasterRoute from "./routes/userMaster/userMaster.route.js";
 
 // core
+import authUserRoute from "./routes/user/authUser.route.js";
 import serviceRoutes from "./routes/core/service.route.js";
 import tenantRoute from "./routes/core/tenant.route.js";
 import tenantLogRoute from "./routes/core/tenantLog.route.js";
 import tenantBankRoute from "./routes/core/tenantBank.route.js";
 import subscriptionRoutes from "./routes/core/subscription.route.js";
 import authTenantRoute from "./routes/core/authTenant.route.js";
-import authUserRoute from "./routes/user/authUser.route.js";
 import surveyRoute from "./routes/core/survey.route.js";
 import invoiceRoute from "./routes/core/invoice.route.js";
 import outletRoute from "./routes/core/outlet.route.js";
@@ -167,6 +167,9 @@ import cashBalanceRoute from "./routes/cashBalance/cashBalance.route.js";
 
 // master
 import userRoute from "./routes/user/user.route.js";
+
+// member
+import authMemberRoute from "./routes/member/authMember.route.js";
 import memberRoute from "./routes/member/member.route.js";
 
 // report
@@ -235,6 +238,9 @@ app.use("/api/cash-balance", cashBalanceRoute);
 
 // master
 app.use("/api/user", userRoute);
+
+// member
+app.use("/api/auth-member", authMemberRoute);
 app.use("/api/member", memberRoute);
 
 // point

@@ -20,19 +20,19 @@ import {
 
 const router = express.Router();
 
-router.get("/member/my-account", isAuthMember, getMyMember);
-router.post("/member/login", loginMember);
-router.post("/member/register", registerMember);
-router.post("/member/register/v2", registerMemberV2);
-router.post("/member/register/test", registerMemberTestEmail);
-router.post("/member/register/verify", verifyMember);
-router.post("/member/check", checkMember);
-router.post("/member/callback", callbackMember);
-router.post("/member/forgot-password", forgotPasswordMember);
-router.post("/member/forgot-password-verify", verifyOtpForgotPasswordMember);
-router.post("/member/change-password", changeMemberPassword);
-router.post("/member/v2/forgot-password", forgotPasswordMemberByToken);
-router.post("/member/v2/change-password", changeMemberPasswordByToken);
+router.get("/my-account", isAuthMember, getMyMember);
+router.post("/login", loginMember);
+router.post("/register", registerMember);
+router.post("/register/v2", registerMemberV2);
+router.post("/register/test", registerMemberTestEmail);
+router.post("/register/verify", verifyMember);
+router.post("/check", checkMember);
+router.post("/callback", callbackMember);
+router.post("/forgot-password", forgotPasswordMember);
+router.post("/forgot-password-verify", verifyOtpForgotPasswordMember);
+router.post("/change-password", changeMemberPassword);
+router.post("/v2/forgot-password", forgotPasswordMemberByToken);
+router.post("/v2/change-password", changeMemberPasswordByToken);
 
 const isProduction = process.env.NODE_ENV === "production";
 
