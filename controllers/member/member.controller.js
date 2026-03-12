@@ -422,10 +422,11 @@ export const editMember = async (req, res) => {
             );
         }
 
-        const [activeVouchers, hasOrder] = await Promise.all([
+        const [activeVouchers, orderCount] = await Promise.all([
             MemberVoucher.countDocuments({ member: updatedData?._id, isUsed: { $ne: true }, expiry: { $gt: new Date() } }),
-            Order.exists({ "customer.memberId": updatedData?.memberId }),
+            Order.countDocuments({ "customer.memberId": updatedData?.memberId }),
         ]);
+        const hasOrder = orderCount > 0;
 
         return res.json({
             ...updatedData.toObject(),
