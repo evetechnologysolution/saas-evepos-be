@@ -3,51 +3,102 @@ import mongoosePaginate from "mongoose-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
-const DataSchema = mongoose.Schema({
-    name: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    options: [
-        {
-            name: {
-                type: String,
-                required: true
-            },
-            price: {
-                type: Number,
-                default: 0
-            },
-            productionPrice: {
-                type: Number,
-                default: 0
-            },
-            productionNotes: {
-                type: String,
-                trim: true,
-                default: ""
-            },
-            isMultiple: {
-                type: Boolean,
-                default: false
-            },
+const DataSchema = mongoose.Schema(
+    {
+        name: {
+            type: String,
+            required: true,
+            trim: true,
         },
-    ],
-    tenantRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Tenants",
-        default: null,
-        set: val => val === "" ? null : val
-    },
-    outletRef: {
-        type: [{
+        options: {
+            type: [
+                {
+                    name: {
+                        type: String,
+                        required: true,
+                    },
+                    price: {
+                        type: Number,
+                        default: 0,
+                    },
+                    productionPrice: {
+                        type: Number,
+                        default: 0,
+                    },
+                    productionNotes: {
+                        type: String,
+                        trim: true,
+                        default: "",
+                    },
+                    isMultiple: {
+                        type: Boolean,
+                        default: false,
+                    },
+                    isDefault: {
+                        type: Boolean,
+                        default: false,
+                    },
+                },
+            ],
+            default: [],
+        },
+        suboptions: {
+            type: [
+                {
+                    name: {
+                        type: String,
+                        required: true,
+                    },
+                    price: {
+                        type: Number,
+                        default: 0,
+                    },
+                    productionPrice: {
+                        type: Number,
+                        default: 0,
+                    },
+                    notes: {
+                        type: String,
+                        default: "",
+                    },
+                    productionNotes: {
+                        type: String,
+                        default: "",
+                    },
+                    isMultiple: {
+                        type: Boolean,
+                        default: false,
+                    },
+                    isDefault: {
+                        type: Boolean,
+                        default: false,
+                    },
+                },
+            ],
+            default: [],
+        },
+        isPerfume: {
+            type: Boolean,
+            default: false,
+        },
+        tenantRef: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "Outlets",
-        }],
-        default: []
-    }
-}, { timestamps: true });
+            ref: "Tenants",
+            default: null,
+            set: (val) => (val === "" ? null : val),
+        },
+        outletRef: {
+            type: [
+                {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "Outlets",
+                },
+            ],
+            default: [],
+        },
+    },
+    { timestamps: true },
+);
 
 DataSchema.pre("save", function (next) {
     if (this.name) {
