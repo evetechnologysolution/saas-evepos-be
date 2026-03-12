@@ -95,15 +95,18 @@ export const getMemberById = async (req, res) => {
             qVoucher.tenantRef = req.userData?.tenantRef;
         }
 
-        const [memberResult, voucherCount] = await Promise.all([Member.findOne(qMatch).lean(), MemberVoucher.countDocuments(qVoucher)]);
+        const memberResult = await Member.findOne(qMatch).lean();
+        if (!memberResult) return res.status(404).json({ message: "Member not found!" });
 
-        if (!memberResult) {
-            return res.status(404).json({ message: "Member not found" });
-        }
+        const [voucherCount, hasOrder] = await Promise.all([
+            MemberVoucher.countDocuments(qVoucher),
+            Order.exists({ "customer.memberId": memberResult.memberId }),
+        ]);
 
         return res.json({
             ...memberResult,
             voucher: voucherCount,
+            firstWash: !hasOrder,
         });
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -215,11 +218,15 @@ export const getMemberBySearch = async (req, res) => {
             qVoucher.tenantRef = req.userData?.tenantRef;
         }
 
-        const voucherCount = await MemberVoucher.countDocuments(qVoucher);
+        const [voucherCount, hasOrder] = await Promise.all([
+            MemberVoucher.countDocuments(qVoucher),
+            Order.exists({ "customer.memberId": member.memberId }),
+        ]);
 
         return res.json({
             ...member,
             voucher: voucherCount,
+            firstWash: !hasOrder,
         });
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -422,11 +429,10 @@ export const editMember = async (req, res) => {
             );
         }
 
-        const [activeVouchers, orderCount] = await Promise.all([
+        const [activeVouchers, hasOrder] = await Promise.all([
             MemberVoucher.countDocuments({ member: updatedData?._id, isUsed: { $ne: true }, expiry: { $gt: new Date() } }),
-            Order.countDocuments({ "customer.memberId": updatedData?.memberId }),
+            Order.exists({ "customer.memberId": updatedData?.memberId }),
         ]);
-        const hasOrder = orderCount > 0;
 
         return res.json({
             ...updatedData.toObject(),

@@ -26,16 +26,14 @@ export const getMyMember = async (req, res) => {
             return res.status(400).json({ message: "Member not found" });
         }
 
-        const [activeVouchers, orderCount] = await Promise.all([
+        const [activeVouchers, hasOrder] = await Promise.all([
             MemberVoucher.countDocuments({
                 memberRef: memberExist._id,
                 isUsed: { $ne: true },
                 expiry: { $gt: new Date() },
             }),
-            Order.countDocuments({ "customer.memberId": memberExist.memberId }),
+            Order.exists({ "customer.memberId": memberExist.memberId }),
         ]);
-
-        const hasOrder = orderCount > 0;
 
         res.json({
             user: {
@@ -68,16 +66,14 @@ export const loginMember = async (req, res) => {
 
         const { password, ...memberWithoutPassword } = memberExist;
 
-        const [activeVouchers, orderCount] = await Promise.all([
+        const [activeVouchers, hasOrder] = await Promise.all([
             MemberVoucher.countDocuments({
                 memberRef: memberExist._id,
                 isUsed: { $ne: true },
                 expiry: { $gt: new Date() },
             }),
-            Order.countDocuments({ "customer.memberId": memberExist.memberId }),
+            Order.exists({ "customer.memberId": memberExist.memberId }),
         ]);
-
-        const hasOrder = orderCount > 0;
 
         return res.json({
             message: "Login Successful",
@@ -435,16 +431,14 @@ export const callbackMember = async (req, res) => {
 
         delete memberData.password;
 
-        const [activeVouchers, orderCount] = await Promise.all([
+        const [activeVouchers, hasOrder] = await Promise.all([
             MemberVoucher.countDocuments({
                 memberRef: memberData._id,
                 isUsed: { $ne: true },
                 expiry: { $gt: new Date() },
             }),
-            Order.countDocuments({ "customer.memberId": memberData.memberId }),
+            Order.exists({ "customer.memberId": memberData.memberId }),
         ]);
-
-        const hasOrder = orderCount > 0;
 
         const token = jwt.sign({ _id: memberData._id }, process.env.TOKEN_SECRET);
 
