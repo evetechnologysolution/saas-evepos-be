@@ -6,6 +6,7 @@ import {
     getMemberBySearch,
     getMemberByPoint,
     checkMember,
+    checkMemberV2,
     getMemberById,
     addMember,
     editMember,
@@ -26,7 +27,8 @@ router.get("/:id", isAuth, getMemberById);
 
 // CREATE NEW DATA
 router.post("/", isAuth, addMember);
-router.post("/check", isAuth, checkMember);
+router.post("/check", checkMember);
+router.post("/v2/check", checkMemberV2);
 
 // UPDATE A SPECIFIC DATA
 router.patch("/:id", isAuthMember, editMember);

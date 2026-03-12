@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import Tenant from "../../models/core/tenant.js";
 import Member from "../../models/member/member.js";
 import MemberPending from "../../models/member/memberPending.js";
 import MemberVoucher from "../../models/member/voucherMember.js";
@@ -123,6 +124,40 @@ export const checkMember = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
         }
+
+        const spesificData = await Member.findOne(qMatch)
+            .select("_id memberId cardId name firstName lastName phone email isVerified")
+            .lean();
+
+        if (!spesificData) {
+            if (req.query.onlyCheck) {
+                return res.status(200).json({ message: "Can register as a member" });
+            }
+            return res.status(400).json({ message: "Data not found" });
+        }
+
+        return res.json(spesificData);
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
+    }
+};
+
+export const checkMemberV2 = async (req, res) => {
+    try {
+        const { search } = req.body;
+
+        const checkTenant = await Tenant.findOne({ isEvewash: true }).lean();
+
+        if (!checkTenant) return res.status(400).json({ message: "Tenant Evewash not found!" });
+
+        if (!search || typeof search !== "string") {
+            return res.status(400).json({ message: "Invalid search qMatch" });
+        }
+
+        let qMatch = {
+            tenantRef: checkTenant?._id,
+            $or: [{ email: { $regex: `^${search}$`, $options: "i" } }, { phone: convertToE164(search) }],
+        };
 
         const spesificData = await Member.findOne(qMatch)
             .select("_id memberId cardId name firstName lastName phone email isVerified")
