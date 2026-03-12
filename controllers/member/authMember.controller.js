@@ -16,7 +16,7 @@ import { sendVerificationRegister, sendOtpForgotPassword, sendUrlForgotPassword 
 export const getMyMember = async (req, res) => {
     try {
         const memberExist = await Member.findOne({
-            _id: req.memberData._id,
+            _id: req?.memberData?._id || req?.userData?._id,
         })
             .select("-password -otp -resetToken -resetTokenExpiry")
             .populate({ path: "tenantRef", select: "isEvewash" })
