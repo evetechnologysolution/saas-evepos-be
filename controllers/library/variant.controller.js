@@ -4,7 +4,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllVariant = async (req, res) => {
     try {
-        const { perfume } = req.query;
+        const { perfume, onWeb } = req.query;
         let qMatch = {};
 
         if (req.userData) {
@@ -17,6 +17,13 @@ export const getAllVariant = async (req, res) => {
         }
         if (perfume === "no") {
             qMatch.isPerfume = { $ne: true };
+        }
+
+        if (onWeb === "yes") {
+            qMatch.showOnWeb = { $eq: true };
+        }
+        if (onWeb === "no") {
+            qMatch.showOnWeb = { $ne: true };
         }
 
         const listofData = await Variant.find(qMatch).lean();
@@ -33,7 +40,7 @@ export const getAllVariant = async (req, res) => {
 // GETTING ALL THE DATA
 export const getPaginateVariant = async (req, res) => {
     try {
-        const { page, perPage, search, perfume, sort } = req.query;
+        const { page, perPage, search, perfume, onWeb, sort } = req.query;
         let qMatch = {};
 
         if (req.userData) {
@@ -46,6 +53,13 @@ export const getPaginateVariant = async (req, res) => {
         }
         if (perfume === "no") {
             qMatch.isPerfume = { $ne: true };
+        }
+
+        if (onWeb === "yes") {
+            qMatch.showOnWeb = { $eq: true };
+        }
+        if (onWeb === "no") {
+            qMatch.showOnWeb = { $ne: true };
         }
 
         if (search) {
