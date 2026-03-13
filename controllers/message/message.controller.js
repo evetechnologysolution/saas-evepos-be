@@ -351,7 +351,7 @@ export const createMessage = async (req, res) => {
             }
 
             const dataConvers = await Convers.findOneAndUpdate(
-                { memberRef: req.body.member },
+                { memberRef: req.body.memberRef },
                 {
                     $set: {
                         lastMessage: _messageId,
