@@ -361,7 +361,7 @@ export const createMessage = async (req, res) => {
             );
 
             if (dataConvers) {
-                objData.conversation = dataConvers._id;
+                objData.conversationRef = dataConvers._id;
             }
 
             const data = new Message(objData);
@@ -436,7 +436,7 @@ export const editMessageStatusForMember = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteConvers = async (req, res) => {
     try {
-        let qMatch = { conversation: req.params.id };
+        let qMatch = { conversationRef: req.params.id };
         if (req.userData?.tenantRef) {
             qMatch.tenantRef = req.userData?.tenantRef;
         }
