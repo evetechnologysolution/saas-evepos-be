@@ -327,7 +327,10 @@ export const createMessage = async (req, res) => {
 
             let objData = { _id: _messageId, ...req.body };
 
+            let qMatch = { memberRef: req.body.memberRef };
+
             if (req.userData?.tenantRef) {
+                qMatch.tenantRef = req.userData?.tenantRef;
                 objData.tenantRef = req.userData?.tenantRef;
             }
 
@@ -351,7 +354,7 @@ export const createMessage = async (req, res) => {
             }
 
             const dataConvers = await Convers.findOneAndUpdate(
-                { memberRef: req.body.memberRef },
+                qMatch,
                 {
                     $set: {
                         lastMessage: _messageId,
