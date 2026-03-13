@@ -10,6 +10,11 @@ const DataSchema = mongoose.Schema(
             required: true,
             trim: true,
         },
+        caption: {
+            type: String,
+            trim: true,
+            default: "",
+        },
         options: {
             type: [
                 {
