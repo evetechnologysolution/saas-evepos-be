@@ -40,36 +40,74 @@ export const isAuthMaster = async (req, res, next) => {
 
 export const isAuth = async (req, res, next) => {
     try {
-        if (req.headers && req.headers.authorization) {
-            const token = req.headers.authorization.split(" ")[1];
-            const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+        const authHeader = req.headers?.authorization;
 
-            const userResult = await User.findById(decoded._id).lean();
-
-            if (userResult) {
-                let outletResult = null;
-                if (userResult?.tenantRef) {
-                    outletResult = await Outlet.findOne({ tenantRef: userResult?.tenantRef, isPrimary: true }).lean();
-                }
-
-                req.userData = {
-                    _id: userResult._id,
-                    username: userResult.username,
-                    fullname: userResult.fullname,
-                    email: userResult.email,
-                    phone: userResult.phone,
-                    role: userResult.role,
-                    tenantRef: userResult?.tenantRef || null,
-                    outletRef: userResult?.outletRef || outletResult?._id || null,
-                };
-            }
-            next();
-        } else {
+        if (!authHeader) {
             return res.status(401).json({
                 status: 401,
                 message: "Auth failed, access denied!",
             });
         }
+
+        const token = authHeader.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
+
+        let outletResult = null;
+
+        // check user
+        const userResult = await User.findById(decoded._id).populate({ path: "tenantRef", select: "isEvewash" }).lean();
+
+        if (userResult) {
+            if (userResult?.tenantRef) {
+                outletResult = await Outlet.findOne({
+                    tenantRef: userResult.tenantRef?._id,
+                    isPrimary: true,
+                }).lean();
+            }
+
+            req.userData = {
+                _id: userResult._id,
+                username: userResult.username,
+                fullname: userResult.fullname,
+                email: userResult.email,
+                phone: userResult.phone,
+                role: userResult.role,
+                isEvewash: userResult?.tenantRef?.isEvewash || false,
+                tenantRef: userResult?.tenantRef?._id || null,
+                outletRef: userResult?.outletRef || outletResult?._id || null,
+            };
+
+            return next();
+        }
+
+        // check member
+        const memberResult = await Member.findById(decoded._id)
+            .select("-password -otp")
+            .populate({ path: "tenantRef", select: "isEvewash" })
+            .lean();
+
+        if (memberResult) {
+            if (memberResult?.tenantRef) {
+                outletResult = await Outlet.findOne({
+                    tenantRef: memberResult.tenantRef?._id,
+                    isPrimary: true,
+                }).lean();
+            }
+
+            req.userData = {
+                ...memberResult,
+                isEvewash: memberResult?.tenantRef?.isEvewash || false,
+                tenantRef: memberResult?.tenantRef?._id || null,
+                outletRef: outletResult?._id || null,
+            };
+
+            return next();
+        }
+
+        return res.status(401).json({
+            status: 401,
+            message: "Auth failed, access denied!",
+        });
     } catch (error) {
         return res.status(401).json({
             status: 401,
@@ -83,9 +121,18 @@ export const isAuthMember = async (req, res, next) => {
         if (req.headers && req.headers.authorization) {
             const token = req.headers.authorization.split(" ")[1];
             const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-            const data = await Member.findById(decoded._id).select("-password -otp").lean();
+            const data = await Member.findById(decoded._id)
+                .select("-password -otp")
+                .populate({ path: "tenantRef", select: "isEvewash" })
+                .lean();
             if (data) {
-                req.memberData = data;
+                const outletResult = await Outlet.findOne({ tenantRef: data?.tenantRef?._id, isPrimary: true }).lean();
+                req.userData = {
+                    ...data,
+                    isEvewash: data?.tenantRef?.isEvewash || false,
+                    tenantRef: data?.tenantRef?._id || null,
+                    outletRef: outletResult?._id || null,
+                };
             }
             next();
         } else {

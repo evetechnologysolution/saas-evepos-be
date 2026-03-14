@@ -1,4 +1,4 @@
-import Order from "../../models/order.js";
+import Order from "../../models/pos/order.js";
 import Expense from "../../models/expense.js";
 
 // GETTING PROFIT LOSS
@@ -12,36 +12,42 @@ export const getProfitLoss = async (req, res) => {
         dEnd.setHours(23, 59, 59, 999); // Tetapkan ke akhir hari waktu lokal
         const end = new Date(dEnd.toISOString());
 
+        const qMatch = {
+            status: { $in: ["paid", "refund"] },
+            paymentDate: {
+                $gte: start,
+                $lte: end,
+            },
+        };
+
+        const qMatchExp = {
+            createdAt: {
+                $gte: start,
+                $lt: end,
+            },
+        };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+
+            qMatchExp.tenantRef = req.userData?.tenantRef;
+            qMatchExp.outletRef = req.userData?.outletRef;
+        }
+
         const sales = await Order.aggregate([
             {
-                $match:
-                {
-                    $and: [
-                        {
-                            $or: [
-                                { status: "paid" },
-                                { status: "refund" },
-                            ]
-                        },
-                        {
-                            // date: {
-                            paymentDate: {
-                                $gte: start,
-                                $lte: end
-                            }
-                        }
-                    ]
-                }
+                $match: qMatch,
             },
             {
                 $addFields: {
                     sales: {
-                        $cond: { if: { $eq: ["$status", "paid"] }, then: "$billedAmount", else: 0 }
+                        $cond: { if: { $eq: ["$status", "paid"] }, then: "$billedAmount", else: 0 },
                     },
                     refund: {
-                        $cond: { if: { $eq: ["$status", "refund"] }, then: { $multiply: ["$billedAmount", -1] }, else: 0 }
-                    }
-                }
+                        $cond: { if: { $eq: ["$status", "refund"] }, then: { $multiply: ["$billedAmount", -1] }, else: 0 },
+                    },
+                },
             },
             {
                 $group: {
@@ -53,7 +59,7 @@ export const getProfitLoss = async (req, res) => {
                     serviceCharge: { $sum: "$serviceCharge" },
                     tax: { $sum: "$tax" },
                     deliveryPrice: { $sum: "$deliveryPrice" },
-                }
+                },
             },
             {
                 $project: {
@@ -65,46 +71,41 @@ export const getProfitLoss = async (req, res) => {
                     serviceCharge: 1,
                     tax: 1,
                     deliveryPrice: 1,
-                }
+                },
             },
         ]);
 
         const expesnses = await Expense.aggregate([
             {
-                $match: {
-                    date: {
-                        $gte: start,
-                        $lt: end
-                    }
-                }
+                $match: qMatchExp,
             },
             {
                 $addFields: {
                     code1: {
-                        $cond: { if: { $eq: ["$code", 1] }, then: "$amount", else: 0 }
+                        $cond: { if: { $eq: ["$code", 1] }, then: "$amount", else: 0 },
                     },
                     code2: {
-                        $cond: { if: { $eq: ["$code", 2] }, then: "$amount", else: 0 }
+                        $cond: { if: { $eq: ["$code", 2] }, then: "$amount", else: 0 },
                     },
                     code3: {
-                        $cond: { if: { $eq: ["$code", 3] }, then: "$amount", else: 0 }
+                        $cond: { if: { $eq: ["$code", 3] }, then: "$amount", else: 0 },
                     },
                     code4: {
-                        $cond: { if: { $eq: ["$code", 4] }, then: "$amount", else: 0 }
+                        $cond: { if: { $eq: ["$code", 4] }, then: "$amount", else: 0 },
                     },
                     code5: {
-                        $cond: { if: { $eq: ["$code", 5] }, then: "$amount", else: 0 }
+                        $cond: { if: { $eq: ["$code", 5] }, then: "$amount", else: 0 },
                     },
                     code6: {
-                        $cond: { if: { $eq: ["$code", 6] }, then: "$amount", else: 0 }
+                        $cond: { if: { $eq: ["$code", 6] }, then: "$amount", else: 0 },
                     },
                     code7: {
-                        $cond: { if: { $eq: ["$code", 7] }, then: "$amount", else: 0 }
+                        $cond: { if: { $eq: ["$code", 7] }, then: "$amount", else: 0 },
                     },
                     code8: {
-                        $cond: { if: { $eq: ["$code", 8] }, then: "$amount", else: 0 }
+                        $cond: { if: { $eq: ["$code", 8] }, then: "$amount", else: 0 },
                     },
-                }
+                },
             },
             {
                 $group: {
@@ -117,7 +118,7 @@ export const getProfitLoss = async (req, res) => {
                     expense6: { $sum: "$code6" },
                     expense7: { $sum: "$code7" },
                     expense8: { $sum: "$code8" },
-                }
+                },
             },
             {
                 $project: {
@@ -130,16 +131,18 @@ export const getProfitLoss = async (req, res) => {
                     expense6: 1,
                     expense7: 1,
                     expense8: 1,
-                }
+                },
             },
         ]);
-
 
         const data = {
             start,
             end,
             originalSales: sales.length > 0 ? sales[0].sales - sales[0].refund : 0,
-            sales: sales.length > 0 ? sales[0].sales - (sales[0].discount + sales[0].tax + sales[0].serviceCharge + sales[0].deliveryPrice) : 0,
+            sales:
+                sales.length > 0
+                    ? sales[0].sales - (sales[0].discount + sales[0].tax + sales[0].serviceCharge + sales[0].deliveryPrice)
+                    : 0,
             discount: sales.length > 0 ? sales[0].discount : 0,
             refund: sales.length > 0 ? sales[0].refund : 0,
             serviceCharge: sales.length > 0 ? sales[0].serviceCharge : 0,
@@ -155,11 +158,10 @@ export const getProfitLoss = async (req, res) => {
                 code6: expesnses.length > 0 ? expesnses[0].expense6 : 0,
                 code7: expesnses.length > 0 ? expesnses[0].expense7 : 0,
                 code8: expesnses.length > 0 ? expesnses[0].expense8 : 0,
-            }
-        }
+            },
+        };
 
         return res.send(data);
-
     } catch (err) {
         return res.json({ message: err.message });
     }

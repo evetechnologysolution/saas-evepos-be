@@ -17,6 +17,7 @@ export default async function dbConnect() {
             .connect(MONGODB_URI, {
                 bufferCommands: false,
                 // serverSelectionTimeoutMS: 10000, // timeout 10 detik biar cepat gagal jika Mongo down
+                maxPoolSize: 10,
             })
             .then((mongoose) => {
                 console.log("✅ MongoDB Connected");

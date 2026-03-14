@@ -95,7 +95,9 @@ export const getAllRawProduct = async (req, res) => {
                             if: {
                                 $and: [
                                     { $eq: ["$promo.isAvailable", true] },
-                                    { $or: [{ $gt: ["$promo.amount", 0] }, { $gt: ["$promo.qtyMin", 0] }] },
+                                    {
+                                        $or: [{ $gt: ["$promo.amount", 0] }, { $gt: ["$promo.qtyMin", 0] }],
+                                    },
                                     { $lte: ["$promo.startDate", currDate] },
                                     {
                                         $or: [
@@ -124,7 +126,9 @@ export const getAllRawProduct = async (req, res) => {
                                                 $and: [
                                                     { $isArray: "$promo.selectedDay" },
                                                     { $gt: [{ $size: "$promo.selectedDay" }, 0] },
-                                                    { $in: [{ $dayOfWeek: currDate }, "$promo.selectedDay"] },
+                                                    {
+                                                        $in: [{ $dayOfWeek: currDate }, "$promo.selectedDay"],
+                                                    },
                                                 ],
                                             },
                                         ],
@@ -167,6 +171,7 @@ export const getAllRawProduct = async (req, res) => {
                     extraNotes: 1,
                     isRecommended: 1,
                     isAvailable: 1,
+                    minimumOrderQty: 1,
                     category: {
                         _id: "$category._id",
                         name: "$category.name",
@@ -212,7 +217,10 @@ export const getAllRawProduct = async (req, res) => {
                                         in: {
                                             _id: "$$variantDetailsFiltered._id",
                                             name: "$$variantDetailsFiltered.name",
+                                            caption: "$$variantDetailsFiltered.caption",
                                             options: "$$variantDetailsFiltered.options",
+                                            suboptions: "$$variantDetailsFiltered.suboptions",
+                                            showOnWeb: "$$variantDetailsFiltered.showOnWeb",
                                             // Explicitly avoid projecting date or any other unnecessary fields
                                         },
                                     },

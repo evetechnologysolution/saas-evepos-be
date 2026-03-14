@@ -5,8 +5,9 @@ import {
     getPaginateVariant,
     getVariantById,
     addVariant,
+    addVariantPerfume,
     editVariant,
-    deleteVariant
+    deleteVariant,
 } from "../../controllers/library/variant.controller.js";
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.get("/:id", isAuth, getVariantById);
 
 // CREATE NEW DATA
 router.post("/", isAuth, addVariant);
+router.post("/perfume", isAuth, addVariantPerfume); // khusus parfume
 
 // UPDATE A SPECIFIC DATA
 router.patch("/:id", isAuth, editVariant);

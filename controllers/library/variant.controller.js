@@ -4,11 +4,26 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllVariant = async (req, res) => {
     try {
+        const { perfume, onWeb } = req.query;
         let qMatch = {};
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        if (perfume === "yes") {
+            qMatch.isPerfume = { $eq: true };
+        }
+        if (perfume === "no") {
+            qMatch.isPerfume = { $ne: true };
+        }
+
+        if (onWeb === "yes") {
+            qMatch.showOnWeb = { $eq: true };
+        }
+        if (onWeb === "no") {
+            qMatch.showOnWeb = { $ne: true };
         }
 
         const listofData = await Variant.find(qMatch).lean();
@@ -17,7 +32,7 @@ export const getAllVariant = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -25,7 +40,7 @@ export const getAllVariant = async (req, res) => {
 // GETTING ALL THE DATA
 export const getPaginateVariant = async (req, res) => {
     try {
-        const { page, perPage, search, sort } = req.query;
+        const { page, perPage, search, perfume, onWeb, sort } = req.query;
         let qMatch = {};
 
         if (req.userData) {
@@ -33,12 +48,26 @@ export const getPaginateVariant = async (req, res) => {
             qMatch.outletRef = req.userData?.outletRef;
         }
 
+        if (perfume === "yes") {
+            qMatch.isPerfume = { $eq: true };
+        }
+        if (perfume === "no") {
+            qMatch.isPerfume = { $ne: true };
+        }
+
+        if (onWeb === "yes") {
+            qMatch.showOnWeb = { $eq: true };
+        }
+        if (onWeb === "no") {
+            qMatch.showOnWeb = { $ne: true };
+        }
+
         if (search) {
             qMatch = {
                 ...qMatch,
-                name: { $regex: search, $options: 'i' }, // option i for case insensitivity to match upper and lower cases.
+                name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
-        };
+        }
 
         let sortObj = { name: 1 }; // default
         if (sort && sort.trim() !== "") {
@@ -53,14 +82,14 @@ export const getPaginateVariant = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
-        }
+        };
         const listofData = await Variant.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -79,7 +108,7 @@ export const getVariantById = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -101,8 +130,26 @@ export const addVariant = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
+    }
+};
+
+export const addVariantPerfume = async (req, res) => {
+    try {
+        let qMatch = { isPerfume: true };
+        let objData = req.body;
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            objData.tenantRef = req.userData?.tenantRef;
+            if (req.userData?.outletRef) {
+                objData.outletRef = [req.userData.outletRef];
+            }
+        }
+        const data = await Variant.findOneAndUpdate(qMatch, objData, { new: true, upsert: true });
+        return res.json(data);
+    } catch (err) {
+        return res.status(500).json({ message: err.message });
     }
 };
 
@@ -114,18 +161,15 @@ export const editVariant = async (req, res) => {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
         }
-        const updatedData = await Variant.updateOne(
-            qMatch,
-            {
-                $set: req.body
-            }
-        );
+        const updatedData = await Variant.updateOne(qMatch, {
+            $set: req.body,
+        });
         return res.json(updatedData);
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
@@ -144,7 +188,7 @@ export const deleteVariant = async (req, res) => {
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",
-            message: err.message || "Terjadi kesalahan pada server"
+            message: err.message || "Terjadi kesalahan pada server",
         });
     }
 };
