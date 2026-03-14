@@ -35,10 +35,13 @@ export const getMyMember = async (req, res) => {
             Order.exists({ "customer.memberId": memberExist.memberId }),
         ]);
 
+        if (memberExist?.phone?.includes("EM")) {
+            memberExist.phone = "";
+        }
+
         res.json({
             user: {
                 ...memberExist,
-                phone: memberExist?.phone?.startWith("62EM") ? "" : memberExist?.phone,
                 voucher: activeVouchers || 0,
                 firstWash: !hasOrder,
             },
@@ -76,12 +79,15 @@ export const loginMember = async (req, res) => {
             Order.exists({ "customer.memberId": memberExist.memberId }),
         ]);
 
+        if (memberWithoutPassword?.phone?.includes("EM")) {
+            memberWithoutPassword.phone = "";
+        }
+
         return res.json({
             message: "Login Successful",
             accessToken: token,
             member: {
                 ...memberWithoutPassword,
-                phone: memberWithoutPassword?.phone?.startWith("62EM") ? "" : memberWithoutPassword?.phone,
                 voucher: activeVouchers || 0,
                 firstWash: !hasOrder,
             },
@@ -122,13 +128,14 @@ export const loginMemberOtp = async (req, res) => {
         const memberWithoutPassword = memberExist;
         delete memberWithoutPassword.password;
 
+        if (memberWithoutPassword?.phone?.includes("EM")) {
+            memberWithoutPassword.phone = "";
+        }
+
         return res.json({
             message: "Login Successful",
             accessToken: token,
-            member: {
-                ...memberWithoutPassword,
-                phone: memberWithoutPassword?.phone?.startWith("62EM") ? "" : memberWithoutPassword?.phone,
-            },
+            member: memberWithoutPassword,
         });
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -447,12 +454,15 @@ export const callbackMember = async (req, res) => {
 
         const token = jwt.sign({ _id: memberData._id }, process.env.TOKEN_SECRET);
 
+        if (memberData?.phone?.includes("EM")) {
+            memberData.phone = "";
+        }
+
         return res.json({
             message: "Login Successful",
             accessToken: token,
             member: {
                 ...memberData,
-                phone: memberData?.phone?.startWith("62EM") ? "" : memberData?.phone,
                 voucher: activeVouchers || 0,
                 firstWash: !hasOrder,
             },
