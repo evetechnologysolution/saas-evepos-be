@@ -38,6 +38,7 @@ export const getMyMember = async (req, res) => {
         res.json({
             user: {
                 ...memberExist,
+                phone: memberExist?.phone?.startWith("62EM") ? "" : memberExist?.phone,
                 voucher: activeVouchers || 0,
                 firstWash: !hasOrder,
             },
@@ -80,6 +81,7 @@ export const loginMember = async (req, res) => {
             accessToken: token,
             member: {
                 ...memberWithoutPassword,
+                phone: memberWithoutPassword?.phone?.startWith("62EM") ? "" : memberWithoutPassword?.phone,
                 voucher: activeVouchers || 0,
                 firstWash: !hasOrder,
             },
@@ -123,7 +125,10 @@ export const loginMemberOtp = async (req, res) => {
         return res.json({
             message: "Login Successful",
             accessToken: token,
-            member: memberWithoutPassword,
+            member: {
+                ...memberWithoutPassword,
+                phone: memberWithoutPassword?.phone?.startWith("62EM") ? "" : memberWithoutPassword?.phone,
+            },
         });
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -447,6 +452,7 @@ export const callbackMember = async (req, res) => {
             accessToken: token,
             member: {
                 ...memberData,
+                phone: memberData?.phone?.startWith("62EM") ? "" : memberData?.phone,
                 voucher: activeVouchers || 0,
                 firstWash: !hasOrder,
             },
