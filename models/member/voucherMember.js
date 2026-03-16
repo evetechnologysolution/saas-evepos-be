@@ -79,13 +79,6 @@ const DataSchema = mongoose.Schema({
         default: null,
         set: val => val === "" ? null : val
     },
-    outletRef: {
-        type: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Outlets",
-        }],
-        default: []
-    }
 }, { timestamps: true });
 
 DataSchema.pre("save", function (next) {
@@ -111,7 +104,7 @@ DataSchema.pre("findOneAndUpdate", function (next) {
     next();
 });
 
-DataSchema.index({ tenantRef: 1, outletRef: 1 });
+DataSchema.index({ tenantRef: 1 });
 DataSchema.plugin(aggregatePaginate);
 
 export default mongoose.model("VoucherMembers", DataSchema);
