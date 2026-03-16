@@ -82,10 +82,10 @@ export const callbackSuccessPaymentMidtrans = async (req, res) => {
             checkMember = await Member.findOne({ memberId: check.customer.memberId });
         }
 
-        if (check.status === "backlog" || check.status === "pending") {
+        if (check.status === "backlog" || check.status === "unpaid") {
             let statusOrder = "paid";
-            if (check.status === "pending") {
-                statusOrder = "pending";
+            if (check.status === "unpaid") {
+                statusOrder = "unpaid";
             }
             const updatedData = await Order.findOneAndUpdate(
                 { _id: check._id },
@@ -247,10 +247,10 @@ export const callbackSuccessPayment = async (req, res) => {
             checkMember = await Member.findOne({ memberId: check.customer.memberId });
         }
 
-        if (check.status === "backlog" || check.status === "pending") {
+        if (check.status === "backlog" || check.status === "unpaid") {
             let statusOrder = "paid";
-            if (check.status === "pending") {
-                statusOrder = "pending";
+            if (check.status === "unpaid") {
+                statusOrder = "unpaid";
             }
             const updatedData = await Order.findOneAndUpdate(
                 { _id: check._id },
@@ -362,10 +362,10 @@ export const successPayment = async (req, res) => {
             checkMember = await Member.findOne({ memberId: check.customer.memberId });
         }
 
-        if (check.status === "backlog" || check.status === "pending") {
+        if (check.status === "backlog" || check.status === "unpaid") {
             let statusOrder = "paid";
-            if (check.status === "pending") {
-                statusOrder = "pending";
+            if (check.status === "unpaid") {
+                statusOrder = "unpaid";
             }
             const updatedData = await Order.findOneAndUpdate(
                 { _id: check._id },

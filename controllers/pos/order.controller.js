@@ -844,7 +844,7 @@ export const getSavedBill = async (req, res) => {
 export const getUnfinishedOrder = async (req, res) => {
     try {
         let qMatch = {
-            $or: [{ status: "pending" }, { status: "half paid" }],
+            $in: ["pending", "unpaid", "half paid"],
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
