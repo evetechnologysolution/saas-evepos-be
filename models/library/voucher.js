@@ -29,8 +29,14 @@ const DataSchema = mongoose.Schema({
     },
     voucherType: {
         type: Number,
-        enum: [1, 2], // 1 diskon, 2 hadiah
+        enum: [1, 2, 3], // 1 diskon, 2 hadiah, 3 postcard
         default: 1
+    },
+    option: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        default: ""
     },
     product: {
         type: [{
@@ -43,13 +49,21 @@ const DataSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
-    // quota: {
-    //     type: Number,
-    //     default: 0
-    // },
+    quota: {
+        type: Number,
+        default: 0
+    },
+    quotaUsed: {
+        type: Number,
+        default: 0
+    },
     worthPoint: {
         type: Number,
         default: 0
+    },
+    isLimited: {
+        type: Boolean,
+        default: false
     },
     isAvailable: {
         type: Boolean,
@@ -60,17 +74,21 @@ const DataSchema = mongoose.Schema({
         ref: "Tenants",
         default: null,
         set: val => val === "" ? null : val
-    },
-    outletRef: {
-        type: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Outlets",
-        }],
-        default: []
     }
 }, { timestamps: true });
 
-DataSchema.index({ tenantRef: 1, outletRef: 1 });
+DataSchema.virtual("quotaValidated", {
+    ref: "VoucherMembers", // model tujuan
+    localField: "_id", // field di schema ini
+    foreignField: "voucherRef", // field di model tujuan
+    count: true,
+    match: { isUsed: true }
+});
+
+DataSchema.set("toJSON", { virtuals: true });
+DataSchema.set("toObject", { virtuals: true });
+
+DataSchema.index({ tenantRef: 1 });
 DataSchema.plugin(mongoosePaginate);
 DataSchema.plugin(mongooseLeanVirtuals);
 

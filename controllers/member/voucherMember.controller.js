@@ -29,8 +29,22 @@ export const getAllVoucher = async (req, res) => {
             qMatch.memberRef = new mongoose.Types.ObjectId(String(member));
         }
 
-        if (voucherType) {
-            qMatch.voucherType = Number(voucherType);
+        if (voucherType !== undefined && voucherType !== null) {
+            // query.voucherType = Number(voucherType);
+            const fixType = voucherType.replace(":ne", "").trim();
+
+            if (fixType) {
+                const fixTypeArray = fixType
+                    .split(",")
+                    .map((s) => Number(s.trim()))
+                    .filter((n) => !Number.isNaN(n)); // aman untuk 0
+
+                if (voucherType.includes(":ne")) {
+                    qMatch.voucherType = { $nin: fixTypeArray };
+                } else {
+                    qMatch.voucherType = { $in: fixTypeArray };
+                }
+            }
         }
 
         if (status) {
@@ -55,16 +69,15 @@ export const getAllVoucher = async (req, res) => {
         }
 
         if (search) {
-            const prod = await Product.find({
-                name: { $regex: search, $options: "i" },
-            }).select("_id");
-
-            const mem = await MemberData.find({
-                name: { $regex: search, $options: "i" },
-            }).select("_id");
+            const [prod, mem] = await Promise.all([
+                Product.find({ name: { $regex: search, $options: "i" } }).select("_id"),
+                MemberData.find({ name: { $regex: search, $options: "i" } }).select("_id"),
+            ]);
 
             const searchConditions = [
-                { _id: { $regex: search, $options: "i" } },
+                mongoose.Types.ObjectId.isValid(search)
+                    ? { _id: new mongoose.Types.ObjectId(String(search)) }
+                    : null,
                 { voucherCode: { $regex: search, $options: "i" } },
                 { name: { $regex: search, $options: "i" } },
                 {
@@ -110,9 +123,9 @@ export const getAllVoucher = async (req, res) => {
             {
                 $lookup: {
                     from: "members",
-                    localField: "member",
+                    localField: "memberRef",
                     foreignField: "_id",
-                    as: "member",
+                    as: "memberRef",
                 },
             },
             { $unwind: { path: "$memberRef", preserveNullAndEmptyArrays: true } },
@@ -148,11 +161,11 @@ export const getAllVoucher = async (req, res) => {
                         },
                     },
                     memberRef: {
-                        _id: 1,
-                        memberId: 1,
-                        cardId: 1,
-                        name: 1,
-                        phone: 1,
+                        _id: "$memberRef._id",
+                        memberId: "$memberRef.memberId",
+                        cardId: "$memberRef.cardId",
+                        name: "$memberRef.name",
+                        phone: "$memberRef.phone",
                     },
                     orderRef: 1,
                     isExpired: 1,
