@@ -167,9 +167,11 @@ export const getAllVoucher = async (req, res) => {
                         name: "$memberRef.name",
                         phone: "$memberRef.phone",
                     },
+                    tenantRef: 1,
                     orderRef: 1,
                     isExpired: 1,
                     isUsed: 1,
+                    isPrinted: 1,
                 },
             },
         ];
