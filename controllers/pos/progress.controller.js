@@ -1032,7 +1032,7 @@ export const addData = async (req, res) => {
             }
         }
 
-        const remainingQty = (orderItem.qty || 0) - usedQty;
+        const remainingQty = Math.max(0, Math.round(((orderItem.qty || 0) - usedQty) * 10) / 10);
 
         if (qtyInput > remainingQty) {
             throw new Error(`Qty status ${status} melebihi limit. Sisa qty: ${remainingQty}`);
@@ -1149,7 +1149,7 @@ export const addDataByOrder = async (req, res) => {
 
                 const usedQty = usedQtyMap[key] || 0;
 
-                const remainingQty = (orderItem.qty || 0) - usedQty;
+                const remainingQty = Math.max(0, Math.round(((orderItem.qty || 0) - usedQty) * 10) / 10);
 
                 if (qtyInput > remainingQty) {
                     throw new Error(`Qty status ${status} melebihi limit. Sisa qty: ${remainingQty}`);
