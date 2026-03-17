@@ -49,7 +49,7 @@ const DataSchema = mongoose.Schema({
     },
     voucherType: {
         type: Number,
-        enum: [1, 2], // 1 diskon, 2 hadiah
+        enum: [1, 2, 3], // 1 diskon, 2 hadiah, 3 postcard
         default: 1
     },
     product: {
@@ -70,6 +70,10 @@ const DataSchema = mongoose.Schema({
         set: val => val === "" ? null : val
     },
     isUsed: {
+        type: Boolean,
+        default: false
+    },
+    isPrinted: {
         type: Boolean,
         default: false
     },

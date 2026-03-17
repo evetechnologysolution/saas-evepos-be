@@ -7,6 +7,7 @@ import MemberVoucher from "../../models/member/voucherMember.js";
 import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
 import { adjustPointHistories, createPointHistory } from "../../lib/handlePoint.js";
 import { generateVoucherCode } from "../../lib/generateRandom.js";
+import { pusherNotif } from "../../lib/pusher.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
@@ -15,13 +16,26 @@ export const getAllVoucher = async (req, res) => {
         const { page, perPage, search, voucherType, sort } = req.query;
         let qMatch = {};
 
-        if (voucherType) {
-            qMatch.voucherType = Number(voucherType);
-        }
-
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            // qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        if (voucherType !== undefined && voucherType !== null) {
+            // query.voucherType = Number(voucherType);
+            const fixType = voucherType.replace(":ne", "").trim();
+
+            if (fixType) {
+                const fixTypeArray = fixType
+                    .split(",")
+                    .map((s) => Number(s.trim()))
+                    .filter((n) => !Number.isNaN(n)); // aman untuk 0
+
+                if (voucherType.includes(":ne")) {
+                    qMatch.voucherType = { $nin: fixTypeArray };
+                } else {
+                    qMatch.voucherType = { $in: fixTypeArray };
+                }
+            }
         }
 
         if (search) {
@@ -51,6 +65,7 @@ export const getAllVoucher = async (req, res) => {
                     path: "product",
                     select: ["name", "price"],
                 },
+                { path: "quotaValidated" }
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
@@ -84,7 +99,6 @@ export const getAllAvailableVoucher = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            // qMatch.outletRef = req.userData?.outletRef;
         }
 
         if (voucherType) {
@@ -118,6 +132,7 @@ export const getAllAvailableVoucher = async (req, res) => {
                     path: "product",
                     select: ["name", "price"],
                 },
+                { path: "quotaValidated" }
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
@@ -140,13 +155,13 @@ export const getVoucherById = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            // qMatch.outletRef = req.userData?.outletRef;
         }
         const spesificData = await Voucher.findOne(qMatch).populate([
             {
                 path: "product",
                 select: ["name", "price"],
             },
+            { path: "quotaValidated" }
         ]);
         return res.json(spesificData);
     } catch (err) {
@@ -203,6 +218,13 @@ export const redeemVoucher = async (req, res) => {
             return res.status(404).json({ message: "Voucher not found!" });
         }
 
+        // --- CHECK QUOTA (IF LIMITED) ---
+        if (checkVoucher.isLimited && checkVoucher.quotaUsed >= checkVoucher.quota) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({ message: "Voucher sudah habis!" });
+        }
+
         const checkMember = await Member.findOne(qMemberMatch).session(session);
         if (!checkMember) {
             await session.abortTransaction();
@@ -229,6 +251,15 @@ export const redeemVoucher = async (req, res) => {
         // Buat riwayat poin
         await createPointHistory(checkMember._id, null, req.userData?.tenantRef, checkVoucher.worthPoint, "out", session);
 
+        // --- UPDATE QUOTA ---
+        if (checkVoucher.isLimited) {
+            await Voucher.updateOne(
+                { _id: checkVoucher._id },
+                { $inc: { quotaUsed: 1 } },
+                { session }
+            );
+        }
+
         const randCode = await generateVoucherCode(16);
 
         const newObj = new MemberVoucher({
@@ -240,6 +271,7 @@ export const redeemVoucher = async (req, res) => {
             image: checkVoucher.image,
             description: checkVoucher.description,
             voucherType: checkVoucher.voucherType,
+            option: checkVoucher.option,
             product: checkVoucher.product,
             qtyProduct: checkVoucher.qtyProduct,
         });
@@ -248,6 +280,20 @@ export const redeemVoucher = async (req, res) => {
 
         await session.commitTransaction();
         session.endSession();
+
+        // notif voucher postcard
+        if (checkVoucher.voucherType === 3) {
+            const channel = "admin-notif";
+            const event = "postcard-new";
+            const roles = ["owner", "admin", "cashier"];
+            const message = "New Postcard !";
+
+            await pusherNotif(channel, event, {
+                ...newObj,
+                message,
+                roles,
+            });
+        }
 
         return res.json(newData);
     } catch (err) {
