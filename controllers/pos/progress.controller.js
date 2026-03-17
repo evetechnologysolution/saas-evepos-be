@@ -1110,6 +1110,7 @@ export const addDataByOrder = async (req, res) => {
 
         // ================= VALIDASI QTY =================
         if (processedLog.length > 0) {
+
             // ambil order
             const order = await Order.findById(orderId, { orders: 1 }, { session });
 
@@ -1118,51 +1119,75 @@ export const addDataByOrder = async (req, res) => {
             }
 
             // ambil semua progress log
-            const progressList = await Progress.find({ orderRef: orderId }, { log: 1 }, { session });
+            const progressList = await Progress.find(
+                { orderRef: orderId },
+                { log: 1 },
+                { session }
+            );
 
             const usedQtyMap = {};
 
-            // hitung qty existing berdasarkan item + status
+            // ================= HITUNG PROGRESS EXISTING =================
             for (const progress of progressList) {
                 for (const lg of progress.log || []) {
                     if (!lg.id || !lg.status) continue;
 
                     const key = `${lg.id}_${lg.status}`;
 
-                    usedQtyMap[key] = (usedQtyMap[key] || 0) + Number(lg.qty || 0);
+                    usedQtyMap[key] =
+                        (usedQtyMap[key] || 0) + Number(lg.qty || 0);
                 }
             }
 
-            // validasi setiap input log
+            // ================= HITUNG TOTAL ORDER QTY PER ITEM =================
+            const orderQtyMap = {};
+
+            for (const item of order.orders || []) {
+                const itemId = String(item.id);
+
+                orderQtyMap[itemId] =
+                    (orderQtyMap[itemId] || 0) + Number(item.qty || 0);
+            }
+
+            // ================= VALIDASI INPUT =================
             for (const logItem of processedLog) {
                 const itemId = String(logItem.id);
                 const status = String(logItem.status || "");
                 const qtyInput = Number(logItem.qty || 0);
 
-                const orderItem = order.orders.find((o) => String(o.id) === itemId);
+                const totalOrderQty = orderQtyMap[itemId] || 0;
 
-                if (!orderItem) {
+                if (!totalOrderQty) {
                     throw new Error("Item order tidak ditemukan");
                 }
 
                 const key = `${itemId}_${status}`;
-
                 const usedQty = usedQtyMap[key] || 0;
 
-                const remainingQty = Math.max(0, Math.round(((orderItem.qty || 0) - usedQty) * 10) / 10);
+                // pembulatan supaya tidak kena bug floating number
+                const remainingQty = Math.max(
+                    0,
+                    Math.round((totalOrderQty - usedQty) * 10) / 10
+                );
 
                 if (qtyInput > remainingQty) {
-                    throw new Error(`Qty status ${status} melebihi limit. Sisa qty: ${remainingQty}`);
+                    throw new Error(
+                        `Qty status ${status} melebihi limit. Sisa qty: ${remainingQty}`
+                    );
                 }
 
-                // update map supaya validasi berikutnya benar
+                // update map supaya validasi multi input tetap benar
                 usedQtyMap[key] = usedQty + qtyInput;
             }
         }
 
         // ================= UPDATE ORDER =================
         if (lockerName) {
-            await Order.updateOne({ _id: orderId }, { $set: { lockerName } }, { session });
+            await Order.updateOne(
+                { _id: orderId },
+                { $set: { lockerName } },
+                { session }
+            );
         }
 
         // ================= UPSERT PROGRESS =================
@@ -1188,16 +1213,21 @@ export const addDataByOrder = async (req, res) => {
             }),
         };
 
-        const updatedProgress = await Progress.findOneAndUpdate(qProgress, update, {
-            new: true,
-            upsert: true,
-            session,
-        });
+        const updatedProgress = await Progress.findOneAndUpdate(
+            qProgress,
+            update,
+            {
+                new: true,
+                upsert: true,
+                session,
+            }
+        );
 
         await session.commitTransaction();
         session.endSession();
 
         return res.json(updatedProgress);
+
     } catch (err) {
         await session.abortTransaction();
         session.endSession();
