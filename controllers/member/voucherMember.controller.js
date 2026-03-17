@@ -142,6 +142,7 @@ export const getAllVoucher = async (req, res) => {
                     image: 1,
                     description: 1,
                     voucherType: 1,
+                    option: 1,
                     qtyProduct: 1,
                     product: {
                         $cond: {
