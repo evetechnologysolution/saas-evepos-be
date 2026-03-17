@@ -377,27 +377,86 @@ DataSchema.virtual("progressRef", {
     justOne: true, // karena 1:1
 });
 
+// DataSchema.virtual("progressDetail").get(function () {
+//     if (!this.progressRef || !this.progressRef.log) return [];
+
+//     return this.orders.map((orderItem) => {
+//         const logs = this.progressRef.log.filter((l) => String(l.id) === String(orderItem.id));
+
+//         // total qty per status
+//         const statusSummary = {};
+
+//         logs.forEach((l) => {
+//             if (!statusSummary[l.status]) {
+//                 statusSummary[l.status] = 0;
+//             }
+//             statusSummary[l.status] += l.qty;
+//         });
+
+//         return {
+//             id: orderItem.id,
+//             name: orderItem.name,
+//             orderedQty: orderItem.qty,
+//             progressByStatus: statusSummary,
+//         };
+//     });
+// });
+
 DataSchema.virtual("progressDetail").get(function () {
-    if (!this.progressRef || !this.progressRef.log) return [];
+    if (!this.orders) return [];
 
+    const progressMap = {};
+
+    // ================= HITUNG TOTAL PROGRESS PER PRODUK =================
+    if (this.progressRef?.log) {
+        for (const log of this.progressRef.log) {
+            const id = String(log.id);
+            const status = log.status;
+
+            if (!progressMap[id]) progressMap[id] = {};
+            if (!progressMap[id][status]) progressMap[id][status] = 0;
+
+            progressMap[id][status] += Number(log.qty || 0);
+        }
+    }
+
+    // clone map supaya bisa dikurangi
+    const remainingProgress = JSON.parse(JSON.stringify(progressMap));
+
+    // ================= DISTRIBUSI PROGRESS KE ITEM =================
     return this.orders.map((orderItem) => {
-        const logs = this.progressRef.log.filter((l) => String(l.id) === String(orderItem.id));
+        const itemId = String(orderItem.id);
+        const orderedQty = Number(orderItem.qty || 0);
 
-        // total qty per status
-        const statusSummary = {};
+        const progressByStatus = {};
+        const statusMap = remainingProgress[itemId] || {};
 
-        logs.forEach((l) => {
-            if (!statusSummary[l.status]) {
-                statusSummary[l.status] = 0;
-            }
-            statusSummary[l.status] += l.qty;
-        });
+        for (const status in statusMap) {
+            const available = statusMap[status];
+
+            if (available <= 0) continue;
+
+            const used = Math.min(orderedQty, available);
+
+            progressByStatus[status] = used;
+
+            remainingProgress[itemId][status] -= used;
+        }
+
+        const processedQty = Object.values(progressByStatus).reduce((a, b) => a + b, 0);
+
+        const remainingQty = Math.max(
+            0,
+            Math.round((orderedQty - processedQty) * 10) / 10
+        );
 
         return {
             id: orderItem.id,
             name: orderItem.name,
-            orderedQty: orderItem.qty,
-            progressByStatus: statusSummary,
+            orderedQty,
+            progressByStatus,
+            processedQty,
+            remainingQty,
         };
     });
 });
