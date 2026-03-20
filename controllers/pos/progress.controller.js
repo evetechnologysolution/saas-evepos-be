@@ -334,7 +334,7 @@ export const getLogSummary = async (req, res) => {
             const staffId = staff;
             qMatch["log.staffRef"] = mongoose.Types.ObjectId.createFromHexString(staffId);
 
-            staffInfo = await User.findById(staffId).select("_id date fullname role isActive").lean();
+            staffInfo = await User.findById(staffId).select("_id createdAt fullname role isActive").lean();
         }
 
         // ======================================================
@@ -743,6 +743,7 @@ export const getLogSummaryV2 = async (req, res) => {
                             staffRef: "$log.staffRef",
                         }
                         : "$log.statusRef",
+                    staffRefId: { $first: "$log.staffRef" },
                     qty: { $sum: "$log.qty" },
                     qtyKg: { $sum: "$qtyKg" },
                     qtyPcs: { $sum: "$qtyPcs" },
@@ -758,38 +759,32 @@ export const getLogSummaryV2 = async (req, res) => {
             },
             { $unwind: { path: "$refLabel", preserveNullAndEmptyArrays: true } },
 
-            ...(isAllStaff
-                ? [
-                    {
-                        $lookup: {
-                            from: "users",
-                            localField: "_id.staffRef",
-                            foreignField: "_id",
-                            as: "refStaff",
-                        },
-                    },
-                    {
-                        $unwind: {
-                            path: "$refStaff",
-                            preserveNullAndEmptyArrays: true,
-                        },
-                    },
-                ]
-                : []),
+            {
+                $lookup: {
+                    from: "users",
+                    localField: isAllStaff ? "_id.staffRef" : "staffRefId",
+                    foreignField: "_id",
+                    as: "refStaff",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$refStaff",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
 
             {
                 $project: {
                     _id: 0,
                     statusRef: isAllStaff ? "$_id.statusRef" : "$_id",
                     status: "$refLabel.name",
-                    staffRef: isAllStaff
-                        ? {
-                            _id: "$refStaff._id",
-                            fullname: "$refStaff.fullname",
-                            role: "$refStaff.role",
-                            isActive: "$refStaff.isActive",
-                        }
-                        : null,
+                    staffRef: {
+                        _id: "$refStaff._id",
+                        fullname: "$refStaff.fullname",
+                        role: "$refStaff.role",
+                        isActive: "$refStaff.isActive",
+                    },
                     qty: 1,
                     qtyKg: 1,
                     qtyPcs: 1,
@@ -862,7 +857,7 @@ export const getLogSummaryV2 = async (req, res) => {
             // ✅ tetap pakai format universal
             merged = [
                 {
-                    staffRef: null, // atau bisa diganti staffInfo kalau mau
+                    staffRef: summaryResult.find((r) => r.staffRef?._id)?.staffRef || null,
                     progress: buildProgress(summaryResult),
                 },
             ];
