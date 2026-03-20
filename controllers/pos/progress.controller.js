@@ -804,6 +804,31 @@ export const getLogSummaryV2 = async (req, res) => {
         // ======================================================
         let merged;
 
+        // helper: build progress list (biar reusable)
+        const buildProgress = (progressList) => {
+            const progressMap = new Map(
+                progressList.map((p) => [p.status.toLowerCase(), p])
+            );
+
+            return initialActivity
+                .map((act) => {
+                    const found = progressMap.get(act.status.toLowerCase());
+                    return {
+                        status: act.status,
+                        qty: found?.qty || 0,
+                        qtyKg: found?.qtyKg || 0,
+                        qtyPcs: found?.qtyPcs || 0,
+                    };
+                })
+                // .sort((a, b) => b.qty - a.qty); // ✅ sort by qty desc
+                // ✅ sort status ASC
+                .sort((a, b) =>
+                    (a.status || "")
+                        .toLowerCase()
+                        .localeCompare((b.status || "").toLowerCase())
+                );
+        };
+
         if (isAllStaff) {
             const mapStaff = new Map();
 
@@ -821,44 +846,26 @@ export const getLogSummaryV2 = async (req, res) => {
                 mapStaff.get(staffId).progress.push(row);
             }
 
-            merged = Array.from(mapStaff.values()).map((staff) => {
-                const progressMap = new Map(
-                    staff.progress.map((p) => [p.status.toLowerCase(), p])
-                );
-
-                const fullProgress = initialActivity.map((act) => {
-                    const found = progressMap.get(act.status.toLowerCase());
-                    return {
-                        status: act.status,
-                        qty: found?.qty || 0,
-                        qtyKg: found?.qtyKg || 0,
-                        qtyPcs: found?.qtyPcs || 0,
-                    };
-                });
-
-                return {
+            merged = Array.from(mapStaff.values())
+                .map((staff) => ({
                     staffRef: staff.staffRef,
-                    progress: fullProgress.sort((a, b) => b.status - a.status),
-                };
-            })
+                    progress: buildProgress(staff.progress),
+                }))
+                // ✅ sort staff name ASC
                 .sort((a, b) =>
                     (a.staffRef?.fullname || "")
                         .toLowerCase()
                         .localeCompare((b.staffRef?.fullname || "").toLowerCase())
                 );
-        } else {
-            merged = initialActivity.map((act) => {
-                const found = summaryResult.find(
-                    (r) => r.statusRef?.toString() === act._id?.toString()
-                );
 
-                return {
-                    status: act.status,
-                    qty: found?.qty || 0,
-                    qtyKg: found?.qtyKg || 0,
-                    qtyPcs: found?.qtyPcs || 0,
-                };
-            });
+        } else {
+            // ✅ tetap pakai format universal
+            merged = [
+                {
+                    staffRef: null, // atau bisa diganti staffInfo kalau mau
+                    progress: buildProgress(summaryResult),
+                },
+            ];
         }
 
         // ======================================================
