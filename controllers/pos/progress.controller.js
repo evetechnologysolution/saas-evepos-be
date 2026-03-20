@@ -896,7 +896,6 @@ export const getLogSummaryV2 = async (req, res) => {
                     qtyPcs: { $sum: "$qtyPcs" },
                 },
             },
-            { $sort: { "_id.statusRef": 1, qty: -1 } },
             {
                 $group: {
                     _id: "$_id.statusRef",
@@ -937,6 +936,7 @@ export const getLogSummaryV2 = async (req, res) => {
                     qtyPcs: "$top.qtyPcs",
                 },
             },
+            { $sort: { status: 1, qty: -1 } },
         ];
 
         const topPerformance = await Progress.aggregate(topPipeline);
