@@ -704,7 +704,6 @@ export const getLogSummaryV2 = async (req, res) => {
                 },
             },
             { $unwind: "$refOrder" },
-            ...(Object.keys(qMatch).length ? [{ $match: qMatch }] : []),
             {
                 $addFields: {
                     qtyKg: {
@@ -735,11 +734,19 @@ export const getLogSummaryV2 = async (req, res) => {
             },
         ];
 
+
+        const buildBasePipeline = (match) => {
+            return [
+                ...basePipeline,
+                ...(Object.keys(match).length ? [{ $match: match }] : []),
+            ];
+        };
+
         // ======================================================
         // SUMMARY PIPELINE
         // ======================================================
         const summaryPipeline = [
-            ...basePipeline,
+            ...buildBasePipeline(qMatch),
             {
                 $group: {
                     _id: isAllStaff
@@ -871,8 +878,11 @@ export const getLogSummaryV2 = async (req, res) => {
         // ======================================================
         // TOP PERFORMANCE
         // ======================================================
+        const qMatchTop = { ...qMatch };
+        delete qMatchTop["log.staffRef"];
+
         const topPipeline = [
-            ...basePipeline,
+            ...buildBasePipeline(qMatchTop),
             {
                 $group: {
                     _id: {
