@@ -624,6 +624,11 @@ export const getLogSummaryV2 = async (req, res) => {
             status: item.name,
         }));
 
+        if (staff && staff !== "all" && mongoose.Types.ObjectId.isValid(staff)) {
+            const staffId = staff;
+            qMatch["log.staffRef"] = mongoose.Types.ObjectId.createFromHexString(staffId);
+        }
+
         // ======================================================
         // SEARCH
         // ======================================================
