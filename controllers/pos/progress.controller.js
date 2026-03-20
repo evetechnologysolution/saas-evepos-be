@@ -521,6 +521,7 @@ export const getLogSummary = async (req, res) => {
                     status: "$refLabel.name",
                     staffRef: {
                         _id: "$refStaff._id",
+                        createdAt: "$refStaff.createdAt",
                         fullname: "$refStaff.fullname",
                         role: "$refStaff.role",
                         isActive: "$refStaff.isActive",
@@ -793,6 +794,7 @@ export const getLogSummaryV2 = async (req, res) => {
                     status: "$refLabel.name",
                     staffRef: {
                         _id: "$refStaff._id",
+                        createdAt: "$refStaff.createdAt",
                         fullname: "$refStaff.fullname",
                         role: "$refStaff.role",
                         isActive: "$refStaff.isActive",
@@ -925,6 +927,7 @@ export const getLogSummaryV2 = async (req, res) => {
                     status: "$refLabel.name",
                     staffRef: {
                         _id: "$refStaff._id",
+                        createdAt: "$refStaff.createdAt",
                         fullname: "$refStaff.fullname",
                         role: "$refStaff.role",
                         isActive: "$refStaff.isActive",
