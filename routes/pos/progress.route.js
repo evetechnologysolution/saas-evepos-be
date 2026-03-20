@@ -4,6 +4,7 @@ import {
     getAllData,
     getAllLogs,
     getLogSummary,
+    getLogSummaryV2,
     getDataById,
     addData,
     addDataByOrder,
@@ -15,6 +16,7 @@ const router = express.Router();
 router.get("/", isAuth, getAllData);
 router.get("/log", isAuth, getAllLogs);
 router.get("/log-summary", isAuth, getLogSummary);
+router.get("/v2/log-summary", isAuth, getLogSummaryV2);
 router.get("/:id", isAuth, getDataById);
 router.post("/", isAuth, addData);
 router.post("/:id", isAuth, addDataByOrder);

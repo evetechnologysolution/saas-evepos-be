@@ -294,333 +294,6 @@ export const getAllLogs = async (req, res) => {
     }
 };
 
-// export const getLogSummary = async (req, res) => {
-//   try {
-//     const { search, staff, periodBy, start, end } = req.query;
-
-//     const qMatch = {};
-
-//     if (req.userData?.tenantRef) {
-//       qMatch.tenantRef = req.userData.tenantRef;
-//     }
-
-//     if (req.userData?.outletRef) {
-//       qMatch.outletRef = req.userData.outletRef;
-//     }
-
-//     // ======================================================
-//     // GET INITIAL ACTIVITY FROM progressLabel
-//     // ======================================================
-
-//     const labelMatch = {};
-
-//     if (req.userData?.tenantRef) {
-//       labelMatch.tenantRef = req.userData.tenantRef;
-//     }
-
-//     const progressLabels = await ProgressLabel.find(labelMatch)
-//       .select("name")
-//       .sort({ createdAt: 1 })
-//       .lean();
-
-//     const initialActivity = progressLabels.map((item) => ({
-//       status: item.name,
-//     }));
-
-//     // ======================================================
-//     // 1. HANDLE FILTER: staff
-//     // ======================================================
-//     let staffInfo = null;
-
-//     if (staff && staff !== "all" && mongoose.Types.ObjectId.isValid(staff)) {
-//       const staffId = staff;
-//       qMatch["log.staffRef"] =
-//         mongoose.Types.ObjectId.createFromHexString(staffId);
-
-//       staffInfo = await User.findById(staffId)
-//         .select("_id date fullname role isActive")
-//         .lean();
-//     }
-
-//     // ======================================================
-//     // 2. HANDLE FILTER: search
-//     // ======================================================
-//     if (search && search.trim() !== "") {
-//       const regex = new RegExp(search.trim(), "i");
-//       qMatch.$or = [{ "refOrder.orderId": regex }, { "log.status": regex }];
-//     }
-
-//     // ======================================================
-//     // 3. HANDLE FILTER: period
-//     // ======================================================
-//     let periodStart = null;
-//     let periodEnd = null;
-//     const now = new Date();
-//     const y = now.getFullYear();
-//     const m = now.getMonth();
-//     const d = now.getDate();
-
-//     // PRESET PERIOD BASED ON periodBy
-//     if (periodBy && periodBy !== "all") {
-//       if (periodBy === "today") {
-//         const s = new Date(y, m, d);
-//         const e = new Date(y, m, d);
-//         periodStart = setStartOfDay(s);
-//         periodEnd = setEndOfDay(e);
-//       }
-
-//       if (periodBy === "this-week") {
-//         const day = now.getDay();
-//         const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-//         const s = new Date(y, m, diff);
-//         const e = new Date(y, m, diff + 6);
-//         periodStart = setStartOfDay(s);
-//         periodEnd = setEndOfDay(e);
-//       }
-
-//       if (periodBy === "this-month") {
-//         const s = new Date(y, m, 1);
-//         const e = new Date(y, m + 1, 0);
-//         periodStart = setStartOfDay(s);
-//         periodEnd = setEndOfDay(e);
-//       }
-
-//       if (periodBy === "this-year") {
-//         const s = new Date(y, 0, 1);
-//         const e = new Date(y, 11, 31);
-//         periodStart = setStartOfDay(s);
-//         periodEnd = setEndOfDay(e);
-//       }
-//     }
-
-//     // OVERRIDE WITH MANUAL START/END
-//     if (start || end) {
-//       const dStart = new Date(start);
-//       const dEnd = new Date(end || start);
-
-//       periodStart = setStartOfDay(dStart);
-//       periodEnd = setEndOfDay(dEnd);
-//     }
-
-//     if (periodStart || periodEnd) {
-//       qMatch["log.date"] = {};
-//       if (periodStart) qMatch["log.date"]["$gte"] = periodStart;
-//       if (periodEnd) qMatch["log.date"]["$lte"] = periodEnd;
-//     }
-
-//     // ======================================================
-//     // 4. BASE PIPELINE (dipakai oleh summary dan top)
-//     // ======================================================
-//     const basePipeline = [];
-
-//     // UNWIND LOG
-//     basePipeline.push({ $unwind: "$log" });
-
-//     // LOOKUP ORDER
-//     basePipeline.push({
-//       $lookup: {
-//         from: "orders",
-//         localField: "orderRef",
-//         foreignField: "_id",
-//         as: "refOrder",
-//       },
-//     });
-//     basePipeline.push({ $unwind: "$refOrder" });
-
-//     // SEARCH & FILTER STAFF & DATE
-//     if (Object.keys(qMatch).length > 0) {
-//       basePipeline.push({ $match: qMatch });
-//     }
-
-//     // ADD FIELDS QTY KG / PCS
-//     // basePipeline.push({
-//     //     $addFields: {
-//     //         qtyKg: {
-//     //             $sum: {
-//     //                 $map: {
-//     //                     input: "$refOrder.orders",
-//     //                     as: "o",
-//     //                     in: {
-//     //                         $cond: [{ $eq: [{ $strcasecmp: ["$$o.category", "Kiloan"] }, 0] }, "$$o.qty", 0],
-//     //                     },
-//     //                 },
-//     //             },
-//     //         },
-//     //         qtyPcs: {
-//     //             $sum: {
-//     //                 $map: {
-//     //                     input: "$refOrder.orders",
-//     //                     as: "o",
-//     //                     in: {
-//     //                         $cond: [{ $ne: [{ $strcasecmp: ["$$o.category", "Kiloan"] }, 0] }, "$$o.qty", 0],
-//     //                     },
-//     //                 },
-//     //             },
-//     //         },
-//     //     },
-//     // });
-//     basePipeline.push({
-//       $addFields: {
-//         qtyKg: {
-//           $cond: [
-//             { $eq: [{ $ifNull: [{ $toLower: "$log.unit" }, ""] }, "kg"] },
-//             "$log.qty",
-//             0,
-//           ],
-//         },
-//         qtyPcs: {
-//           $cond: [
-//             { $ne: [{ $ifNull: [{ $toLower: "$log.unit" }, ""] }, "kg"] },
-//             "$log.qty",
-//             0,
-//           ],
-//         },
-//       },
-//     });
-
-//     // ======================================================
-//     // 5. SUMMARY PIPELINE
-//     // ======================================================
-//     const summaryPipeline = [
-//       ...basePipeline,
-//       // Lookup staff only for summary
-//       {
-//         $lookup: {
-//           from: "users",
-//           localField: "log.staffRef",
-//           foreignField: "_id",
-//           as: "refStaff",
-//         },
-//       },
-//       { $unwind: { path: "$refStaff", preserveNullAndEmptyArrays: true } },
-//       {
-//         $group: {
-//           _id: "$log.status",
-//           qty: { $sum: "$log.qty" },
-//           qtyKg: { $sum: "$qtyKg" },
-//           qtyPcs: { $sum: "$qtyPcs" },
-//         },
-//       },
-//       {
-//         $project: {
-//           _id: 0,
-//           status: "$_id",
-//           qty: 1,
-//           qtyKg: 1,
-//           qtyPcs: 1,
-//         },
-//       },
-//       { $sort: { qty: -1, status: -1 } },
-//     ];
-
-//     const summaryResult = await Progress.aggregate(summaryPipeline);
-
-//     const totalQty = summaryResult.reduce((a, b) => a + b.qty, 0);
-//     const totalQtyKg = summaryResult.reduce((a, b) => a + b.qtyKg, 0);
-//     const totalQtyPcs = summaryResult.reduce((a, b) => a + b.qtyPcs, 0);
-
-//     // ======================================================
-//     // 6. TOP PERFORMANCE PIPELINE
-//     // ======================================================
-//     const topPipeline = [
-//       ...basePipeline,
-//       {
-//         $group: {
-//           _id: {
-//             status: "$log.status",
-//             staffRef: "$log.staffRef",
-//           },
-//           qty: { $sum: "$log.qty" },
-//           qtyKg: { $sum: "$qtyKg" },
-//           qtyPcs: { $sum: "$qtyPcs" },
-//         },
-//       },
-//       {
-//         $lookup: {
-//           from: "users",
-//           localField: "_id.staffRef",
-//           foreignField: "_id",
-//           as: "refStaff",
-//         },
-//       },
-//       { $unwind: { path: "$refStaff", preserveNullAndEmptyArrays: true } },
-//       {
-//         $project: {
-//           _id: 0,
-//           status: "$_id.status",
-//           staffRef: {
-//             _id: "$staff._id",
-//             fullname: "$refStaff.fullname",
-//             role: "$refStaff.role",
-//             isActive: "$refStaff.isActive",
-//           },
-//           qty: 1,
-//           qtyKg: 1,
-//           qtyPcs: 1,
-//         },
-//       },
-
-//       { $sort: { status: 1, qty: -1 } },
-//     ];
-
-//     const topRaw = await Progress.aggregate(topPipeline);
-
-//     // ======================================================
-//     // 7. NORMALIZE OUTPUT SESUAI initialActivity
-//     // ======================================================
-//     const merged = initialActivity
-//       .map((act) => {
-//         const found = summaryResult.find(
-//           (r) => r.status?.toLowerCase() === act.status?.toLowerCase(),
-//         );
-//         return {
-//           status: act.status,
-//           qty: found?.qty || 0,
-//           qtyKg: found?.qtyKg || 0,
-//           qtyPcs: found?.qtyPcs || 0,
-//         };
-//       })
-//       .sort((a, b) => {
-//         if (b.qty !== a.qty) return b.qty - a.qty;
-//         return b.status.localeCompare(a.status);
-//       });
-
-//     const topPerformance = initialActivity
-//       .map((act) => {
-//         const found = topRaw.find(
-//           (r) => r.status?.toLowerCase() === act.status?.toLowerCase(),
-//         );
-//         return {
-//           status: act.status,
-//           staffRef: found?.staffRef || null,
-//           qty: found?.qty || 0,
-//           qtyKg: found?.qtyKg || 0,
-//           qtyPcs: found?.qtyPcs || 0,
-//         };
-//       })
-//       .sort((a, b) => {
-//         if (b.qty !== a.qty) return b.qty - a.qty;
-//         return b.status.localeCompare(a.status);
-//       });
-
-//     // ======================================================
-//     // SEND RESPONSE
-//     // ======================================================
-//     return res.json({
-//       period: { start: periodStart, end: periodEnd },
-//       staffRef: staffInfo,
-//       detail: merged,
-//       topPerformance,
-//       total: totalQty,
-//       totalKg: totalQtyKg,
-//       totalPcs: totalQtyPcs,
-//     });
-//   } catch (err) {
-//     console.log(err);
-//     return res.status(500).json({ message: err.message });
-//   }
-// };
-
 export const getLogSummary = async (req, res) => {
     try {
         const { search, staff, periodBy, start, end } = req.query;
@@ -904,6 +577,359 @@ export const getLogSummary = async (req, res) => {
         return res.json({
             period: { start: periodStart, end: periodEnd },
             staffRef: staffInfo,
+            detail: merged,
+            topPerformance,
+            total: totalQty,
+            totalKg: totalQtyKg,
+            totalPcs: totalQtyPcs,
+        });
+    } catch (err) {
+        console.log(err);
+        return res.status(500).json({ message: err.message });
+    }
+};
+
+export const getLogSummaryV2 = async (req, res) => {
+    try {
+        const { search, staff, periodBy, start, end } = req.query;
+
+        const isAllStaff = !staff || staff === "all";
+
+        const qMatch = {};
+
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData.tenantRef;
+        }
+
+        if (req.userData?.outletRef) {
+            qMatch.outletRef = req.userData.outletRef;
+        }
+
+        // ======================================================
+        // GET INITIAL ACTIVITY
+        // ======================================================
+        const labelMatch = {};
+
+        if (req.userData?.tenantRef) {
+            labelMatch.tenantRef = req.userData.tenantRef;
+        }
+
+        const progressLabels = await ProgressLabel.find(labelMatch)
+            .select("_id name")
+            .sort({ createdAt: 1 })
+            .lean();
+
+        const initialActivity = progressLabels.map((item) => ({
+            _id: item._id,
+            status: item.name,
+        }));
+
+        // ======================================================
+        // SEARCH
+        // ======================================================
+        if (search && search.trim() !== "") {
+            const regex = new RegExp(search.trim(), "i");
+            qMatch.$or = [
+                { "refOrder.orderId": regex },
+                { "log.status": regex },
+            ];
+        }
+
+        // ======================================================
+        // PERIOD
+        // ======================================================
+        let periodStart = null;
+        let periodEnd = null;
+
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+        const d = now.getDate();
+
+        if (periodBy && periodBy !== "all") {
+            if (periodBy === "today") {
+                periodStart = setStartOfDay(new Date(y, m, d));
+                periodEnd = setEndOfDay(new Date(y, m, d));
+            }
+
+            if (periodBy === "this-week") {
+                const day = now.getDay();
+                const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+
+                periodStart = setStartOfDay(new Date(y, m, diff));
+                periodEnd = setEndOfDay(new Date(y, m, diff + 6));
+            }
+
+            if (periodBy === "this-month") {
+                periodStart = setStartOfDay(new Date(y, m, 1));
+                periodEnd = setEndOfDay(new Date(y, m + 1, 0));
+            }
+
+            if (periodBy === "this-year") {
+                periodStart = setStartOfDay(new Date(y, 0, 1));
+                periodEnd = setEndOfDay(new Date(y, 11, 31));
+            }
+        }
+
+        if (start || end) {
+            const dStart = new Date(start);
+            const dEnd = new Date(end || start);
+
+            periodStart = setStartOfDay(dStart);
+            periodEnd = setEndOfDay(dEnd);
+        }
+
+        if (periodStart || periodEnd) {
+            qMatch["log.date"] = {};
+            if (periodStart) qMatch["log.date"]["$gte"] = periodStart;
+            if (periodEnd) qMatch["log.date"]["$lte"] = periodEnd;
+        }
+
+        // ======================================================
+        // BASE PIPELINE
+        // ======================================================
+        const basePipeline = [
+            { $unwind: "$log" },
+            {
+                $lookup: {
+                    from: "orders",
+                    localField: "orderRef",
+                    foreignField: "_id",
+                    as: "refOrder",
+                },
+            },
+            { $unwind: "$refOrder" },
+            ...(Object.keys(qMatch).length ? [{ $match: qMatch }] : []),
+            {
+                $addFields: {
+                    qtyKg: {
+                        $cond: [
+                            {
+                                $eq: [
+                                    { $ifNull: [{ $toLower: "$log.unit" }, ""] },
+                                    "kg",
+                                ],
+                            },
+                            "$log.qty",
+                            0,
+                        ],
+                    },
+                    qtyPcs: {
+                        $cond: [
+                            {
+                                $ne: [
+                                    { $ifNull: [{ $toLower: "$log.unit" }, ""] },
+                                    "kg",
+                                ],
+                            },
+                            "$log.qty",
+                            0,
+                        ],
+                    },
+                },
+            },
+        ];
+
+        // ======================================================
+        // SUMMARY PIPELINE
+        // ======================================================
+        const summaryPipeline = [
+            ...basePipeline,
+            {
+                $group: {
+                    _id: isAllStaff
+                        ? {
+                            statusRef: "$log.statusRef",
+                            staffRef: "$log.staffRef",
+                        }
+                        : "$log.statusRef",
+                    qty: { $sum: "$log.qty" },
+                    qtyKg: { $sum: "$qtyKg" },
+                    qtyPcs: { $sum: "$qtyPcs" },
+                },
+            },
+            {
+                $lookup: {
+                    from: "progresslabels",
+                    localField: isAllStaff ? "_id.statusRef" : "_id",
+                    foreignField: "_id",
+                    as: "refLabel",
+                },
+            },
+            { $unwind: { path: "$refLabel", preserveNullAndEmptyArrays: true } },
+
+            ...(isAllStaff
+                ? [
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "_id.staffRef",
+                            foreignField: "_id",
+                            as: "refStaff",
+                        },
+                    },
+                    {
+                        $unwind: {
+                            path: "$refStaff",
+                            preserveNullAndEmptyArrays: true,
+                        },
+                    },
+                ]
+                : []),
+
+            {
+                $project: {
+                    _id: 0,
+                    statusRef: isAllStaff ? "$_id.statusRef" : "$_id",
+                    status: "$refLabel.name",
+                    staffRef: isAllStaff
+                        ? {
+                            _id: "$refStaff._id",
+                            fullname: "$refStaff.fullname",
+                            role: "$refStaff.role",
+                            isActive: "$refStaff.isActive",
+                        }
+                        : null,
+                    qty: 1,
+                    qtyKg: 1,
+                    qtyPcs: 1,
+                },
+            },
+        ];
+
+        const summaryResult = await Progress.aggregate(summaryPipeline);
+
+        // ======================================================
+        // FORMAT DETAIL
+        // ======================================================
+        let merged;
+
+        if (isAllStaff) {
+            const mapStaff = new Map();
+
+            for (const row of summaryResult) {
+                const staffId = row?.staffRef?._id?.toString();
+                if (!staffId) continue;
+
+                if (!mapStaff.has(staffId)) {
+                    mapStaff.set(staffId, {
+                        staffRef: row.staffRef,
+                        progress: [],
+                    });
+                }
+
+                mapStaff.get(staffId).progress.push(row);
+            }
+
+            merged = Array.from(mapStaff.values()).map((staff) => {
+                const progressMap = new Map(
+                    staff.progress.map((p) => [p.status.toLowerCase(), p])
+                );
+
+                const fullProgress = initialActivity.map((act) => {
+                    const found = progressMap.get(act.status.toLowerCase());
+                    return {
+                        status: act.status,
+                        qty: found?.qty || 0,
+                        qtyKg: found?.qtyKg || 0,
+                        qtyPcs: found?.qtyPcs || 0,
+                    };
+                });
+
+                return {
+                    staffRef: staff.staffRef,
+                    progress: fullProgress.sort((a, b) => b.status - a.status),
+                };
+            })
+                .sort((a, b) =>
+                    (a.staffRef?.fullname || "")
+                        .toLowerCase()
+                        .localeCompare((b.staffRef?.fullname || "").toLowerCase())
+                );
+        } else {
+            merged = initialActivity.map((act) => {
+                const found = summaryResult.find(
+                    (r) => r.statusRef?.toString() === act._id?.toString()
+                );
+
+                return {
+                    status: act.status,
+                    qty: found?.qty || 0,
+                    qtyKg: found?.qtyKg || 0,
+                    qtyPcs: found?.qtyPcs || 0,
+                };
+            });
+        }
+
+        // ======================================================
+        // TOP PERFORMANCE
+        // ======================================================
+        const topPipeline = [
+            ...basePipeline,
+            {
+                $group: {
+                    _id: {
+                        statusRef: "$log.statusRef",
+                        staffRef: "$log.staffRef",
+                    },
+                    qty: { $sum: "$log.qty" },
+                    qtyKg: { $sum: "$qtyKg" },
+                    qtyPcs: { $sum: "$qtyPcs" },
+                },
+            },
+            { $sort: { "_id.statusRef": 1, qty: -1 } },
+            {
+                $group: {
+                    _id: "$_id.statusRef",
+                    top: { $first: "$$ROOT" },
+                },
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "top._id.staffRef",
+                    foreignField: "_id",
+                    as: "refStaff",
+                },
+            },
+            { $unwind: "$refStaff" },
+            {
+                $lookup: {
+                    from: "progresslabels",
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "refLabel",
+                },
+            },
+            { $unwind: "$refLabel" },
+            {
+                $project: {
+                    _id: 0,
+                    status: "$refLabel.name",
+                    staffRef: {
+                        _id: "$refStaff._id",
+                        fullname: "$refStaff.fullname",
+                        role: "$refStaff.role",
+                        isActive: "$refStaff.isActive",
+                    },
+                    qty: "$top.qty",
+                    qtyKg: "$top.qtyKg",
+                    qtyPcs: "$top.qtyPcs",
+                },
+            },
+        ];
+
+        const topPerformance = await Progress.aggregate(topPipeline);
+
+        // ======================================================
+        // TOTAL
+        // ======================================================
+        const totalQty = summaryResult.reduce((a, b) => a + b.qty, 0);
+        const totalQtyKg = summaryResult.reduce((a, b) => a + b.qtyKg, 0);
+        const totalQtyPcs = summaryResult.reduce((a, b) => a + b.qtyPcs, 0);
+
+        return res.json({
+            period: { start: periodStart, end: periodEnd },
             detail: merged,
             topPerformance,
             total: totalQty,
