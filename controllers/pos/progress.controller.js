@@ -625,9 +625,13 @@ export const getLogSummaryV2 = async (req, res) => {
             status: item.name,
         }));
 
+        let staffInfo = null;
+
         if (staff && staff !== "all" && mongoose.Types.ObjectId.isValid(staff)) {
             const staffId = staff;
             qMatch["log.staffRef"] = mongoose.Types.ObjectId.createFromHexString(staffId);
+
+            staffInfo = await User.findById(staffId).select("_id createdAt fullname role isActive").lean();
         }
 
         // ======================================================
@@ -871,7 +875,7 @@ export const getLogSummaryV2 = async (req, res) => {
             // ✅ tetap pakai format universal
             merged = [
                 {
-                    staffRef: summaryResult.find((r) => r.staffRef?._id)?.staffRef || null,
+                    staffRef: staffInfo,
                     progress: buildProgress(summaryResult),
                 },
             ];
