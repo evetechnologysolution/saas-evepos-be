@@ -118,6 +118,15 @@ const DataSchema = mongoose.Schema(
       type: Number,
       default: 0,
     },
+    masterStatus: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "ProgressLabel",
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true },
 );
