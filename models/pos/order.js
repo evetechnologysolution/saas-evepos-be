@@ -48,6 +48,9 @@ const DataSchema = mongoose.Schema(
             {
                 id: {
                     type: mongoose.Schema.Types.ObjectId,
+                    ref: "Products",
+                    default: null,
+                    set: (val) => (val === "" ? null : val),
                 },
                 name: {
                     type: String,
@@ -361,6 +364,13 @@ DataSchema.pre("save", function (next) {
         }
         next();
     });
+});
+
+DataSchema.virtual("orders.masterProgressRef", {
+    ref: "Products", // model tujuan
+    localField: "orders.id", // field di schema ini
+    foreignField: "_id", // field di model tujuan
+    justOne: true, // karena 1:1
 });
 
 DataSchema.virtual("customerRef", {

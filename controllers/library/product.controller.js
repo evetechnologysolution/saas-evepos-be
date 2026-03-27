@@ -356,6 +356,12 @@ export const addProduct = async (req, res) => {
                 objData = Object.assign(objData, objVariant);
             }
 
+            let convertId = [];
+            if (req.body.masterStatus) {
+                convertId = typeof req.body.masterStatus === "string" ? JSON.parse(req.body.masterStatus) : req.body.masterStatus;
+                objData.masterStatus = convertId;
+            }
+
             if (req.file) {
                 const cloud = await cloudinary.uploader.upload(req.file.path, {
                     folder: process.env.FOLDER_PRODUCT,
@@ -425,6 +431,12 @@ export const editProduct = async (req, res) => {
                     variant: JSON.parse(req.body.variantString),
                 };
                 objData = Object.assign(objData, objVariant);
+            }
+
+            let convertId = [];
+            if (req.body.masterStatus) {
+                convertId = typeof req.body.masterStatus === "string" ? JSON.parse(req.body.masterStatus) : req.body.masterStatus;
+                objData.masterStatus = convertId;
             }
 
             if (req.file) {

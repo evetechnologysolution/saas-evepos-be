@@ -10,6 +10,7 @@ import { convertToE164 } from "../../lib/textSetting.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 import { sendOrderMail } from "../../lib/nodemailer.js";
 import { pusherNotif } from "../../lib/pusher.js";
+import { mergeMasterStatus } from "../../lib/mergeStatus.js";
 
 // GETTING ALL THE DATA
 export const getAllOrder = async (req, res) => {
@@ -870,6 +871,14 @@ export const getOrderById = async (req, res) => {
         const spesificData = await Order.findOne(qMatch)
             .populate([
                 {
+                    path: "orders.masterProgressRef",
+                    select: "masterStatus",
+                    populate: {
+                        path: "masterStatus",
+                        select: "name",
+                    },
+                },
+                {
                     path: "customerRef",
                     select: "memberId name firstName lastName phone notes point",
                 },
@@ -887,6 +896,10 @@ export const getOrderById = async (req, res) => {
         if (!spesificData) {
             return res.status(404).json({ message: "Data not found" });
         }
+
+        const mergedMasterStatus = mergeMasterStatus(spesificData.orders);
+
+        spesificData.masterStatusSummary = mergedMasterStatus;
 
         return res.json(spesificData);
     } catch (err) {
