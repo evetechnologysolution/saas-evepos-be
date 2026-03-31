@@ -1518,7 +1518,17 @@ export const editOrderRaw = async (req, res) => {
 
 export const editPrintCount = async (req, res) => {
     try {
-        let qMatch = { _id: req.params.id };
+        const { id } = req.params;
+
+        let qMatch = {
+            $or: [
+                ...(mongoose.Types.ObjectId.isValid(id)
+                    ? [{ _id: id }]
+                    : []),
+                { tempId: id }
+            ]
+        };
+
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
@@ -1543,7 +1553,17 @@ export const editPrintCount = async (req, res) => {
 
 export const editPrintLaundry = async (req, res) => {
     try {
-        let qMatch = { _id: req.params.id };
+        const { id } = req.params;
+
+        let qMatch = {
+            $or: [
+                ...(mongoose.Types.ObjectId.isValid(id)
+                    ? [{ _id: id }]
+                    : []),
+                { tempId: id }
+            ]
+        };
+
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;

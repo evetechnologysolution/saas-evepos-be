@@ -6,6 +6,9 @@ import { generateRandomOrderId } from "../../lib/generateRandom.js";
 
 const DataSchema = mongoose.Schema(
     {
+        tempId: {
+            type: String,
+        },
         orderId: {
             type: String,
         },
