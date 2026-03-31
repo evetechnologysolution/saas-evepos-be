@@ -845,16 +845,27 @@ export const getSavedBill = async (req, res) => {
 export const getUnfinishedOrder = async (req, res) => {
     try {
         let qMatch = {
-            $in: ["pending", "unpaid", "half paid"],
+            status: { $in: ["pending", "unpaid", "half paid"] },
+            orderType: { $nin: ["delivery"] }
         };
+
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
         }
-        const data = await Order.findOne(qMatch).lean();
-        return res.json(data);
+
+        const exists = await Order.exists(qMatch);
+
+        return res.json({
+            exists: !!exists
+        });
+
     } catch (err) {
-        res.json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
