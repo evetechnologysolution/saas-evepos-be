@@ -11,99 +11,9 @@ const DataSchema = mongoose.Schema(
         endDate: {
             type: Date,
         },
-        cashIn: {
-            type: Number,
-            default: 0,
-        },
-        cashOut: {
-            type: Number,
-            default: 0,
-        },
-        sales: {
-            type: Number,
-            default: 0,
-        },
-        serviceCharge: {
-            type: Number,
-            default: 0,
-        },
-        tax: {
-            type: Number,
-            default: 0,
-        },
-        refund: {
-            type: Number,
-            default: 0,
-        },
         difference: {
             type: Number,
             default: 0,
-        },
-        detail: {
-            cash: {
-                type: Number,
-                default: 0,
-            },
-            dana: {
-                type: Number,
-                default: 0,
-            },
-            shopeePay: {
-                type: Number,
-                default: 0,
-            },
-            ovo: {
-                type: Number,
-                default: 0,
-            },
-            qris: {
-                type: Number,
-                default: 0,
-            },
-            bri: {
-                type: Number,
-                default: 0,
-            },
-            bni: {
-                type: Number,
-                default: 0,
-            },
-            bca: {
-                type: Number,
-                default: 0,
-            },
-            mandiri: {
-                type: Number,
-                default: 0,
-            },
-            bankTransfer: {
-                type: Number,
-                default: 0,
-            },
-            onlinePayment: {
-                type: Number,
-                default: 0,
-            },
-        },
-        history: {
-            type: [
-                {
-                    date: {
-                        type: Date,
-                        default: Date.now,
-                    },
-                    title: String,
-                    isCashOut: Boolean,
-                    amount: Number,
-                    orderRef: {
-                        type: mongoose.Schema.Types.ObjectId,
-                        ref: "Orders",
-                        default: null,
-                        set: (val) => (val === "" ? null : val),
-                    },
-                },
-            ],
-            default: [],
         },
         notes: {
             type: String,

@@ -1,13 +1,15 @@
 import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
+import { capitalizeFirstLetter } from "../../lib/textSetting.js";
 
 const DataSchema = mongoose.Schema(
     {
         title: {
             type: String,
             trim: true,
-            required: true
+            required: true,
+            set: capitalizeFirstLetter
         },
         amount: {
             type: Number,

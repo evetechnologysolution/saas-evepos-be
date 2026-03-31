@@ -49,6 +49,13 @@ export const getAll = async (req, res) => {
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
+            populate: [
+                {
+                    path: "orderRef",
+                    select: "orderId",
+                    options: { lean: true },
+                },
+            ],
             lean: true,
             leanWithVirtuals: true,
         };
