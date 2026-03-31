@@ -168,6 +168,7 @@ import settingRoute from "./routes/setting/setting.route.js";
 import receiptRoute from "./routes/setting/receipt.route.js";
 import taxRoute from "./routes/setting/tax.route.js";
 import cashBalanceRoute from "./routes/cashBalance/cashBalance.route.js";
+import cashBalanceHistoryRoute from "./routes/cashBalance/cashBalanceHistory.route.js";
 
 // master
 import userRoute from "./routes/user/user.route.js";
@@ -258,6 +259,7 @@ app.use("/api/setting", settingRoute);
 app.use("/api/tax", taxRoute);
 app.use("/api/receipt-setting", receiptRoute);
 app.use("/api/cash-balance", cashBalanceRoute);
+app.use("/api/cash-balance-history", cashBalanceHistoryRoute);
 
 // master
 app.use("/api/user", userRoute);

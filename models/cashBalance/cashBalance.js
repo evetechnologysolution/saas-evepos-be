@@ -95,6 +95,12 @@ const DataSchema = mongoose.Schema(
                     title: String,
                     isCashOut: Boolean,
                     amount: Number,
+                    orderRef: {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "Orders",
+                        default: null,
+                        set: (val) => (val === "" ? null : val),
+                    },
                 },
             ],
             default: [],
