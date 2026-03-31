@@ -111,7 +111,7 @@ export const addData = async (req, res) => {
             objData.cashBalanceRef = check?._id;
         }
 
-        const data = new History(objData);
+        const data = new BalanceHistory(objData);
         const newData = await data.save();
         return res.json(newData);
     } catch (err) {
