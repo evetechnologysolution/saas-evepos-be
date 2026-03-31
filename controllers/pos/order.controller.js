@@ -846,7 +846,6 @@ export const getUnfinishedOrder = async (req, res) => {
     try {
         let qMatch = {
             status: { $in: ["pending", "unpaid", "half paid"] },
-            orderType: { $nin: ["delivery"] }
         };
 
         if (req.userData) {
