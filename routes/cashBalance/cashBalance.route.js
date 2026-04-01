@@ -5,7 +5,6 @@ import {
     getCashFlow,
     getBalanceById,
     getExistBalance,
-    addBalance,
     closeBalance,
     editBalance,
     deleteBalance,
@@ -24,9 +23,6 @@ router.get("/exist", isAuth, getExistBalance);
 
 // GET A SPECIFIC DATA
 router.get("/:id", isAuth, getBalanceById);
-
-// CREATE NEW DATA
-router.post("/", isAuth, addBalance);
 
 // CLOSE DATA
 router.post("/close", isAuth, closeBalance);
