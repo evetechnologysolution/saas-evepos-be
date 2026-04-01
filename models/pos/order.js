@@ -6,6 +6,9 @@ import { generateRandomOrderId } from "../../lib/generateRandom.js";
 
 const DataSchema = mongoose.Schema(
     {
+        tempId: {
+            type: String,
+        },
         orderId: {
             type: String,
         },
@@ -414,6 +417,7 @@ DataSchema.virtual("progressRef", {
 
 DataSchema.virtual("progressDetail").get(function () {
     if (!this.orders) return [];
+    if (!Array.isArray(this.orders)) return [];
 
     const progressMap = {};
 

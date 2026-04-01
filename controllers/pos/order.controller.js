@@ -4,6 +4,7 @@ import Member from "../../models/member/member.js";
 import MemberVoucher from "../../models/member/voucherMember.js";
 import PointHistory from "../../models/point/pointHistory.js";
 import Balance from "../../models/cashBalance/cashBalance.js";
+import BalanceHistory from "../../models/cashBalance/cashBalanceHistory.js";
 import { generateRandomId } from "../../lib/generateRandom.js";
 import { checkPoint, adjustPointHistories, createPointHistory } from "../../lib/handlePoint.js";
 import { convertToE164 } from "../../lib/textSetting.js";
@@ -845,16 +846,26 @@ export const getSavedBill = async (req, res) => {
 export const getUnfinishedOrder = async (req, res) => {
     try {
         let qMatch = {
-            $in: ["pending", "unpaid", "half paid"],
+            status: { $in: ["pending", "unpaid", "half paid"] },
         };
+
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
         }
-        const data = await Order.findOne(qMatch).lean();
-        return res.json(data);
+
+        const exists = await Order.exists(qMatch);
+
+        return res.json({
+            exists: !!exists
+        });
+
     } catch (err) {
-        res.json({ message: err.message });
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
     }
 };
 
@@ -1052,6 +1063,10 @@ export const addOrder = async (req, res) => {
             );
         }
 
+        // ================= SAVE ORDER =================
+        const order = new Order(objData);
+        const newData = await order.save({ session });
+
         // ================= BALANCE =================
         if (objData?.status && objData?.billedAmount) {
             const statusPay = ["paid", "refund"];
@@ -1061,28 +1076,28 @@ export const addOrder = async (req, res) => {
             }
 
             if (statusPay.includes(objData.status)) {
-                let increase = { sales: objData.billedAmount };
+                // let increase = { sales: objData.billedAmount };
 
-                if (objData.serviceCharge) increase.serviceCharge = objData.serviceCharge;
-                if (objData.tax) increase.tax = objData.tax;
-                if (objData.status === "refund") increase.refund = objData.billedAmount * -1;
+                // if (objData.serviceCharge) increase.serviceCharge = objData.serviceCharge;
+                // if (objData.tax) increase.tax = objData.tax;
+                // if (objData.status === "refund") increase.refund = objData.billedAmount * -1;
 
-                const paymentMap = {
-                    Cash: "detail.cash",
-                    Dana: "detail.dana",
-                    "Shopee Pay": "detail.shopeePay",
-                    OVO: "detail.ovo",
-                    QRIS: "detail.qris",
-                    "Bank Transfer": "detail.bankTransfer",
-                    "Online Payment": "detail.onlinePayment",
-                };
+                // const paymentMap = {
+                //     Cash: "detail.cash",
+                //     Dana: "detail.dana",
+                //     "Shopee Pay": "detail.shopeePay",
+                //     OVO: "detail.ovo",
+                //     QRIS: "detail.qris",
+                //     "Bank Transfer": "detail.bankTransfer",
+                //     "Online Payment": "detail.onlinePayment",
+                // };
 
-                const payOption = paymentMap[objData.payment];
-                if (payOption) increase[payOption] = objData.billedAmount;
+                // const payOption = paymentMap[objData.payment];
+                // if (payOption) increase[payOption] = objData.billedAmount;
 
-                if (objData.payment === "Card" && objData.cardBankName) {
-                    increase[`detail.${objData.cardBankName.toLowerCase()}`] = objData.billedAmount;
-                }
+                // if (objData.payment === "Card" && objData.cardBankName) {
+                //     increase[`detail.${objData.cardBankName.toLowerCase()}`] = objData.billedAmount;
+                // }
 
                 const qBal = {
                     isOpen: true,
@@ -1094,13 +1109,28 @@ export const addOrder = async (req, res) => {
                     }),
                 };
 
-                await Balance.findOneAndUpdate(qBal, { $inc: increase }, { new: true, session });
+                // await Balance.findOneAndUpdate(qBal, { $inc: increase }, { new: true, session });
+                const check = await Balance.findOneAndUpdate(
+                    qBal,
+                    { $setOnInsert: qBal },
+                    { new: true, upsert: true, session }
+                );
+
+                const objBalHistory = {
+                    title: objData.status === "refund" ? "Refund" : "Sales",
+                    isCashOut: objData.status === "refund" ? true : false,
+                    amount: objData.billedAmount,
+                    payment: objData.payment,
+                    orderRef: newData?._id,
+                    cashBalanceRef: check?._id,
+                    tenantRef: check?.tenantRef,
+                    outletRef: check?.outletRef,
+                }
+
+                const dataBalHistory = new BalanceHistory(objBalHistory);
+                await dataBalHistory.save({ session });
             }
         }
-
-        // ================= SAVE ORDER =================
-        const order = new Order(objData);
-        const newData = await order.save({ session });
 
         // generate point
         if (checkMember && !isDailyPromotion) {
@@ -1303,6 +1333,9 @@ export const editOrder = async (req, res) => {
             );
         }
 
+        // ================= UPDATE ORDER =================
+        const updatedData = await Order.updateOne({ _id: req.params.id }, { $set: objData }, { session });
+
         // ================= BALANCE =================
         if (objData?.status && objData?.billedAmount) {
             const statusPay = ["paid", "refund"];
@@ -1312,28 +1345,28 @@ export const editOrder = async (req, res) => {
             }
 
             if (statusPay.includes(objData.status) && !statusPay.includes(exist.status)) {
-                let increase = { sales: objData.billedAmount };
+                // let increase = { sales: objData.billedAmount };
 
-                if (objData.serviceCharge) increase.serviceCharge = objData.serviceCharge;
-                if (objData.tax) increase.tax = objData.tax;
-                if (objData.status === "refund") increase.refund = objData.billedAmount * -1;
+                // if (objData.serviceCharge) increase.serviceCharge = objData.serviceCharge;
+                // if (objData.tax) increase.tax = objData.tax;
+                // if (objData.status === "refund") increase.refund = objData.billedAmount * -1;
 
-                const paymentMap = {
-                    Cash: "detail.cash",
-                    Dana: "detail.dana",
-                    "Shopee Pay": "detail.shopeePay",
-                    OVO: "detail.ovo",
-                    QRIS: "detail.qris",
-                    "Bank Transfer": "detail.bankTransfer",
-                    "Online Payment": "detail.onlinePayment",
-                };
+                // const paymentMap = {
+                //     Cash: "detail.cash",
+                //     Dana: "detail.dana",
+                //     "Shopee Pay": "detail.shopeePay",
+                //     OVO: "detail.ovo",
+                //     QRIS: "detail.qris",
+                //     "Bank Transfer": "detail.bankTransfer",
+                //     "Online Payment": "detail.onlinePayment",
+                // };
 
-                const payOption = paymentMap[objData.payment];
-                if (payOption) increase[payOption] = objData.billedAmount;
+                // const payOption = paymentMap[objData.payment];
+                // if (payOption) increase[payOption] = objData.billedAmount;
 
-                if (objData.payment === "Card" && objData.cardBankName) {
-                    increase[`detail.${objData.cardBankName.toLowerCase()}`] = objData.billedAmount;
-                }
+                // if (objData.payment === "Card" && objData.cardBankName) {
+                //     increase[`detail.${objData.cardBankName.toLowerCase()}`] = objData.billedAmount;
+                // }
 
                 const qBal = {
                     isOpen: true,
@@ -1345,12 +1378,29 @@ export const editOrder = async (req, res) => {
                     }),
                 };
 
-                await Balance.findOneAndUpdate(qBal, { $inc: increase }, { new: true, session });
+                // await Balance.findOneAndUpdate(qBal, { $inc: increase }, { new: true, session });
+
+                const check = await Balance.findOneAndUpdate(
+                    qBal,
+                    { $setOnInsert: qBal },
+                    { new: true, upsert: true, session }
+                );
+
+                const objBalHistory = {
+                    title: objData.status === "refund" ? "Refund" : "Sales",
+                    isCashOut: objData.status === "refund" ? true : false,
+                    amount: objData.billedAmount,
+                    payment: objData.payment,
+                    orderRef: req.params.id,
+                    cashBalanceRef: check?._id,
+                    tenantRef: check?.tenantRef,
+                    outletRef: check?.outletRef,
+                }
+
+                const dataBalHistory = new BalanceHistory(objBalHistory);
+                await dataBalHistory.save({ session });
             }
         }
-
-        // ================= UPDATE ORDER =================
-        const updatedData = await Order.updateOne({ _id: req.params.id }, { $set: objData }, { session });
 
         // generate point
         if (checkMember && !isDailyPromotion) {
@@ -1508,7 +1558,17 @@ export const editOrderRaw = async (req, res) => {
 
 export const editPrintCount = async (req, res) => {
     try {
-        let qMatch = { _id: req.params.id };
+        const { id } = req.params;
+
+        let qMatch = {
+            $or: [
+                ...(mongoose.Types.ObjectId.isValid(id)
+                    ? [{ _id: id }]
+                    : []),
+                { tempId: id }
+            ]
+        };
+
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
@@ -1533,7 +1593,17 @@ export const editPrintCount = async (req, res) => {
 
 export const editPrintLaundry = async (req, res) => {
     try {
-        let qMatch = { _id: req.params.id };
+        const { id } = req.params;
+
+        let qMatch = {
+            $or: [
+                ...(mongoose.Types.ObjectId.isValid(id)
+                    ? [{ _id: id }]
+                    : []),
+                { tempId: id }
+            ]
+        };
+
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
