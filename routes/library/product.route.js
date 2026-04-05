@@ -4,6 +4,7 @@ import {
     getAllRawProduct,
     getAllProduct,
     getProductById,
+    reorderProduct,
     addProduct,
     editProduct,
     deleteProduct
@@ -19,6 +20,7 @@ router.get("/", isAuth, getAllProduct);
 router.get("/:id", isAuth, getProductById);
 
 // CREATE NEW DATA
+router.post("/reorder", isAuth, reorderProduct);
 router.post("/", isAuth, addProduct);
 
 // UPDATE A SPECIFIC DATA

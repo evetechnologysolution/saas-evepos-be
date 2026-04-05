@@ -8,7 +8,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllRawProduct = async (req, res) => {
     try {
-        const { category, subcategory } = req.query;
+        const { category, subcategory, sort } = req.query;
         let qMatch = {};
 
         if (req.userData) {
@@ -48,6 +48,19 @@ export const getAllRawProduct = async (req, res) => {
 
         var d = new Date();
         var currDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+        let sortObj = {
+            // isRecommended: -1,
+            listNumber: 1,
+            name: 1,
+        }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
 
         const listofData = await Product.aggregate([
             { $match: qMatch },
@@ -148,11 +161,7 @@ export const getAllRawProduct = async (req, res) => {
                 },
             },
             {
-                $sort: {
-                    isRecommended: -1,
-                    listNumber: 1,
-                    name: 1,
-                },
+                $sort: sortObj
             },
             {
                 $project: {
@@ -316,6 +325,44 @@ export const getProductById = async (req, res) => {
         }
         const spesificData = await Product.findOne(qMatch).lean();
         return res.json(spesificData);
+    } catch (err) {
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
+    }
+};
+
+export const reorderProduct = async (req, res) => {
+    try {
+        const { items } = req.body;
+
+        if (!Array.isArray(items)) {
+            return res.status(400).json({
+                message: "Invalid payload",
+            });
+        }
+
+        let qMatch = {}
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = req.userData?.outletRef;
+        }
+
+        const bulkOps = items.map((item) => ({
+            updateOne: {
+                filter: { _id: item._id, ...qMatch },
+                update: { $set: { listNumber: item.listNumber } },
+            },
+        }));
+
+        await Product.bulkWrite(bulkOps);
+
+        return res.json({
+            message: "Reorder success",
+        });
     } catch (err) {
         return errorResponse(res, {
             statusCode: 500,
