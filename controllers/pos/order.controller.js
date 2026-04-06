@@ -1526,15 +1526,15 @@ export const editOrderRaw = async (req, res) => {
     try {
         const { id } = req.params;
 
-        let qMatch = {};
-
-        // kalau valid ObjectId → anggap sebagai _id
-        if (mongoose.Types.ObjectId.isValid(id)) {
-            qMatch._id = id;
-        } else {
-            // kalau bukan → anggap sebagai orderId
-            qMatch.orderId = id;
-        }
+        let qMatch = {
+            $or: [
+                ...(mongoose.Types.ObjectId.isValid(id)
+                    ? [{ _id: id }]
+                    : []),
+                { tempId: id },
+                { orderId: id },
+            ]
+        };
 
         // multi-tenant protection
         if (req.userData) {
@@ -1565,7 +1565,8 @@ export const editPrintCount = async (req, res) => {
                 ...(mongoose.Types.ObjectId.isValid(id)
                     ? [{ _id: id }]
                     : []),
-                { tempId: id }
+                { tempId: id },
+                { orderId: id },
             ]
         };
 
@@ -1600,7 +1601,8 @@ export const editPrintLaundry = async (req, res) => {
                 ...(mongoose.Types.ObjectId.isValid(id)
                     ? [{ _id: id }]
                     : []),
-                { tempId: id }
+                { tempId: id },
+                { orderId: id },
             ]
         };
 
