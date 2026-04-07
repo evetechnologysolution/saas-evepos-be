@@ -284,6 +284,10 @@ export const addBlog = async (req, res) => {
 
             let objData = req.body;
 
+            if (req.userData) {
+                objData.tenantRef = req.userData?.tenantRef;
+            }
+
             if (req.userData?.tenantRef) {
                 objData.tenantRef = req.userData?.tenantRef;
             }
