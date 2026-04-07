@@ -1,4 +1,4 @@
-import Expense from "../models/expense.js";
+import Expense from "../../models/expense/expense.js";
 
 // GETTING ALL THE DATA
 export const getAllExpense = async (req, res) => {

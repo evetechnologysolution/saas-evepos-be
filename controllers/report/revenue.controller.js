@@ -1,5 +1,5 @@
 import Order from "../../models/pos/order.js";
-import Expense from "../../models/expense.js";
+import Expense from "../../models/expense/expense.js";
 import { getFirstAndLastDayOfWeek } from "../../lib/dateFormatter.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 

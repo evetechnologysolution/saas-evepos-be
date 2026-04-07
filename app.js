@@ -186,10 +186,10 @@ import profitLossRoute from "./routes/report/profitLoss.route.js";
 
 import auditTrailRoute from "./routes/audit/audit.route.js";
 import paymentRoute from "./routes/payment/payment.route.js";
-import ticketRoute from "./routes/ticket.route.js";
+import ticketRoute from "./routes/ticket/ticket.route.js";
 import pointHistoryRoute from "./routes/point/pointHistory.route.js";
 import voucherMemberRoute from "./routes/member/voucherMember.route.js";
-import expenseRoute from "./routes/expense.route.js";
+import expenseRoute from "./routes/expense/expense.route.js";
 
 // cart
 import cartRoute from "./routes/cart/cart.route.js";
@@ -214,6 +214,7 @@ import pusherRoute from "./routes/pusher.route.js";
 
 // blog
 import blogRoute from "./routes/article/article.route.js";
+import galleryRoute from "./routes/article/gallery.route.js";
 
 // cron
 app.use("/api/cron", cronRoute); // disambungkan ke cron-job.org atau github actions
@@ -309,6 +310,7 @@ app.use("/api/pusher", pusherRoute);
 
 // blog
 app.use("/api/blog", blogRoute);
+app.use("/api/gallery", galleryRoute);
 
 app.get("/", (_, res) => {
     res.send("We are on home");

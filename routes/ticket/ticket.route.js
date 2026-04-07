@@ -1,12 +1,12 @@
 import express from "express";
-import { isAuth } from "../middleware/auth.js";
+import { isAuth } from "../../middleware/auth.js";
 import {
   addTicket,
   updateTicket,
   deleteTicket,
   getAllTicket,
   getTicketById,
-} from "../controllers/ticket.controller.js";
+} from "../../controllers/ticket/ticket.controller.js";
 
 const router = express.Router();
 
