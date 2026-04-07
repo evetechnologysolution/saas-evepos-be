@@ -1,8 +1,8 @@
-import Ticket from "../models/ticket.js";
+import Ticket from "../../models/ticket/ticket.js";
 import multer from "multer";
 import fs from "fs";
-import { cloudinary, imageUpload } from "../lib/cloudinary.js";
-import { errorResponse } from "../utils/errorResponse.js";
+import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
+import { errorResponse } from "../../utils/errorResponse.js";
 
 const generateTicketId = async () => {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");

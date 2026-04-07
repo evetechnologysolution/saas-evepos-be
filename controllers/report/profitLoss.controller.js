@@ -1,5 +1,5 @@
 import Order from "../../models/pos/order.js";
-import Expense from "../../models/expense.js";
+import Expense from "../../models/expense/expense.js";
 
 // GETTING PROFIT LOSS
 export const getProfitLoss = async (req, res) => {

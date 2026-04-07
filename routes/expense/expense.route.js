@@ -1,5 +1,5 @@
 import express from "express";
-import { isAuth } from "../middleware/auth.js";
+import { isAuth } from "../../middleware/auth.js";
 import {
   getAllExpense,
   getExpenseTotal,
@@ -7,7 +7,7 @@ import {
   addExpense,
   editExpense,
   deleteExpense,
-} from "../controllers/expense.controller.js";
+} from "../../controllers/expense/expense.controller.js";
 
 const router = express.Router();
 
