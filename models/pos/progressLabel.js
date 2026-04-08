@@ -19,15 +19,19 @@ const DataSchema = mongoose.Schema(
             type: Number,
             default: null,
         },
+        basePoint: {
+            type: Number,
+            default: 0,
+        },
+        archived: {
+            type: Boolean,
+            default: false,
+        },
         tenantRef: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Tenants",
             default: null,
             set: (val) => (val === "" ? null : val),
-        },
-        archived: {
-            type: Boolean,
-            default: false,
         },
     },
     { timestamps: true },

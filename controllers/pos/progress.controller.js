@@ -276,6 +276,27 @@ export const getAllLogs = async (req, res) => {
                     _id: "$refStaff._id",
                     fullname: "$refStaff.fullname",
                 },
+                progressPoint: {
+                    baseQty: { $ifNull: ["$log.progressPoint.baseQty", 0] },
+                    basePoint: { $ifNull: ["$log.progressPoint.basePoint", 0] },
+                },
+                totalPoint: {
+                    $round: [
+                        {
+                            $cond: [
+                                { $gt: [{ $ifNull: ["$log.progressPoint.baseQty", 0] }, 0] },
+                                {
+                                    $multiply: [
+                                        { $divide: ["$log.qty", { $ifNull: ["$log.progressPoint.baseQty", 0] }] },
+                                        { $ifNull: ["$log.progressPoint.basePoint", 0] }
+                                    ]
+                                },
+                                0
+                            ]
+                        },
+                        1 // maksimal 1 angka desimal
+                    ]
+                }
             },
         });
 
@@ -735,6 +756,23 @@ export const getLogSummaryV2 = async (req, res) => {
                             0,
                         ],
                     },
+                    totalPoint: {
+                        $round: [
+                            {
+                                $cond: [
+                                    { $gt: [{ $ifNull: ["$log.progressPoint.baseQty", 0] }, 0] },
+                                    {
+                                        $multiply: [
+                                            { $divide: ["$log.qty", { $ifNull: ["$log.progressPoint.baseQty", 0] }] },
+                                            { $ifNull: ["$log.progressPoint.basePoint", 0] }
+                                        ]
+                                    },
+                                    0
+                                ]
+                            },
+                            1 // maksimal 1 angka desimal
+                        ]
+                    }
                 },
             },
         ];
@@ -764,6 +802,7 @@ export const getLogSummaryV2 = async (req, res) => {
                     qty: { $sum: "$log.qty" },
                     qtyKg: { $sum: "$qtyKg" },
                     qtyPcs: { $sum: "$qtyPcs" },
+                    totalPoint: { $sum: "$totalPoint" },
                 },
             },
             {
@@ -806,6 +845,7 @@ export const getLogSummaryV2 = async (req, res) => {
                     qty: 1,
                     qtyKg: 1,
                     qtyPcs: 1,
+                    totalPoint: 1,
                 },
             },
         ];
@@ -831,6 +871,7 @@ export const getLogSummaryV2 = async (req, res) => {
                         qty: found?.qty || 0,
                         qtyKg: found?.qtyKg || 0,
                         qtyPcs: found?.qtyPcs || 0,
+                        totalPoint: found?.totalPoint || 0
                     };
                 })
                 // .sort((a, b) => b.qty - a.qty); // ✅ sort by qty desc
@@ -898,6 +939,7 @@ export const getLogSummaryV2 = async (req, res) => {
                     qty: { $sum: "$log.qty" },
                     qtyKg: { $sum: "$qtyKg" },
                     qtyPcs: { $sum: "$qtyPcs" },
+                    totalPoint: { $sum: "$totalPoint" },
                 },
             },
             { $sort: { qty: -1 } },
@@ -939,6 +981,7 @@ export const getLogSummaryV2 = async (req, res) => {
                     qty: "$top.qty",
                     qtyKg: "$top.qtyKg",
                     qtyPcs: "$top.qtyPcs",
+                    totalPoint: "$top.totalPoint"
                 },
             },
             { $sort: { qty: -1, status: -1 } },
@@ -1183,42 +1226,55 @@ export const addDataByOrder = async (req, res) => {
                 for (const lg of progress.log || []) {
                     if (!lg.id || !lg.status) continue;
 
-                    const key = `${lg.id}_${lg.status}`;
+                    const key = lg.itemRef
+                        ? `${lg.id}_${lg.status}_${lg.itemRef}`
+                        : `${lg.id}_${lg.status}_${lg.orderedQty}`;
 
-                    usedQtyMap[key] =
-                        (usedQtyMap[key] || 0) + Number(lg.qty || 0);
+                    usedQtyMap[key] = (usedQtyMap[key] || 0) + Number(lg.qty || 0);
                 }
             }
 
-            // ================= HITUNG TOTAL ORDER QTY PER ITEM =================
-            const orderQtyMap = {};
-
-            for (const item of order.orders || []) {
-                const itemId = String(item.id);
-
-                orderQtyMap[itemId] =
-                    (orderQtyMap[itemId] || 0) + Number(item.qty || 0);
-            }
+            // ================= SIMPAN ORDER DETAIL (PER ITEM, BUKAN DIGABUNG) =================
+            const orderItems = (order.orders || []).map((item) => ({
+                id: String(item.id),
+                itemRef: item?._id ? String(item?._id) : "",
+                orderedQty: Number(item.qty || 0),
+            }));
 
             // ================= VALIDASI INPUT =================
             for (const logItem of processedLog) {
                 const itemId = String(logItem.id);
+                const itemRef = String(logItem.itemRef || "");
                 const status = String(logItem.status || "");
                 const qtyInput = Number(logItem.qty || 0);
+                const orderedQty = Number(logItem.orderedQty || 0);
 
-                const totalOrderQty = orderQtyMap[itemId] || 0;
+                if (!orderedQty) {
+                    throw new Error("orderedQty wajib ada");
+                }
 
-                if (!totalOrderQty) {
+                const key = itemRef
+                    ? `${itemId}_${status}_${itemRef}`
+                    : `${itemId}_${status}_${orderedQty}`;
+                const usedQty = usedQtyMap[key] || 0;
+
+                // cari item yang BENAR-BENAR sama (id + orderedQty)
+                const index = orderItems.findIndex(
+                    (ord) => itemRef ?
+                        ord.id === itemId && ord.itemRef === itemRef :
+                        ord.id === itemId && Number(ord.orderedQty) === orderedQty
+                );
+
+                if (index === -1) {
                     throw new Error("Item order tidak ditemukan");
                 }
 
-                const key = `${itemId}_${status}`;
-                const usedQty = usedQtyMap[key] || 0;
+                const selectedOrderItem = orderItems[index];
 
-                // pembulatan supaya tidak kena bug floating number
+                // hitung sisa dari item tersebut
                 const remainingQty = Math.max(
                     0,
-                    Math.round((totalOrderQty - usedQty) * 10) / 10
+                    Math.round((selectedOrderItem.orderedQty - usedQty) * 10) / 10
                 );
 
                 if (qtyInput > remainingQty) {
@@ -1227,7 +1283,7 @@ export const addDataByOrder = async (req, res) => {
                     );
                 }
 
-                // update map supaya validasi multi input tetap benar
+                // update usedQty (pakai key baru)
                 usedQtyMap[key] = usedQty + qtyInput;
             }
         }

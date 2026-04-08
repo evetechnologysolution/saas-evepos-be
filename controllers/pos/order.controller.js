@@ -883,10 +883,10 @@ export const getOrderById = async (req, res) => {
             .populate([
                 {
                     path: "orders.masterProgressRef",
-                    select: "masterStatus",
+                    select: "progressPoint masterStatus",
                     populate: {
                         path: "masterStatus",
-                        select: "name",
+                        select: "name basePoint",
                     },
                 },
                 {
