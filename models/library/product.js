@@ -95,6 +95,29 @@ const DataSchema = mongoose.Schema(
       ],
       default: [],
     },
+    minimumOrderQty: {
+      type: Number,
+      default: 0,
+    },
+    masterStatus: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "ProgressLabel",
+        },
+      ],
+      default: [],
+    },
+    progressPoint: {
+      baseQty: {
+        type: Number,
+        default: 0,
+      },
+      basePoint: {
+        type: Number,
+        default: 0,
+      },
+    },
     isRecommended: {
       type: Boolean,
       default: false,
@@ -110,19 +133,6 @@ const DataSchema = mongoose.Schema(
         {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Outlets",
-        },
-      ],
-      default: [],
-    },
-    minimumOrderQty: {
-      type: Number,
-      default: 0,
-    },
-    masterStatus: {
-      type: [
-        {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "ProgressLabel",
         },
       ],
       default: [],

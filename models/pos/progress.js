@@ -56,6 +56,11 @@ const DataSchema = mongoose.Schema(
             type: Date,
             default: Date.now,
           },
+          itemRef: {
+            type: mongoose.Schema.Types.ObjectId,
+            default: null,
+            set: (val) => (val === "" ? null : val),
+          },
           id: {
             type: mongoose.Schema.Types.ObjectId,
           },
@@ -86,6 +91,16 @@ const DataSchema = mongoose.Schema(
             type: String,
             trim: true,
             default: "",
+          },
+          progressPoint: {
+            baseQty: {
+              type: Number,
+              default: 0,
+            },
+            basePoint: {
+              type: Number,
+              default: 0,
+            },
           },
           staffRef: {
             type: mongoose.Schema.Types.ObjectId,

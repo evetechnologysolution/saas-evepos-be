@@ -426,38 +426,41 @@ DataSchema.virtual("progressDetail").get(function () {
         for (const log of this.progressRef.log) {
             const id = String(log.id);
             const status = log.status;
+            const itemRef = String(log.itemRef || "");
+            const orderedQty = Number(log.orderedQty || 0);
 
-            if (!progressMap[id]) progressMap[id] = {};
-            if (!progressMap[id][status]) progressMap[id][status] = 0;
+            const key = itemRef
+                ? `${id}__${itemRef}`
+                : `${id}__${orderedQty}`;
 
-            progressMap[id][status] += Number(log.qty || 0);
+            if (!progressMap[key]) progressMap[key] = {};
+            if (!progressMap[key][status]) progressMap[key][status] = 0;
+
+            progressMap[key][status] += Number(log.qty || 0);
         }
     }
-
-    // clone map supaya bisa dikurangi
-    const remainingProgress = JSON.parse(JSON.stringify(progressMap));
 
     // ================= DISTRIBUSI PROGRESS KE ITEM =================
     return this.orders.map((orderItem) => {
         const itemId = String(orderItem.id);
+        const itemRef = orderItem?._id ? String(orderItem._id) : "";
         const orderedQty = Number(orderItem.qty || 0);
 
+        const key = itemRef
+            ? `${itemId}__${itemRef}`
+            : `${itemId}__${orderedQty}`;
+
         const progressByStatus = {};
-        const statusMap = remainingProgress[itemId] || {};
+        const statusMap = progressMap[key] || {};
+
+        let processedQty = 0;
 
         for (const status in statusMap) {
-            const available = statusMap[status];
+            const qty = statusMap[status];
 
-            if (available <= 0) continue;
-
-            const used = Math.min(orderedQty, available);
-
-            progressByStatus[status] = used;
-
-            remainingProgress[itemId][status] -= used;
+            progressByStatus[status] = qty;
+            processedQty += qty;
         }
-
-        const processedQty = Object.values(progressByStatus).reduce((a, b) => a + b, 0);
 
         const remainingQty = Math.max(
             0,
@@ -465,6 +468,7 @@ DataSchema.virtual("progressDetail").get(function () {
         );
 
         return {
+            itemRef: itemRef || null,
             id: orderItem.id,
             name: orderItem.name,
             orderedQty,
