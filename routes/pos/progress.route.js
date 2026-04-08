@@ -9,6 +9,7 @@ import {
     addData,
     addDataByOrder,
     deleteData,
+    migrateItemRef
 } from "../../controllers/pos/progress.controller.js";
 
 const router = express.Router();
@@ -19,6 +20,7 @@ router.get("/log-summary", isAuth, getLogSummary);
 router.get("/v2/log-summary", isAuth, getLogSummaryV2);
 router.get("/:id", isAuth, getDataById);
 router.post("/", isAuth, addData);
+router.post("/migrate-itemref", isAuth, migrateItemRef);
 router.post("/:id", isAuth, addDataByOrder);
 router.delete("/:id", isAuth, deleteData);
 

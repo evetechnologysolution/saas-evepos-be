@@ -1388,3 +1388,90 @@ export const deleteData = async (req, res) => {
         });
     }
 };
+
+export const migrateItemRef = async (req, res) => {
+    try {
+        const qMatch = {
+            $or: [
+                { "log.itemRef": { $exists: false } }, // tidak ada field
+                { "log.itemRef": null },               // null
+                { "log.itemRef": "" },                 // string kosong
+            ],
+            ...(req.userData?.tenantRef && {
+                tenantRef: req.userData.tenantRef,
+            }),
+            ...(req.userData?.outletRef && {
+                outletRef: req.userData.outletRef,
+            }),
+        };
+
+        const cursor = Progress.find(qMatch).lean().cursor();
+
+        let bulkOps = [];
+        let totalUpdated = 0;
+        let totalData = 0;
+
+        for await (const progress of cursor) {
+            totalData++;
+
+            const order = await Order.findById(progress.orderRef).lean();
+            if (!order) continue;
+
+            let isModified = false;
+
+            const newLog = progress.log.map((log) => {
+                if (log.itemRef) return log;
+
+                const match = order.orders.find(
+                    (ord) =>
+                        String(ord.id) === String(log.id)
+                );
+
+                if (match && match._id) {
+                    isModified = true;
+                    return {
+                        ...log,
+                        itemRef: match._id,
+                    };
+                }
+
+                return log;
+            });
+
+            if (isModified) {
+                bulkOps.push({
+                    updateOne: {
+                        filter: { _id: progress._id },
+                        update: { $set: { log: newLog } },
+                    },
+                });
+
+                totalUpdated++;
+            }
+
+            // 🔥 eksekusi per batch
+            if (bulkOps.length === 500) {
+                await Progress.bulkWrite(bulkOps);
+                bulkOps = [];
+            }
+        }
+
+        // sisa batch terakhir
+        if (bulkOps.length > 0) {
+            await Progress.bulkWrite(bulkOps);
+        }
+
+        return res.json({
+            message: "Migration selesai 🚀",
+            totalData,
+            totalUpdated,
+        });
+
+    } catch (err) {
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
+    }
+};
