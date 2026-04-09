@@ -16,6 +16,8 @@ const setEndOfDay = (d) => {
     return new Date(d.toISOString());
 };
 
+const baseAmount = 1000;
+
 // GETTING ALL THE DATA
 export const getAllData = async (req, res) => {
     try {
@@ -281,22 +283,17 @@ export const getAllLogs = async (req, res) => {
                     basePoint: { $ifNull: ["$log.progressPoint.basePoint", 0] },
                 },
                 totalPoint: {
-                    $round: [
+                    $cond: [
+                        { $gt: [{ $ifNull: ["$log.progressPoint.baseQty", 0] }, 0] },
                         {
-                            $cond: [
-                                { $gt: [{ $ifNull: ["$log.progressPoint.baseQty", 0] }, 0] },
-                                {
-                                    $multiply: [
-                                        { $divide: ["$log.qty", { $ifNull: ["$log.progressPoint.baseQty", 0] }] },
-                                        { $ifNull: ["$log.progressPoint.basePoint", 0] }
-                                    ]
-                                },
-                                0
+                            $multiply: [
+                                { $divide: ["$log.qty", { $ifNull: ["$log.progressPoint.baseQty", 0] }] },
+                                { $ifNull: ["$log.progressPoint.basePoint", 0] }
                             ]
                         },
-                        1 // maksimal 1 angka desimal
+                        0
                     ]
-                }
+                },
             },
         });
 
@@ -756,23 +753,18 @@ export const getLogSummaryV2 = async (req, res) => {
                             0,
                         ],
                     },
-                    totalPoint: {
-                        $round: [
+                    point: {
+                        $cond: [
+                            { $gt: [{ $ifNull: ["$log.progressPoint.baseQty", 0] }, 0] },
                             {
-                                $cond: [
-                                    { $gt: [{ $ifNull: ["$log.progressPoint.baseQty", 0] }, 0] },
-                                    {
-                                        $multiply: [
-                                            { $divide: ["$log.qty", { $ifNull: ["$log.progressPoint.baseQty", 0] }] },
-                                            { $ifNull: ["$log.progressPoint.basePoint", 0] }
-                                        ]
-                                    },
-                                    0
+                                $multiply: [
+                                    { $divide: ["$log.qty", { $ifNull: ["$log.progressPoint.baseQty", 0] }] },
+                                    { $ifNull: ["$log.progressPoint.basePoint", 0] }
                                 ]
                             },
-                            1 // maksimal 1 angka desimal
+                            0
                         ]
-                    }
+                    },
                 },
             },
         ];
@@ -802,7 +794,7 @@ export const getLogSummaryV2 = async (req, res) => {
                     qty: { $sum: "$log.qty" },
                     qtyKg: { $sum: "$qtyKg" },
                     qtyPcs: { $sum: "$qtyPcs" },
-                    totalPoint: { $sum: "$totalPoint" },
+                    point: { $sum: "$point" },
                 },
             },
             {
@@ -842,10 +834,11 @@ export const getLogSummaryV2 = async (req, res) => {
                         role: "$refStaff.role",
                         isActive: "$refStaff.isActive",
                     },
-                    qty: 1,
-                    qtyKg: 1,
-                    qtyPcs: 1,
-                    totalPoint: 1,
+                    qty: { $round: ["$qty", 1] },
+                    qtyKg: { $round: ["$qtyKg", 1] },
+                    qtyPcs: { $round: ["$qtyPcs", 1] },
+                    point: { $round: ["$point", 1] },
+                    bonus: { $multiply: [{ $round: ["$point", 1] }, baseAmount] },
                 },
             },
         ];
@@ -860,18 +853,19 @@ export const getLogSummaryV2 = async (req, res) => {
         // helper: build progress list (biar reusable)
         const buildProgress = (progressList) => {
             const progressMap = new Map(
-                progressList.map((p) => [p.status.toLowerCase(), p])
+                progressList.map((p) => [p?.status?.toLowerCase(), p])
             );
 
             return initialActivity
                 .map((act) => {
-                    const found = progressMap.get(act.status.toLowerCase());
+                    const found = progressMap.get(act?.status?.toLowerCase());
                     return {
                         status: act.status,
                         qty: found?.qty || 0,
                         qtyKg: found?.qtyKg || 0,
                         qtyPcs: found?.qtyPcs || 0,
-                        totalPoint: found?.totalPoint || 0
+                        point: found?.point || 0,
+                        bonus: found?.bonus || 0,
                     };
                 })
                 // .sort((a, b) => b.qty - a.qty); // ✅ sort by qty desc
@@ -901,10 +895,21 @@ export const getLogSummaryV2 = async (req, res) => {
             }
 
             merged = Array.from(mapStaff.values())
-                .map((staff) => ({
-                    staffRef: staff.staffRef,
-                    progress: buildProgress(staff.progress),
-                }))
+                .map((staff) => {
+                    const progress = buildProgress(staff.progress);
+
+                    const totalPoint = progress.reduce((a, b) => a + b.point, 0);
+                    const totalBonus = progress.reduce((a, b) => a + b.bonus, 0);
+
+                    return {
+                        staffRef: {
+                            ...staff.staffRef,
+                            point: Math.round(totalPoint * 10) / 10,
+                            bonus: Math.round(totalBonus * 10) / 10,
+                        },
+                        progress,
+                    };
+                })
                 // ✅ sort staff name ASC
                 .sort((a, b) =>
                     (a.staffRef?.fullname || "")
@@ -914,10 +919,18 @@ export const getLogSummaryV2 = async (req, res) => {
 
         } else {
             // ✅ tetap pakai format universal
+            const progress = buildProgress(summaryResult);
+
+            const totalPoint = progress.reduce((a, b) => a + b.point, 0);
+            const totalBonus = progress.reduce((a, b) => a + b.bonus, 0);
             merged = [
                 {
-                    staffRef: staffInfo,
-                    progress: buildProgress(summaryResult),
+                    staffRef: {
+                        ...staffInfo,
+                        point: Math.round(totalPoint * 10) / 10,
+                        bonus: Math.round(totalBonus * 10) / 10,
+                    },
+                    progress,
                 },
             ];
         }
@@ -939,7 +952,7 @@ export const getLogSummaryV2 = async (req, res) => {
                     qty: { $sum: "$log.qty" },
                     qtyKg: { $sum: "$qtyKg" },
                     qtyPcs: { $sum: "$qtyPcs" },
-                    totalPoint: { $sum: "$totalPoint" },
+                    point: { $sum: "$point" },
                 },
             },
             { $sort: { qty: -1 } },
@@ -978,10 +991,11 @@ export const getLogSummaryV2 = async (req, res) => {
                         role: "$refStaff.role",
                         isActive: "$refStaff.isActive",
                     },
-                    qty: "$top.qty",
-                    qtyKg: "$top.qtyKg",
-                    qtyPcs: "$top.qtyPcs",
-                    totalPoint: "$top.totalPoint"
+                    qty: { $round: ["$top.qty", 1] },
+                    qtyKg: { $round: ["$top.qtyKg", 1] },
+                    qtyPcs: { $round: ["$top.qtyPcs", 1] },
+                    point: { $round: ["$top.point", 1] },
+                    bonus: { $multiply: [{ $round: ["$top.point", 1] }, baseAmount] },
                 },
             },
             { $sort: { qty: -1, status: -1 } },
@@ -995,18 +1009,257 @@ export const getLogSummaryV2 = async (req, res) => {
         const totalQty = summaryResult.reduce((a, b) => a + b.qty, 0);
         const totalQtyKg = summaryResult.reduce((a, b) => a + b.qtyKg, 0);
         const totalQtyPcs = summaryResult.reduce((a, b) => a + b.qtyPcs, 0);
+        const totalPoint = summaryResult.reduce((a, b) => a + b.point, 0);
 
         return res.json({
             period: { start: periodStart, end: periodEnd },
             detail: merged,
             topPerformance,
-            total: totalQty,
-            totalKg: totalQtyKg,
-            totalPcs: totalQtyPcs,
+            total: Math.round(totalQty * 10) / 10,
+            totalKg: Math.round(totalQtyKg * 10) / 10,
+            totalPcs: Math.round(totalQtyPcs * 10) / 10,
+            totalPoint: Math.round(totalPoint * 10) / 10,
+            totalBonus: (Math.round(totalPoint * 10) / 10) * baseAmount,
         });
     } catch (err) {
         console.log(err);
         return res.status(500).json({ message: err.message });
+    }
+};
+
+export const getTotalPoint = async (req, res) => {
+    try {
+        const { staff, periodBy, start, end } = req.query;
+
+        const qMatch = {};
+        const logMatch = {};
+
+        // ==============================
+        // FILTER TENANT & OUTLET
+        // ==============================
+        if (req.userData?.tenantRef) {
+            qMatch.tenantRef = req.userData.tenantRef;
+        }
+
+        if (req.userData?.outletRef) {
+            qMatch.outletRef = req.userData.outletRef;
+        }
+
+        // ==============================
+        // PERIOD LOGIC
+        // ==============================
+        let periodStart = null;
+        let periodEnd = null;
+
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+        const d = now.getDate();
+
+        if (periodBy && periodBy !== "all") {
+            if (periodBy === "today") {
+                periodStart = setStartOfDay(new Date(y, m, d));
+                periodEnd = setEndOfDay(new Date(y, m, d));
+            }
+
+            if (periodBy === "this-week") {
+                const day = now.getDay();
+                const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+
+                periodStart = setStartOfDay(new Date(y, m, diff));
+                periodEnd = setEndOfDay(new Date(y, m, diff + 6));
+            }
+
+            if (periodBy === "this-month") {
+                periodStart = setStartOfDay(new Date(y, m, 1));
+                periodEnd = setEndOfDay(new Date(y, m + 1, 0));
+            }
+
+            if (periodBy === "this-year") {
+                periodStart = setStartOfDay(new Date(y, 0, 1));
+                periodEnd = setEndOfDay(new Date(y, 11, 31));
+            }
+        }
+
+        // override pakai custom range
+        if (start || end) {
+            const dStart = new Date(start);
+            const dEnd = new Date(end || start);
+
+            periodStart = setStartOfDay(dStart);
+            periodEnd = setEndOfDay(dEnd);
+        }
+
+        if (periodStart || periodEnd) {
+            logMatch["log.date"] = {};
+            if (periodStart) logMatch["log.date"]["$gte"] = periodStart;
+            if (periodEnd) logMatch["log.date"]["$lte"] = periodEnd;
+        }
+
+        // ==============================
+        // FILTER STAFF
+        // ==============================
+        if (staff && staff !== "all" && mongoose.Types.ObjectId.isValid(staff)) {
+            logMatch["log.staffRef"] = mongoose.Types.ObjectId.createFromHexString(staff);
+        }
+
+        // ==============================
+        // BUILD PIPELINE
+        // ==============================
+        const pipeline = [];
+
+        // match utama (optimize pakai elemMatch)
+        pipeline.push({
+            $match: {
+                ...qMatch,
+                ...(Object.keys(logMatch).length > 0 && {
+                    log: {
+                        $elemMatch: {
+                            ...(logMatch["log.date"] && { date: logMatch["log.date"] }),
+                            ...(logMatch["log.staffRef"] && { staffRef: logMatch["log.staffRef"] }),
+                        },
+                    },
+                }),
+            },
+        });
+
+        // unwind log
+        pipeline.push({
+            $unwind: "$log",
+        });
+
+        // match setelah unwind (lebih presisi)
+        pipeline.push({
+            $match: {
+                ...logMatch,
+                "log.staffRef": { $ne: null },
+            },
+        });
+
+        // hitung point (SAFE + ROUND)
+        pipeline.push({
+            $addFields: {
+                qtyKg: {
+                    $cond: [
+                        {
+                            $eq: [
+                                { $ifNull: [{ $toLower: "$log.unit" }, ""] },
+                                "kg",
+                            ],
+                        },
+                        "$log.qty",
+                        0,
+                    ],
+                },
+                qtyPcs: {
+                    $cond: [
+                        {
+                            $ne: [
+                                { $ifNull: [{ $toLower: "$log.unit" }, ""] },
+                                "kg",
+                            ],
+                        },
+                        "$log.qty",
+                        0,
+                    ],
+                },
+                point: {
+                    $cond: [
+                        {
+                            $and: [
+                                { $gt: ["$log.progressPoint.baseQty", 0] },
+                                { $gt: ["$log.progressPoint.basePoint", 0] },
+                            ],
+                        },
+                        {
+                            $multiply: [
+                                {
+                                    $divide: [
+                                        "$log.qty",
+                                        "$log.progressPoint.baseQty",
+                                    ],
+                                },
+                                "$log.progressPoint.basePoint",
+                            ],
+                        },
+                        0,
+                    ],
+                },
+            },
+        });
+
+        // group per staff
+        pipeline.push({
+            $group: {
+                _id: "$log.staffRef",
+                qty: { $sum: "$log.qty" },
+                qtyKg: { $sum: "$qtyKg" },
+                qtyPcs: { $sum: "$qtyPcs" },
+                point: { $sum: "$point" },
+            },
+        });
+
+        // lookup staff
+        pipeline.push({
+            $lookup: {
+                from: "users",
+                localField: "_id", // kenapa _id, mengacu pada $group di atas
+                foreignField: "_id",
+                as: "refStaff",
+            },
+        });
+
+        pipeline.push({
+            $unwind: {
+                path: "$refStaff",
+                preserveNullAndEmptyArrays: true,
+            },
+        });
+
+        // final shape
+        pipeline.push({
+            $project: {
+                _id: 0,
+                staffRef: {
+                    _id: "$_id",
+                    userId: "$refStaff.userId",
+                    fullname: "$refStaff.fullname",
+                    phone: "$refStaff.phone",
+                    email: "$refStaff.email",
+                    role: "$refStaff.role",
+                    isActive: "$refStaff.isActive",
+                    createdAt: "$refStaff.createdAt",
+
+                },
+                qty: { $round: ["$qty", 1] },
+                qtyKg: { $round: ["$qtyKg", 1] },
+                qtyPcs: { $round: ["$qtyPcs", 1] },
+                point: { $round: ["$point", 1] },
+                bonus: { $multiply: [{ $round: ["$point", 1] }, baseAmount] },
+            },
+        });
+
+        // sort leaderboard
+        pipeline.push({
+            $sort: { point: -1 },
+        });
+
+        // ==============================
+        // EXECUTE
+        // ==============================
+        const result = await Progress.aggregate(pipeline);
+
+        return res.json({
+            status: 200,
+            period: { start: periodStart, end: periodEnd },
+            detail: result,
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            status: 500,
+            message: err.message,
+        });
     }
 };
 

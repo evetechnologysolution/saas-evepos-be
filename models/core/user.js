@@ -22,6 +22,16 @@ const DataSchema = mongoose.Schema(
             trim: true,
             default: "",
         },
+        description: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        info: {
+            type: String,
+            trim: true,
+            default: "",
+        },
         phone: {
             type: String,
             trim: true,
