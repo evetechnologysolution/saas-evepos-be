@@ -895,10 +895,21 @@ export const getLogSummaryV2 = async (req, res) => {
             }
 
             merged = Array.from(mapStaff.values())
-                .map((staff) => ({
-                    staffRef: staff.staffRef,
-                    progress: buildProgress(staff.progress),
-                }))
+                .map((staff) => {
+                    const progress = buildProgress(staff.progress);
+
+                    const totalPoint = progress.reduce((a, b) => a + b.point, 0);
+                    const totalBonus = progress.reduce((a, b) => a + b.bonus, 0);
+
+                    return {
+                        staffRef: {
+                            ...staff.staffRef,
+                            point: Math.round(totalPoint * 10) / 10,
+                            bonus: Math.round(totalBonus * 10) / 10,
+                        },
+                        progress,
+                    };
+                })
                 // ✅ sort staff name ASC
                 .sort((a, b) =>
                     (a.staffRef?.fullname || "")
@@ -908,10 +919,18 @@ export const getLogSummaryV2 = async (req, res) => {
 
         } else {
             // ✅ tetap pakai format universal
+            const progress = buildProgress(summaryResult);
+
+            const totalPoint = progress.reduce((a, b) => a + b.point, 0);
+            const totalBonus = progress.reduce((a, b) => a + b.bonus, 0);
             merged = [
                 {
-                    staffRef: staffInfo,
-                    progress: buildProgress(summaryResult),
+                    staffRef: {
+                        ...staffInfo,
+                        point: Math.round(totalPoint * 10) / 10,
+                        bonus: Math.round(totalBonus * 10) / 10,
+                    },
+                    progress,
                 },
             ];
         }
