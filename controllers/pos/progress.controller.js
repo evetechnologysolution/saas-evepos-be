@@ -853,12 +853,12 @@ export const getLogSummaryV2 = async (req, res) => {
         // helper: build progress list (biar reusable)
         const buildProgress = (progressList) => {
             const progressMap = new Map(
-                progressList.map((p) => [p.status.toLowerCase(), p])
+                progressList.map((p) => [p?.status?.toLowerCase(), p])
             );
 
             return initialActivity
                 .map((act) => {
-                    const found = progressMap.get(act.status.toLowerCase());
+                    const found = progressMap.get(act?.status?.toLowerCase());
                     return {
                         status: act.status,
                         qty: found?.qty || 0,
