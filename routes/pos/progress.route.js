@@ -5,6 +5,7 @@ import {
     getAllLogs,
     getLogSummary,
     getLogSummaryV2,
+    getTotalPoint,
     getDataById,
     addData,
     addDataByOrder,
@@ -18,6 +19,7 @@ router.get("/", isAuth, getAllData);
 router.get("/log", isAuth, getAllLogs);
 router.get("/log-summary", isAuth, getLogSummary);
 router.get("/v2/log-summary", isAuth, getLogSummaryV2);
+router.get("/total-point", isAuth, getTotalPoint);
 router.get("/:id", isAuth, getDataById);
 router.post("/", isAuth, addData);
 router.post("/migrate-itemref", isAuth, migrateItemRef);
