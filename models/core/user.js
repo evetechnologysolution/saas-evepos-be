@@ -141,7 +141,6 @@ DataSchema.pre("save", function (next) {
         const number = generateRandomId();
         this.userId = `TU${currYear}${number}`;
     }
-    next();
     if (this.fullname) {
         this.fullname = capitalizeFirstLetter(this.fullname);
     }

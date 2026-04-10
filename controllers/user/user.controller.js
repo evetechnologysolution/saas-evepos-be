@@ -12,7 +12,7 @@ const uploadImage = async (file) => {
         transformation: [{ quality: "auto:low" }],
     });
 
-    fs.unlink(file.path, () => {});
+    fs.unlink(file.path, () => { });
 
     return {
         image: result.secure_url,
@@ -90,7 +90,15 @@ export const getAllUser = async (req, res) => {
 
 export const getUserById = async (req, res) => {
     try {
-        const spesificData = await User.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+        }
+        const spesificData = await User.findOne(qMatch)
+            .populate([
+                { path: "customPoint.progressLabelRef", select: "name basePoint" },
+                { path: "customPoint.productRef", select: "name" }
+            ]).lean();
         return res.json(spesificData);
     } catch (err) {
         return errorResponse(res, {
