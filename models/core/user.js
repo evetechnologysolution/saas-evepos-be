@@ -92,6 +92,29 @@ const DataSchema = mongoose.Schema(
         },
         resetToken: { type: String, default: "" },
         resetTokenExpiry: { type: Date },
+        customPoint: {
+            type: [
+                {
+                    productRef: {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "Products",
+                        default: null,
+                        set: (val) => (val === "" ? null : val),
+                    },
+                    progressLabelRef: {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "ProgressLabel",
+                        default: null,
+                        set: (val) => (val === "" ? null : val),
+                    },
+                    point: {
+                        type: Number,
+                        default: 0
+                    }
+                }
+            ],
+            default: []
+        },
         isActive: {
             type: Boolean,
             default: true,
