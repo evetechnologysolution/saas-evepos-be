@@ -6,7 +6,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllData = async (req, res) => {
   try {
-    const { page, perPage, search, sort } = req.query;
+    const { page, perPage, search, sort, archived } = req.query;
     let qMatch = {};
 
     if (req.userData) {
@@ -15,7 +15,7 @@ export const getAllData = async (req, res) => {
 
     if (search) {
       const fixedId = mongoose.Types.ObjectId.isValid(search)
-        ? new mongoose.Types.ObjectId(search)
+        ? new mongoose.Types.ObjectId(String(search))
         : null;
 
       qMatch = {
@@ -25,6 +25,13 @@ export const getAllData = async (req, res) => {
           ...(fixedId ? [{ _id: fixedId }] : []),
         ], // option i for case insensitivity to match upper and lower cases.
       };
+    }
+
+    if (archived === "yes") {
+      qMatch.archived = { $eq: true }
+    }
+    if (archived === "no") {
+      qMatch.archived = { $ne: true }
     }
 
     let sortObj = { createdAt: -1 }; // default
@@ -56,10 +63,19 @@ export const getAllData = async (req, res) => {
 
 export const getAllRawData = async (req, res) => {
   try {
+    const { archived } = req.query;
+
     let qMatch = {};
 
     if (req.userData) {
       qMatch.tenantRef = req.userData?.tenantRef;
+    }
+
+    if (archived === "yes") {
+      qMatch.archived = { $eq: true }
+    }
+    if (archived === "no") {
+      qMatch.archived = { $ne: true }
     }
 
     const listofData = await Label.find(qMatch).lean();
