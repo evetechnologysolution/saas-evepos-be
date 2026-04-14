@@ -24,7 +24,7 @@ export const getCartByMember = async (req, res) => {
     }
 };
 
-exports.addItemToCart = async (req, res) => {
+export const addItemToCart = async (req, res) => {
     try {
         const { pickupDateTime, deliveryDate, items } = req.body;
 
