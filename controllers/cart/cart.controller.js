@@ -34,15 +34,22 @@ export const addItemToCart = async (req, res) => {
 
         const dataItems = Array.isArray(items) ? items : [items];
 
+        const qMatch = {
+            memberRef: req.params.id,
+            ...(req.userData?.tenantRef && {
+                tenantRef: req.userData.tenantRef,
+            }),
+            ...(req.userData?.outletRef && {
+                outletRef: req.userData.outletRef,
+            }),
+        }
+
         const updatedCart = await Cart.findOneAndUpdate(
-            { memberRef: req.params.id },
+            qMatch,
             {
                 $set: {
                     pickupDateTime,
                     deliveryDate,
-                },
-                $setOnInsert: {
-                    memberRef: req.params.id,
                 },
                 $push: {
                     items: { $each: dataItems },
