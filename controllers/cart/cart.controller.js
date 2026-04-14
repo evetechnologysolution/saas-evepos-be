@@ -26,15 +26,39 @@ export const getCartByMember = async (req, res) => {
 
 export const addItemToCart = async (req, res) => {
     try {
-        // Cek apakah items adalah array, jika bukan ubah menjadi array
-        const dataItems = Array.isArray(req.body.items) ? req.body.items : [req.body.items];
+        const { pickupDateTime, deliveryDate, items } = req.body;
+
+        if (!items) {
+            return res.status(400).json({ message: "Items is required" });
+        }
+
+        const dataItems = Array.isArray(items) ? items : [items];
+
+        const qMatch = {
+            memberRef: req.params.id,
+            ...(req.userData?.tenantRef && {
+                tenantRef: req.userData.tenantRef,
+            }),
+            ...(req.userData?.outletRef && {
+                outletRef: req.userData.outletRef,
+            }),
+        }
 
         const updatedCart = await Cart.findOneAndUpdate(
-            { memberRef: req.params.id }, // Find cart by member
+            qMatch,
             {
-                $push: { items: { $each: dataItems } }, // Add new item
+                $set: {
+                    pickupDateTime,
+                    deliveryDate,
+                },
+                $push: {
+                    items: { $each: dataItems },
+                },
             },
-            { upsert: true, new: true },
+            {
+                upsert: true,
+                new: true,
+            }
         );
 
         return res.status(200).json(updatedCart);
@@ -108,7 +132,13 @@ export const deleteItemFromCart = async (req, res) => {
 
 export const clearItemFromCart = async (req, res) => {
     try {
-        const updatedCart = await Cart.findOneAndUpdate({ memberRef: req.params.id }, { $set: { items: [] } }, { new: true });
+        const updatedCart = await Cart.findOneAndUpdate({ memberRef: req.params.id }, {
+            $set: {
+                pickupDateTime: null,
+                deliveryDate: null,
+                items: []
+            }
+        }, { new: true });
 
         return res.status(200).json(updatedCart);
     } catch (err) {

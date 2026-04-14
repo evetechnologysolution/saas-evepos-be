@@ -21,9 +21,11 @@ const DataSchema = mongoose.Schema(
         },
         pickupDateTime: {
             type: Date,
+            default: null
         },
         deliveryDate: {
             type: Date,
+            default: null
         },
         staff: {
             type: String,
@@ -130,6 +132,16 @@ const DataSchema = mongoose.Schema(
                             productionPrice: {
                                 type: Number,
                                 default: 0,
+                            },
+                            notes: {
+                                type: String,
+                                trim: true,
+                                default: "",
+                            },
+                            productionNotes: {
+                                type: String,
+                                trim: true,
+                                default: "",
                             },
                             qty: {
                                 type: Number,
