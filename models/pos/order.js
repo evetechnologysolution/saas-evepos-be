@@ -21,9 +21,11 @@ const DataSchema = mongoose.Schema(
         },
         pickupDateTime: {
             type: Date,
+            default: null
         },
         deliveryDate: {
             type: Date,
+            default: null
         },
         staff: {
             type: String,

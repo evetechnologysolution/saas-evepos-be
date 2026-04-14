@@ -8,6 +8,14 @@ const DataSchema = new mongoose.Schema(
             ref: "Members",
             required: true,
         },
+        pickupDateTime: {
+            type: Date,
+            default: null
+        },
+        deliveryDate: {
+            type: Date,
+            default: null
+        },
         items: [
             {
                 id: {
