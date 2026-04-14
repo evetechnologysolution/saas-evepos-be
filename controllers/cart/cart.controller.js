@@ -43,7 +43,6 @@ export const addItemToCart = async (req, res) => {
                 },
                 $setOnInsert: {
                     memberRef: req.params.id,
-                    items: [],
                 },
                 $push: {
                     items: { $each: dataItems },
