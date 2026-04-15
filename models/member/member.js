@@ -61,6 +61,7 @@ const DataSchema = new mongoose.Schema(
         resetToken: { type: String, default: "" },
         resetTokenExpiry: { type: Date },
         isVerified: { type: Boolean, default: false },
+        isActive: { type: Boolean, default: true },
         tenantRef: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Tenants",
