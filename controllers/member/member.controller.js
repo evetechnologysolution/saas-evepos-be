@@ -9,7 +9,7 @@ import { convertToE164 } from "../../lib/textSetting.js";
 // GETTING ALL THE DATA
 export const getAllMember = async (req, res) => {
     try {
-        const { page, perPage, search } = req.query;
+        const { page, perPage, search, status } = req.query;
         let qMatch = {};
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
@@ -29,6 +29,20 @@ export const getAllMember = async (req, res) => {
                     },
                     { email: { $regex: search, $options: "i" } },
                 ], // option i for case insensitivity to match upper and lower cases.
+            };
+        }
+
+        if (status === "active") {
+            qMatch = {
+                ...qMatch,
+                isActive: { $eq: true },
+            };
+        }
+
+        if (["inactive", "nonactive", "notactive"].includes(status)) {
+            qMatch = {
+                ...qMatch,
+                isActive: { $ne: true },
             };
         }
 
