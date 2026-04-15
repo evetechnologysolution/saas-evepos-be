@@ -1198,6 +1198,8 @@ export const addOrder = async (req, res) => {
 
                     // kirim email + pusher parallel
                     await Promise.allSettled([sendOrderMail(newObj), pusherNotif(channel, event, notifPayload)]);
+                    // const a = await sendOrderMail(newObj);
+                    // console.log(a)
                 } catch (err) {
                     console.error("Notification error:", err.message);
                 }
