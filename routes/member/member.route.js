@@ -31,7 +31,7 @@ router.post("/check", checkMember);
 router.post("/v2/check", checkMemberV2);
 
 // UPDATE A SPECIFIC DATA
-router.patch("/:id", isAuthMember, editMember);
+router.patch("/:id", isAuth, editMember);
 
 // UPDATE PASSWORD
 router.patch("/change-password/:id", isAuthMember, changeMemberPassword);
