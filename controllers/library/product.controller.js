@@ -8,7 +8,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllRawProduct = async (req, res) => {
     try {
-        const { category, subcategory, sort } = req.query;
+        const { category, subcategory, onweb, sort } = req.query;
         let qMatch = {};
 
         if (req.userData) {
@@ -44,6 +44,14 @@ export const getAllRawProduct = async (req, res) => {
             } else {
                 qMatch.subcategory = { $in: filteredSub };
             }
+        }
+
+        if (onweb === "yes") {
+            qMatch.showOnWeb = { $eq: true };
+        }
+
+        if (onweb === "no") {
+            qMatch.showOnWeb = { $ne: true };
         }
 
         var d = new Date();
@@ -254,7 +262,7 @@ export const getAllRawProduct = async (req, res) => {
 // GETTING ALL THE DATA
 export const getAllProduct = async (req, res) => {
     try {
-        const { page, perPage, search, sort } = req.query;
+        const { page, perPage, search, onweb, sort } = req.query;
         let qMatch = {};
 
         if (req.userData) {
@@ -267,6 +275,14 @@ export const getAllProduct = async (req, res) => {
                 ...qMatch,
                 name: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
+        }
+
+        if (onweb === "yes") {
+            qMatch.showOnWeb = { $eq: true };
+        }
+
+        if (onweb === "no") {
+            qMatch.showOnWeb = { $ne: true };
         }
 
         let sortObj = { name: 1 }; // default

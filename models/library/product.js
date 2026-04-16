@@ -122,6 +122,10 @@ const DataSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    showOnWeb: {
+      type: Boolean,
+      default: false,
+    },
     tenantRef: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenants",
