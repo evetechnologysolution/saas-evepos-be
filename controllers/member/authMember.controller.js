@@ -61,7 +61,7 @@ export const loginMember = async (req, res) => {
         query.isVerified = true;
 
         const memberExist = await Member.findOne(query).populate({ path: "tenantRef", select: "isEvewash" }).lean();
-        if (!memberExist || !memberExist?.tenantRef?.isEvewash) return res.status(400).json({ message: "Member not found" });
+        if (!memberExist || !memberExist?.tenantRef?.isEvewash) return res.status(400).json({ message: "Akun belum terdaftar, silakan klik daftar akun terlebih dahulu." });
 
         const validPassword = await bcrypt.compare(req.body.password, memberExist.password);
         if (!validPassword) return res.status(400).json({ message: "Invalid password" });
