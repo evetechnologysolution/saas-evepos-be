@@ -94,6 +94,10 @@ const DataSchema = mongoose.Schema(
                     lowercase: true,
                     default: "pcs",
                 },
+                baseTime: {
+                    type: Number,
+                    default: 0,
+                },
                 promotionType: {
                     type: Number,
                     default: 0,
@@ -182,6 +186,10 @@ const DataSchema = mongoose.Schema(
             default: 0,
         },
         deliveryPrice: {
+            type: Number,
+            default: 0,
+        },
+        deliveryPriceDisc: {
             type: Number,
             default: 0,
         },

@@ -118,6 +118,10 @@ const DataSchema = mongoose.Schema(
         default: 0,
       },
     },
+    baseTime: {
+      type: Number,
+      default: 0,
+    },
     isRecommended: {
       type: Boolean,
       default: false,
