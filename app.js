@@ -202,6 +202,7 @@ import bannerRoute from "./routes/banner/banner.route.js";
 
 // global discount
 import discountRoute from "./routes/globalDiscount/discount.route.js";
+import deliveryDiscountRoute from "./routes/globalDiscount/deliveryDiscount.route.js";
 
 // help
 import helpRoute from "./routes/help.route.js";
@@ -298,6 +299,7 @@ app.use("/api/gmap", gmapRoute);
 
 // global discount
 app.use("/api/discount", discountRoute);
+app.use("/api/delivery-discount", deliveryDiscountRoute);
 
 // help
 app.use("/api/help", helpRoute);

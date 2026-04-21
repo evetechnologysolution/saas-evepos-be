@@ -185,6 +185,10 @@ const DataSchema = mongoose.Schema(
             type: Number,
             default: 0,
         },
+        deliveryPriceDisc: {
+            type: Number,
+            default: 0,
+        },
         voucherDiscPrice: {
             type: Number,
             default: 0,

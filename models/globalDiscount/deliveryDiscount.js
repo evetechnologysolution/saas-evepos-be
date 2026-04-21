@@ -17,7 +17,7 @@ const DataSchema = mongoose.Schema({
     },
     name: {
         type: String,
-        default: "Global Discount",
+        default: "Delivery Discount",
         trim: true
     },
     amount: {
@@ -64,4 +64,4 @@ DataSchema.pre("findOneAndUpdate", function (next) {
 
 DataSchema.index({ tenantRef: 1, outletRef: 1 });
 
-export default mongoose.model("Discounts", DataSchema);
+export default mongoose.model("deliveryDiscounts", DataSchema);
