@@ -604,12 +604,10 @@ export const getPaidOrder = async (req, res) => {
     try {
         const { page, perPage, search, start, end, paidStart, paidEnd, sort } = req.query;
 
-        // let qMatch = {
-        //     status: { $in: [/^paid$/i, /^refund$/i] },
-        // };
         let qMatch = {
+            // status: { $in: [/^paid$/i, /^refund$/i] },
             status: { $in: ["paid", "refund"] }
-        }
+        };
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
@@ -702,12 +700,10 @@ export const getPaidOrder = async (req, res) => {
 export const getCloseCashierOrder = async (req, res) => {
     try {
         const { start, end } = req.query;
-        // let qMatch = {
-        //     status: { $in: [/^paid$/i, /^refund$/i] },
-        // };
         let qMatch = {
+            // status: { $in: [/^paid$/i, /^refund$/i] },
             status: { $in: ["paid", "refund"] }
-        }
+        };
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
@@ -763,10 +759,8 @@ export const getCloseCashierOrder = async (req, res) => {
 export const getExportOrder = async (req, res) => {
     try {
         const { search, status, start, end, paidStart, paidEnd, sort } = req.query;
-        // let qMatch = {
-        //     status: { $in: [/^paid$/i, /^refund$/i] },
-        // };
         let qMatch = {
+            // status: { $in: [/^paid$/i, /^refund$/i] },
             status: { $nin: "backlog" }
         };
 
