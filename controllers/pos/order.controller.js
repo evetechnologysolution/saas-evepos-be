@@ -766,7 +766,9 @@ export const getExportOrder = async (req, res) => {
         // let qMatch = {
         //     status: { $in: [/^paid$/i, /^refund$/i] },
         // };
-        let qMatch = {};
+        let qMatch = {
+            status: { $nin: "backlog" }
+        };
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
