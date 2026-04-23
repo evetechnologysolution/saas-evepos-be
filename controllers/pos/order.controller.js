@@ -604,9 +604,12 @@ export const getPaidOrder = async (req, res) => {
     try {
         const { page, perPage, search, start, end, paidStart, paidEnd, sort } = req.query;
 
+        // let qMatch = {
+        //     status: { $in: [/^paid$/i, /^refund$/i] },
+        // };
         let qMatch = {
-            status: { $in: [/^paid$/i, /^refund$/i] },
-        };
+            status: { $in: ["paid", "refund"] }
+        }
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
@@ -620,7 +623,15 @@ export const getPaidOrder = async (req, res) => {
                 $or: [
                     ...(fixedId ? [{ _id: fixedId }] : []),
                     { orderId: { $regex: search, $options: "i" } },
-                    { tableName: { $regex: search, $options: "i" } },
+                    { "customer.memberId": { $regex: search, $options: "i" } },
+                    { "customer.name": { $regex: search, $options: "i" } },
+                    {
+                        "customer.phone": {
+                            $regex: isNaN(search) ? search : convertToE164(search),
+                            $options: "i",
+                        },
+                    },
+                    { "customer.email": { $regex: search, $options: "i" } },
                 ], // option i for case insensitivity to match upper and lower cases.
             };
         }
@@ -691,9 +702,13 @@ export const getPaidOrder = async (req, res) => {
 export const getCloseCashierOrder = async (req, res) => {
     try {
         const { start, end } = req.query;
+        // let qMatch = {
+        //     status: { $in: [/^paid$/i, /^refund$/i] },
+        // };
         let qMatch = {
-            status: { $in: [/^paid$/i, /^refund$/i] },
-        };
+            status: { $in: ["paid", "refund"] }
+        }
+
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
@@ -747,13 +762,35 @@ export const getCloseCashierOrder = async (req, res) => {
 // GETTING EXPORT ORDER
 export const getExportOrder = async (req, res) => {
     try {
-        const { search, start, end, paidStart, paidEnd, sort } = req.query;
-        let qMatch = {
-            status: { $in: [/^paid$/i, /^refund$/i] },
-        };
+        const { search, status, start, end, paidStart, paidEnd, sort } = req.query;
+        // let qMatch = {
+        //     status: { $in: [/^paid$/i, /^refund$/i] },
+        // };
+        let qMatch = {};
+
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+        }
+        if (status) {
+            const fixStatus = status.replace(":ne", "").trim();
+            if (fixStatus) {
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
+
+                // tambahkan "refund" jika ada "paid"
+                if (fixStatusArray.includes("paid")) {
+                    fixStatusArray = [...new Set([...fixStatusArray, "refund"])];
+                }
+
+                if (status.includes(":ne")) {
+                    qMatch.status = { $nin: [...fixStatusArray, "backlog"] };
+                } else {
+                    qMatch.status = { $in: fixStatusArray };
+                }
+            }
         }
         if (search) {
             const fixedId = mongoose.Types.ObjectId.isValid(search) ? search : null;
@@ -763,7 +800,15 @@ export const getExportOrder = async (req, res) => {
                 $or: [
                     ...(fixedId ? [{ _id: fixedId }] : []),
                     { orderId: { $regex: search, $options: "i" } },
-                    { tableName: { $regex: search, $options: "i" } },
+                    { "customer.memberId": { $regex: search, $options: "i" } },
+                    { "customer.name": { $regex: search, $options: "i" } },
+                    {
+                        "customer.phone": {
+                            $regex: isNaN(search) ? search : convertToE164(search),
+                            $options: "i",
+                        },
+                    },
+                    { "customer.email": { $regex: search, $options: "i" } },
                 ], // option i for case insensitivity to match upper and lower cases.
             };
         }
