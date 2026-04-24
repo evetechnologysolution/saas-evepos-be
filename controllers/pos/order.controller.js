@@ -1098,7 +1098,7 @@ export const addOrder = async (req, res) => {
         // Cek dan simpan penggunaan voucher jika ada
         if (checkMember && Array.isArray(objData.voucherCode) && objData.voucherCode.length > 0) {
             await MemberVoucher.updateMany(
-                { voucherCode: { $in: objData.voucherCode } },
+                { voucherCode: { $in: objData.voucherCode }, isUsed: false },
                 { $set: { isUsed: true, usedAt: new Date() } },
                 { session },
             );
@@ -1356,19 +1356,17 @@ export const editOrder = async (req, res) => {
 
         // ================= VOUCHER =================
         if (objData.voucherCode) {
-            if (!exist.voucherCode.includes(objData.voucherCode)) {
-                if (typeof objData.voucherCode === "string" && objData.voucherCode.trim()) {
-                    objData.voucherCode = [objData.voucherCode];
-                } else if (!Array.isArray(objData.voucherCode)) {
-                    objData.voucherCode = [];
-                }
+            if (typeof objData.voucherCode === "string" && objData.voucherCode.trim() !== "") {
+                objData.voucherCode = [objData.voucherCode];
+            } else if (!Array.isArray(objData.voucherCode)) {
+                objData.voucherCode = [];
             }
         }
 
         // Cek dan simpan penggunaan voucher jika ada
         if (checkMember && Array.isArray(objData.voucherCode) && objData.voucherCode.length > 0) {
             await MemberVoucher.updateMany(
-                { voucherCode: { $in: objData.voucherCode } },
+                { voucherCode: { $in: objData.voucherCode }, isUsed: false },
                 { $set: { isUsed: true, usedAt: new Date() } },
                 { session },
             );
