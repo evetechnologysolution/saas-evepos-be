@@ -1098,7 +1098,7 @@ export const addOrder = async (req, res) => {
         // Cek dan simpan penggunaan voucher jika ada
         if (checkMember && Array.isArray(objData.voucherCode) && objData.voucherCode.length > 0) {
             await MemberVoucher.updateMany(
-                { voucherCode: { $in: objData.voucherCode } },
+                { voucherCode: { $in: objData.voucherCode }, isUsed: false },
                 { $set: { isUsed: true, usedAt: new Date() } },
                 { session },
             );
@@ -1356,19 +1356,17 @@ export const editOrder = async (req, res) => {
 
         // ================= VOUCHER =================
         if (objData.voucherCode) {
-            if (!exist.voucherCode.includes(objData.voucherCode)) {
-                if (typeof objData.voucherCode === "string" && objData.voucherCode.trim()) {
-                    objData.voucherCode = [objData.voucherCode];
-                } else if (!Array.isArray(objData.voucherCode)) {
-                    objData.voucherCode = [];
-                }
+            if (typeof objData.voucherCode === "string" && objData.voucherCode.trim() !== "") {
+                objData.voucherCode = [objData.voucherCode];
+            } else if (!Array.isArray(objData.voucherCode)) {
+                objData.voucherCode = [];
             }
         }
 
         // Cek dan simpan penggunaan voucher jika ada
         if (checkMember && Array.isArray(objData.voucherCode) && objData.voucherCode.length > 0) {
             await MemberVoucher.updateMany(
-                { voucherCode: { $in: objData.voucherCode } },
+                { voucherCode: { $in: objData.voucherCode }, isUsed: false },
                 { $set: { isUsed: true, usedAt: new Date() } },
                 { session },
             );
@@ -1564,31 +1562,103 @@ export const generatePoint = async (req, res) => {
 };
 
 export const editOrderRaw = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const { id } = req.params;
 
         let qMatch = {
             $or: [
-                ...(mongoose.Types.ObjectId.isValid(id)
-                    ? [{ _id: id }]
-                    : []),
+                ...(mongoose.Types.ObjectId.isValid(id) ? [{ _id: id }] : []),
                 { tempId: id },
                 { orderId: id },
-            ]
+            ],
         };
 
-        // multi-tenant protection
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
         }
 
-        const updatedData = await Order.updateOne(qMatch, {
-            $set: req.body,
-        });
+        const existData = await Order.findOne(qMatch).session(session);
 
-        return res.json(updatedData);
+        if (!existData) {
+            await session.abortTransaction();
+            session.endSession();
+            return errorResponse(res, {
+                statusCode: 404,
+                code: "DATA_NOT_FOUND",
+                message: "Data not found!",
+            });
+        }
+
+        const isOnline = !!existData?.customer?.address;
+
+        const promises = [];
+
+        // hanya jalan kalau benar-benar berubah
+        if (
+            existData?.status === "paid" &&
+            req.body?.status &&
+            ["unpaid", "cancel"].includes(req.body.status)
+        ) {
+            promises.push(
+                BalanceHistory.deleteOne({ orderRef: existData._id }).session(session),
+                PointHistory.deleteOne({ orderRef: existData._id }).session(session)
+            );
+
+            if (existData?.voucherCode?.length) {
+                promises.push(
+                    MemberVoucher.updateMany(
+                        { voucherCode: { $in: existData.voucherCode } },
+                        { $set: { isUsed: false, usedAt: null } },
+                        { session }
+                    )
+                );
+            }
+
+            if (isOnline || existData?.isScan) {
+                const spendMoney = existData?.billedAmount || 0;
+                const points = checkPoint(existData?.billedAmount);
+
+                promises.push(
+                    Member.findOneAndUpdate(
+                        { memberId: existData?.customer?.memberId },
+                        {
+                            $inc: {
+                                spendMoney: -spendMoney,
+                                point: -points,
+                            },
+                        },
+                        { session }
+                    )
+                );
+            }
+        }
+
+        // update order (pakai _id biar aman)
+        promises.push(
+            Order.updateOne(
+                { _id: existData._id },
+                { $set: req.body },
+                { session }
+            )
+        );
+
+        await Promise.all(promises);
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.json({
+            success: true,
+            message: "Order updated successfully",
+        });
     } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+
         return errorResponse(res, {
             statusCode: 500,
             code: "SERVER_ERROR",

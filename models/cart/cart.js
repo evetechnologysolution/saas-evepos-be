@@ -42,6 +42,10 @@ const DataSchema = new mongoose.Schema(
                         type: Number,
                         default: 0,
                     },
+                    baseTime: {
+                        type: Number,
+                        default: 0,
+                    },
                     image: {
                         type: String,
                         required: false,
