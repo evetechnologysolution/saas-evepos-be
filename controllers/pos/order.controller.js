@@ -1598,7 +1598,11 @@ export const editOrderRaw = async (req, res) => {
         const promises = [];
 
         // hanya jalan kalau benar-benar berubah
-        if (existData.status === "paid" && req.body.status === "unpaid") {
+        if (
+            existData?.status === "paid" &&
+            req.body?.status &&
+            ["unpaid", "cancel"].includes(req.body.status)
+        ) {
             promises.push(
                 BalanceHistory.deleteOne({ orderRef: existData._id }).session(session),
                 PointHistory.deleteOne({ orderRef: existData._id }).session(session)
