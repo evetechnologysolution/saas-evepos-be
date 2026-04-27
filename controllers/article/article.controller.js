@@ -63,7 +63,7 @@ export const getBlogByAuthor = async (req, res) => {
         const skip = (page - 1) * limit;
 
         const pipeline = [
-            { $match: { author: mongoose.Types.ObjectId(authorId), isActive: true } },
+            { $match: { author: new mongoose.Types.ObjectId(String(authorId)), isActive: true } },
             {
                 $lookup: {
                     from: "users",
@@ -96,7 +96,7 @@ export const getBlogByAuthor = async (req, res) => {
         const blogs = await Blog.aggregate(pipeline);
 
         const totalDocuments = await Blog.countDocuments({
-            author: mongoose.Types.ObjectId(authorId),
+            author: new mongoose.Types.ObjectId(String(authorId)),
             isActive: true,
         });
 
