@@ -26,13 +26,15 @@ jobs:
                       git fetch origin
                       git reset --hard origin/master
 
-                      echo "== INSTALL =="
+                      echo "== CLEAN INSTALL =="
 
+                      rm -rf node_modules package-lock.json
                       npm install --prefer-offline --no-audit
 
                       echo "== RESTART PM2 =="
 
-                      pm2 reload app || pm2 start app.js --name app
+                      pm2 delete api-saas || true
+                      pm2 reload api-saas || pm2 start app.js --name api-saas
 
                       pm2 save
 
