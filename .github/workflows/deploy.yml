@@ -1,0 +1,31 @@
+name: Deploy to Droplet
+
+on:
+    push:
+        branches:
+            - master
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Deploy via SSH
+              uses: appleboy/ssh-action@v1.0.0
+              with:
+                  host: ${{ secrets.DROPLET_HOST }}
+                  username: root
+                  key: ${{ secrets.DROPLET_SSH_KEY }}
+                  script: |
+                      set -e
+
+                      cd /root/saas-evepos-be
+
+                      git fetch origin
+                      git reset --hard origin/master
+
+                      npm ci || npm install
+
+                      pm2 reload app || pm2 start app.js --name app
+
+                      pm2 save
