@@ -174,7 +174,7 @@ export const getAllRawProduct = async (req, res) => {
             {
                 $project: {
                     _id: 1,
-                    date: 1,
+                    createdAt: 1,
                     name: 1,
                     image: 1,
                     price: 1,
@@ -189,6 +189,7 @@ export const getAllRawProduct = async (req, res) => {
                     isRecommended: 1,
                     isAvailable: 1,
                     minimumOrderQty: 1,
+                    baseTime: 1,
                     category: {
                         _id: "$category._id",
                         name: "$category.name",
