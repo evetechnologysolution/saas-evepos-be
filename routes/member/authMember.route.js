@@ -48,10 +48,12 @@ router.get(
 router.get(
     "/google/callback",
     passport.authenticate("google", {
-        failureRedirect: `${isProduction ? process.env.WEB_URL : process.env.WEB_URL_DEV}/login`,
+        // failureRedirect: `${isProduction ? process.env.WEB_URL : process.env.WEB_URL_DEV}/login`,
+        failureRedirect: `${process.env.WEB_URL}/login`,
     }),
     (req, res) => {
-        res.redirect(`${isProduction ? process.env.WEB_URL : process.env.WEB_URL_DEV}/dashboard?gm=1&t=${req.user.token}`);
+        // res.redirect(`${isProduction ? process.env.WEB_URL : process.env.WEB_URL_DEV}/dashboard?gm=1&t=${req.user.token}`);
+        res.redirect(`${process.env.WEB_URL}/dashboard?gm=1&t=${req.user.token}`);
     },
 );
 
