@@ -28,7 +28,7 @@ jobs:
 
                       echo "== INSTALL =="
 
-                      npm ci || npm install
+                      npm install --prefer-offline --no-audit
 
                       echo "== RESTART PM2 =="
 
