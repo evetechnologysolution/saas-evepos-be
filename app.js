@@ -45,6 +45,7 @@ const allowedOrigins = [
     "https://saas-evepos.vercel.app",
     "https://evepos-saas-dev.vercel.app",
     "https://evepos-saas.vercel.app",
+    "https://evepos-saas-ocean.vercel.app",
     "https://evepos-office-dev.vercel.app",
     "https://evepos-office.vercel.app",
     "https://api.xendit.co",
