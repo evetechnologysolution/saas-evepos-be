@@ -3,6 +3,7 @@ import mongoosePaginate from "mongoose-paginate-v2";
 import mongooseLeanVirtuals from "mongoose-lean-virtuals";
 import { capitalizeFirstLetter, convertToE164 } from "../../lib/textSetting.js";
 import { generateRandomOrderId } from "../../lib/generateRandom.js";
+import { generateListSpk } from "../../lib/generateSpkOrder.js";
 
 const DataSchema = mongoose.Schema(
     {
@@ -169,6 +170,82 @@ const DataSchema = mongoose.Schema(
                 },
             },
         ],
+        listSpk: {
+            type: [{
+                spkId: {
+                    type: String,
+                    default: ""
+                },
+                id: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "Products",
+                    default: null,
+                    set: (val) => (val === "" ? null : val),
+                },
+                name: {
+                    type: String,
+                    default: "",
+                },
+                image: {
+                    type: String,
+                    default: "",
+                },
+                qty: {
+                    type: Number,
+                    default: 0,
+                },
+                category: {
+                    type: String,
+                    default: "",
+                },
+                unit: {
+                    type: String,
+                    lowercase: true,
+                    default: "pcs",
+                },
+                variant: {
+                    type: [
+                        {
+                            name: {
+                                type: String,
+                            },
+                            option: {
+                                type: String,
+                            },
+                            notes: {
+                                type: String,
+                                trim: true,
+                                default: "",
+                            },
+                            productionNotes: {
+                                type: String,
+                                trim: true,
+                                default: "",
+                            },
+                            qty: {
+                                type: Number,
+                                default: 1,
+                            },
+                        },
+                    ],
+                    default: [],
+                },
+                notes: {
+                    type: String,
+                    default: "",
+                },
+                isPickedUp: {
+                    type: Boolean,
+                    default: false,
+                },
+                pickupData: {
+                    date: { type: Date, default: null },
+                    by: { type: String, default: "" },
+                },
+            }
+            ],
+            default: []
+        },
         orderType: {
             type: String,
             default: "onsite",
@@ -314,6 +391,32 @@ const DataSchema = mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        transfer: {
+            type: {
+                toOutletRef: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "Outlets",
+                    default: null,
+                    set: (val) => (val === "" ? null : val),
+                },
+                createdAt: {
+                    type: Date,
+                    default: null,
+                },
+                closedAt: {
+                    type: Date,
+                    default: null,
+                },
+                status: {
+                    type: String,
+                    enum: ["open", "closed"],
+                    default: null,
+                    lowercase: true,
+                    trim: true,
+                },
+            },
+            default: null,
+        },
         tenantRef: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Tenants",
@@ -335,6 +438,12 @@ DataSchema.pre("save", function (next) {
         const number = generateRandomOrderId(5);
 
         this.orderId = number;
+    }
+    // ================= GENERATE LIST SPK =================
+    if (!this?.listSpk?.length) {
+        if (this.orders && Array.isArray(this.orders)) {
+            this.listSpk = generateListSpk(this.orders, this.orderId);
+        }
     }
     if (this.orderType === "delivery") {
         this.bookingDate = new Date();
