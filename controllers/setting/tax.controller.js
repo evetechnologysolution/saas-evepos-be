@@ -26,15 +26,27 @@ export const getAllTax = async (req, res) => {
 export const saveTax = async (req, res) => {
     try {
         let qMatch = { _id: { $ne: null } };
+        let objData = req.body;
 
         if (req.userData) {
-            qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            // ================= NORMALIZE outletRef =================
+            if (!objData.outletRef) {
+                // tidak dikirim → pakai dari user
+                objData.outletRef = [req.userData?.outletRef];
+            } else if (!Array.isArray(objData.outletRef)) {
+                // dikirim tapi bukan array → bungkus jadi array
+                objData.outletRef = [objData.outletRef];
+            }
+
+            qMatch = {
+                tenantRef: req.userData?.tenantRef,
+                outletRef: { $in: objData.outletRef },
+            };
         }
 
         const data = await Tax.findOneAndUpdate(
             qMatch,
-            req.body,
+            objData,
             { new: true, upsert: true },
         );
         return res.json(data);

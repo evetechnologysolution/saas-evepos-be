@@ -409,7 +409,9 @@ export const addProduct = async (req, res) => {
             if (req.userData) {
                 objData.tenantRef = req.userData?.tenantRef;
                 if (req.userData?.outletRef) {
-                    objData.outletRef = [req.userData.outletRef];
+                    if (!Array.isArray(objData.outletRef)) {
+                        objData.outletRef = [req.userData.outletRef];
+                    }
                 }
             }
 
