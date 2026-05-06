@@ -38,6 +38,9 @@ export const getAllOrder = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         if (search) {
@@ -193,6 +196,9 @@ export const getDeliveryOrder = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         if (search) {
@@ -328,6 +334,9 @@ export const getTrackOrder = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         if (search) {
@@ -454,6 +463,9 @@ export const getCountTrackOrder = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         const dStart = start ? new Date(start) : new Date();
@@ -529,6 +541,9 @@ export const getOrderByMember = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         if (search) {
@@ -612,6 +627,9 @@ export const getPaidOrder = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         if (search) {
             const fixedId = mongoose.Types.ObjectId.isValid(search) ? search : null;
@@ -708,6 +726,9 @@ export const getCloseCashierOrder = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         if (start && end) {
             qMatch = {
@@ -767,6 +788,9 @@ export const getExportOrder = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         if (status) {
             const fixStatus = status.replace(":ne", "").trim();
@@ -871,6 +895,9 @@ export const getSavedBill = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const listofData = await Order.find(qMatch).lean();
         return res.json(listofData);
@@ -893,6 +920,9 @@ export const getUnfinishedOrder = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         const exists = await Order.exists(qMatch);
@@ -919,6 +949,9 @@ export const getOrderById = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const spesificData = await Order.findOne(qMatch)
             .populate([
@@ -971,6 +1004,9 @@ export const getOrderProgressById = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const spesificData = await Order.findOne(qMatch)
             .select("orderId date customer orders progressRef")
@@ -1510,6 +1546,9 @@ export const generatePoint = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             // qMatch.outletRef = req.userData?.outletRef;
+            // if (req?.query?.outletRef) {
+            //     qMatch.outletRef = req?.query?.outletRef;
+            // }
         }
 
         const check = await Order.findOne(qMatch);
@@ -1579,6 +1618,9 @@ export const editOrderRaw = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         const existData = await Order.findOne(qMatch).session(session);
@@ -1684,6 +1726,9 @@ export const editPrintCount = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const updatedData = await Order.updateOne(qMatch, {
             $inc: { printCount: 1 },
@@ -1720,6 +1765,9 @@ export const editPrintLaundry = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const updatedData = await Order.updateOne(qMatch, {
             $inc: { printLaundry: 1 },
@@ -1747,6 +1795,9 @@ export const deleteOrder = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const deletedData = await Order.deleteOne(qMatch);
         return res.json(deletedData);

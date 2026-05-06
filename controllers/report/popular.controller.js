@@ -81,6 +81,9 @@ export const getPopularProduct = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         const result = await Order.aggregate([
@@ -219,6 +222,9 @@ export const getPopularProductByCategory = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         /* =======================

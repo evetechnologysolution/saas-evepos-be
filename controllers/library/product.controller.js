@@ -14,6 +14,9 @@ export const getAllRawProduct = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         if (category) {
@@ -269,6 +272,9 @@ export const getAllProduct = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         if (search) {
@@ -339,6 +345,9 @@ export const getProductById = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const spesificData = await Product.findOne(qMatch).lean();
         return res.json(spesificData);
@@ -366,6 +375,9 @@ export const reorderProduct = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         const bulkOps = items.map((item) => ({
@@ -489,6 +501,9 @@ export const editProduct = async (req, res) => {
             if (req.userData) {
                 qMatch.tenantRef = req.userData?.tenantRef;
                 qMatch.outletRef = req.userData?.outletRef;
+                if (req?.query?.outletRef) {
+                    qMatch.outletRef = req?.query?.outletRef;
+                }
             }
             let objData = req.body;
 
@@ -547,6 +562,9 @@ export const deleteProduct = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         // Check image & delete image
         const existData = await Product.findOne(qMatch).lean();

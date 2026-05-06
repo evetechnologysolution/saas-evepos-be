@@ -27,6 +27,9 @@ export const getAllData = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         if (search) {
             const fixedId = mongoose.Types.ObjectId.isValid(search) ? search : null;
@@ -1269,6 +1272,9 @@ export const getDataById = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const spesificData = await Progress.findOne(qMatch)
             .populate([

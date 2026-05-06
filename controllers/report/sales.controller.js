@@ -85,6 +85,9 @@ export const getSales = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         /* =======================
@@ -143,10 +146,10 @@ export const getSales = async (req, res) => {
                     filter === "monthly"
                         ? label[row - 1]
                         : filter === "thisWeek"
-                          ? label[row - 1]
-                          : filter === "date"
-                            ? formatDate(row)
-                            : `${row}`;
+                            ? label[row - 1]
+                            : filter === "date"
+                                ? formatDate(row)
+                                : `${row}`;
 
                 const i = initialData.label.indexOf(key);
                 if (i !== -1) target.data[i] = order.value[idx];

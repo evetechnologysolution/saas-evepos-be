@@ -11,6 +11,9 @@ export const getAllSubcategory = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         const listofData = await Subcategory.find(qMatch).sort({ listNumber: 1 }).lean();
@@ -33,6 +36,9 @@ export const getPaginateSubcategory = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         if (search) {
@@ -73,6 +79,9 @@ export const getSubcategoryById = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const spesificData = await Subcategory.findOne(qMatch).lean();
         return res.json(spesificData);
@@ -169,6 +178,9 @@ export const editSubcategory = async (req, res) => {
             if (req.userData) {
                 qMatch.tenantRef = req.userData?.tenantRef;
                 qMatch.outletRef = req.userData?.outletRef;
+                if (req?.query?.outletRef) {
+                    qMatch.outletRef = req?.query?.outletRef;
+                }
             }
             let objData = req.body;
             if (req.file) {
@@ -209,6 +221,9 @@ export const deleteSubcategory = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         const existData = await Subcategory.findOne(qMatch).lean();

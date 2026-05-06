@@ -29,6 +29,9 @@ export const getAllUser = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         if (search) {
@@ -244,6 +247,9 @@ export const editUser = async (req, res) => {
             if (req.userData) {
                 qMatch.tenantRef = req.userData?.tenantRef;
                 // qMatch.outletRef = req.userData?.outletRef;
+                // if (req?.query?.outletRef) {
+                //     qMatch.outletRef = req?.query?.outletRef;
+                // }
             }
 
             let objData = req.body;
@@ -385,6 +391,9 @@ export const changeUserPassword = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             // qMatch.outletRef = req.userData?.outletRef;
+            // if (req?.query?.outletRef) {
+            //     qMatch.outletRef = req?.query?.outletRef;
+            // }
         }
         // Chek user
         const userExist = await User.findOne(qMatch).lean();
@@ -429,6 +438,9 @@ export const deleteUser = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             // qMatch.outletRef = req.userData?.outletRef;
+            // if (req?.query?.outletRef) {
+            //     qMatch.outletRef = req?.query?.outletRef;
+            // }
         }
 
         const existData = await User.findOne(qMatch);

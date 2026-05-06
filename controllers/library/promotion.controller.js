@@ -18,6 +18,9 @@ export const getAllPromotion = async (req, res) => {
             if (req.userData?.outletRef) {
                 qMatch.outletRef = req.userData?.outletRef;
             }
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         if (search) {
@@ -202,6 +205,9 @@ export const getPromotionById = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const spesificData = await Promotion.findOne(qMatch).lean();
         return res.json(spesificData);
@@ -342,6 +348,9 @@ export const editPromotion = async (req, res) => {
             if (req.userData) {
                 qMatch.tenantRef = req.userData?.tenantRef;
                 qMatch.outletRef = req.userData?.outletRef;
+                if (req?.query?.outletRef) {
+                    qMatch.outletRef = req?.query?.outletRef;
+                }
             }
             // Check if the promotion exists
             const exist = await Promotion.findOne(qMatch).lean();
@@ -444,6 +453,9 @@ export const deletePromotion = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         const existData = await Promotion.findOne(qMatch).lean();

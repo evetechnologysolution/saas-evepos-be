@@ -11,6 +11,9 @@ export const getAllCategory = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         const listofData = await Category.find(qMatch).sort({ listNumber: 1 }).lean();
@@ -33,6 +36,9 @@ export const getPaginateCategory = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         if (search) {
@@ -73,6 +79,9 @@ export const getCategoryById = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
         const spesificData = await Category.findOne(qMatch).lean();
         return res.json(spesificData);
@@ -172,6 +181,9 @@ export const editCategory = async (req, res) => {
             if (req.userData) {
                 qMatch.tenantRef = req.userData?.tenantRef;
                 qMatch.outletRef = req.userData?.outletRef;
+                if (req?.query?.outletRef) {
+                    qMatch.outletRef = req?.query?.outletRef;
+                }
             }
             let objData = req.body;
 
@@ -216,6 +228,10 @@ export const deleteCategory = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
+
         }
 
         const existData = await Category.findOne(qMatch).lean();

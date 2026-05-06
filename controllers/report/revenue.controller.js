@@ -76,6 +76,9 @@ export const getRevenue = async (req, res) => {
     if (req.userData) {
       qMatch.tenantRef = req.userData?.tenantRef;
       qMatch.outletRef = req.userData?.outletRef;
+      if (req?.query?.outletRef) {
+        qMatch.outletRef = req?.query?.outletRef;
+      }
     }
 
     const result = await Order.aggregate([
@@ -226,6 +229,11 @@ export const getRevenueV2 = async (req, res) => {
 
       qMatchExpense.tenantRef = req.userData?.tenantRef;
       qMatchExpense.outletRef = req.userData?.outletRef;
+
+      if (req?.query?.outletRef) {
+        qMatch.outletRef = req?.query?.outletRef;
+        qMatchExpense.outletRef = req?.query?.outletRef;
+      }
     }
 
     const [result, expenseResult] = await Promise.all([

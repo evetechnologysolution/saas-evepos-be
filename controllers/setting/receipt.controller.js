@@ -11,6 +11,9 @@ export const getAllReceipt = async (req, res) => {
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
             qMatch.outletRef = req.userData?.outletRef;
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+            }
         }
 
         const listofData = await Receipt.findOne(qMatch);
@@ -44,7 +47,9 @@ export const saveReceipt = async (req, res) => {
 
             if (req.userData) {
                 objData.tenantRef = req.userData?.tenantRef;
-                objData.outletRef = req.userData?.outletRef;
+                if (!objData?.outletRef) {
+                    objData.outletRef = req.userData?.outletRef;
+                }
             }
 
             if (req.file) {

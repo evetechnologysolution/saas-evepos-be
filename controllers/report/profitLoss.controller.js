@@ -33,6 +33,11 @@ export const getProfitLoss = async (req, res) => {
 
             qMatchExp.tenantRef = req.userData?.tenantRef;
             qMatchExp.outletRef = req.userData?.outletRef;
+
+            if (req?.query?.outletRef) {
+                qMatch.outletRef = req?.query?.outletRef;
+                qMatchExp.outletRef = req?.query?.outletRef;
+            }
         }
 
         const sales = await Order.aggregate([
