@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Setting from "../../models/setting/settings.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
@@ -8,9 +9,13 @@ export const getAllSetting = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 

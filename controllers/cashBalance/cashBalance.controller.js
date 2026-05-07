@@ -12,9 +12,13 @@ export const getAllBalance = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -429,7 +433,7 @@ export const getAllBalance = async (req, res) => {
 export const getCashFlow = async (req, res) => {
     try {
         const { start, end } = req.query;
-        const { tenantRef, outletRef } = req.userData || {};
+        const { tenantRef } = req.userData || {};
 
         // FORMAT DATE
         const dStart = new Date(start);
@@ -438,15 +442,23 @@ export const getCashFlow = async (req, res) => {
         const dEnd = new Date(end || start);
         dEnd.setHours(23, 59, 59, 999);
 
-        const qMatch = {
+        let qMatch = {
             isOpen: { $ne: true },
             startDate: {
                 $gte: dStart,
                 $lte: dEnd,
             },
             ...(tenantRef && { tenantRef }),
-            ...(outletRef && { outletRef }),
         };
+
+        const outletRef =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
+        if (outletRef != null) {
+            qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+        }
 
         const result = await Balance.aggregate([
             {
@@ -621,13 +633,21 @@ export const getCashFlow = async (req, res) => {
 
 export const getExistBalance = async (req, res) => {
     try {
-        const { tenantRef, outletRef } = req.userData || {};
-
-        const qMatch = {
+        const { tenantRef } = req.userData || {};
+        let qMatch = {
             isOpen: true,
             ...(tenantRef && { tenantRef }),
-            ...(outletRef && { outletRef }),
         };
+
+        const outletRef =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
+        if (outletRef != null) {
+            qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+        }
+
 
         const result = await Balance.aggregate([
             {
@@ -965,9 +985,13 @@ export const closeBalance = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -1031,9 +1055,13 @@ export const getBalanceById = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -1055,9 +1083,13 @@ export const editBalance = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -1081,9 +1113,13 @@ export const deleteBalance = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 

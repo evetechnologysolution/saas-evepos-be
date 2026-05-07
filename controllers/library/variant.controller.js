@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Variant from "../../models/library/variant.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
@@ -9,9 +10,13 @@ export const getAllVariant = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -48,9 +53,13 @@ export const getPaginateVariant = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -85,6 +94,7 @@ export const getPaginateVariant = async (req, res) => {
         }
 
         const options = {
+            populate: [{ path: "outletRef", select: "name isPrimary" }],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
@@ -106,9 +116,13 @@ export const getVariantById = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         const spesificData = await Variant.findOne(qMatch);
@@ -170,9 +184,13 @@ export const editVariant = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                // req.body?.outletRef ?? karena payload perlu simpan outletRef terbaru
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         const updatedData = await Variant.updateOne(qMatch, {
@@ -194,9 +212,13 @@ export const deleteVariant = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         const deletedData = await Variant.deleteOne(qMatch);

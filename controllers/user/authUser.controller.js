@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../../models/core/user.js";
 import Subs from "../../models/core/subscription.js";
+import Outlet from "../../models/core/outlet.js";
 import { sendUrlForgotPassword } from "../../lib/nodemailer.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
@@ -33,6 +34,17 @@ export const loginUser = async (req, res) => {
 
         const validPassword = await bcrypt.compare(req.body.password, userExist.password);
         if (!validPassword) return res.status(400).json({ message: "Invalid password" });
+
+        // check outletRef
+        let outletFinal = userExist?.outletRef || null;
+        if (!outletFinal) { // jika owner atau tidak memiliki outletRef
+            const outletResult = await Outlet.findOne({
+                tenantRef: userExist.tenantRef?._id,
+                isPrimary: true,
+            }).lean();
+            outletFinal = outletResult?._id || null;
+        }
+        userExist.outletRef = outletFinal;
 
         // ===== CEK SUBSCRIPTION =====
         const now = new Date();
@@ -101,6 +113,17 @@ export const getMyUser = async (req, res) => {
         if (!userExist) {
             return res.status(404).json({ message: "User not found" });
         }
+
+        // check outletRef
+        let outletFinal = userExist?.outletRef || null;
+        if (!outletFinal) { // jika owner atau tidak memiliki outletRef
+            const outletResult = await Outlet.findOne({
+                tenantRef: userExist.tenantRef?._id,
+                isPrimary: true,
+            }).lean();
+            outletFinal = outletResult?._id || null;
+        }
+        userExist.outletRef = outletFinal;
 
         // ===== CEK & UPDATE SUBSCRIPTION =====
         const now = new Date();

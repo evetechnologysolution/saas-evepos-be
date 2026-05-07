@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Order from "../../models/pos/order.js";
 import Expense from "../../models/expense/expense.js";
 import { getFirstAndLastDayOfWeek } from "../../lib/dateFormatter.js";
@@ -75,9 +76,13 @@ export const getRevenue = async (req, res) => {
 
     if (req.userData) {
       qMatch.tenantRef = req.userData?.tenantRef;
-      qMatch.outletRef = req.userData?.outletRef;
-      if (req?.query?.outletRef) {
-        qMatch.outletRef = req?.query?.outletRef;
+      const outletRef =
+        req.body?.outletRef ??
+        req.query?.outletRef ??
+        req.userData?.outletRef;
+
+      if (outletRef != null) {
+        qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
       }
     }
 
@@ -225,14 +230,16 @@ export const getRevenueV2 = async (req, res) => {
 
     if (req.userData) {
       qMatch.tenantRef = req.userData?.tenantRef;
-      qMatch.outletRef = req.userData?.outletRef;
-
       qMatchExpense.tenantRef = req.userData?.tenantRef;
-      qMatchExpense.outletRef = req.userData?.outletRef;
 
-      if (req?.query?.outletRef) {
-        qMatch.outletRef = req?.query?.outletRef;
-        qMatchExpense.outletRef = req?.query?.outletRef;
+      const outletRef =
+        req.body?.outletRef ??
+        req.query?.outletRef ??
+        req.userData?.outletRef;
+
+      if (outletRef != null) {
+        qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+        qMatchExpense.outletRef = new mongoose.Types.ObjectId(String(outletRef));
       }
     }
 

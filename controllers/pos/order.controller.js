@@ -37,9 +37,13 @@ export const getAllOrder = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -168,6 +172,7 @@ export const getAllOrder = async (req, res) => {
                         select: "fullname",
                     },
                 },
+                { path: "outletRef", select: "name isPrimary" }
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
@@ -195,9 +200,13 @@ export const getDeliveryOrder = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -333,9 +342,13 @@ export const getTrackOrder = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -462,9 +475,13 @@ export const getCountTrackOrder = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -540,9 +557,13 @@ export const getOrderByMember = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -626,9 +647,13 @@ export const getPaidOrder = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         if (search) {
@@ -725,9 +750,13 @@ export const getCloseCashierOrder = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         if (start && end) {
@@ -787,9 +816,13 @@ export const getExportOrder = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         if (status) {
@@ -894,9 +927,13 @@ export const getSavedBill = async (req, res) => {
         let qMatch = { status: "unpaid" };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         const listofData = await Order.find(qMatch).lean();
@@ -919,9 +956,13 @@ export const getUnfinishedOrder = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -948,9 +989,24 @@ export const getOrderById = async (req, res) => {
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            // if (outletRef != null) {
+            //     qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            // }
+            if (outletRef != null) {
+                const outletObjectId = new mongoose.Types.ObjectId(String(outletRef));
+                qMatch.$and = [
+                    {
+                        $or: [
+                            { outletRef: outletObjectId },
+                            { "transfer.toOutletRef": outletObjectId },
+                        ],
+                    },
+                ];
             }
         }
         const spesificData = await Order.findOne(qMatch)
@@ -1003,9 +1059,24 @@ export const getOrderProgressById = async (req, res) => {
         };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            // if (outletRef != null) {
+            //     qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            // }
+            if (outletRef != null) {
+                const outletObjectId = new mongoose.Types.ObjectId(String(outletRef));
+                qMatch.$and = [
+                    {
+                        $or: [
+                            { outletRef: outletObjectId },
+                            { "transfer.toOutletRef": outletObjectId },
+                        ],
+                    },
+                ];
             }
         }
         const spesificData = await Order.findOne(qMatch)
@@ -1050,7 +1121,7 @@ export const addOrder = async (req, res) => {
 
         if (req.userData) {
             objData.tenantRef = req.userData.tenantRef;
-            if (req.userData?.outletRef) {
+            if (req.userData?.outletRef && !objData?.outletRef) {
                 objData.outletRef = req.userData.outletRef;
             }
         }
@@ -1181,8 +1252,11 @@ export const addOrder = async (req, res) => {
                     ...(req.userData?.tenantRef && {
                         tenantRef: req.userData.tenantRef,
                     }),
-                    ...(req.userData?.outletRef && {
-                        outletRef: req.userData.outletRef,
+                    // ...(req.userData?.outletRef && {
+                    //     outletRef: req.userData.outletRef,
+                    // }),
+                    ...(objData?.outletRef && {
+                        outletRef: objData.outletRef,
                     }),
                 };
 
@@ -1305,13 +1379,18 @@ export const editOrder = async (req, res) => {
 
         const selectedTenant = req.userData.tenantRef || null;
 
+        const outletFinal =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
         const qMatch = {
             _id: req.params.id,
             ...(req.userData?.tenantRef && {
                 tenantRef: req.userData.tenantRef,
             }),
-            ...(req.userData?.outletRef && {
-                outletRef: req.userData.outletRef,
+            ...(outletFinal && {
+                outletRef: outletFinal,
             }),
         };
 
@@ -1448,8 +1527,8 @@ export const editOrder = async (req, res) => {
                     ...(req.userData?.tenantRef && {
                         tenantRef: req.userData.tenantRef,
                     }),
-                    ...(req.userData?.outletRef && {
-                        outletRef: req.userData.outletRef,
+                    ...(outletFinal && {
+                        outletRef: outletFinal,
                     }),
                 };
 
@@ -1545,9 +1624,13 @@ export const generatePoint = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            // qMatch.outletRef = req.userData?.outletRef;
-            // if (req?.query?.outletRef) {
-            //     qMatch.outletRef = req?.query?.outletRef;
+            // const outletRef =
+            //     req.body?.outletRef ??
+            //     req.query?.outletRef ??
+            //     req.userData?.outletRef;
+
+            // if (outletRef != null) {
+            //     qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             // }
         }
 
@@ -1617,9 +1700,13 @@ export const editOrderRaw = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -1725,9 +1812,13 @@ export const editPrintCount = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         const updatedData = await Order.updateOne(qMatch, {
@@ -1764,9 +1855,13 @@ export const editPrintLaundry = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         const updatedData = await Order.updateOne(qMatch, {
@@ -1794,9 +1889,13 @@ export const deleteOrder = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-            if (req?.query?.outletRef) {
-                qMatch.outletRef = req?.query?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         const deletedData = await Order.deleteOne(qMatch);
