@@ -88,8 +88,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.options("*", cors(corsOptions));
-
 // Error handling middleware untuk menangani error CORS
 app.use((err, req, res, next) => {
     if (err instanceof Error && err.message.includes("CORS")) {
