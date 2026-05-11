@@ -5,6 +5,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAllSetting = async (req, res) => {
     try {
+        const { byOutlet } = req.query;
         let qMatch = {};
 
         if (req.userData) {
@@ -14,7 +15,7 @@ export const getAllSetting = async (req, res) => {
                 req.query?.outletRef ??
                 req.userData?.outletRef;
 
-            if (outletRef != null) {
+            if (outletRef != null && byOutlet !== "none") {
                 qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
