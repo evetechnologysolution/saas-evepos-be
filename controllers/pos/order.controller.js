@@ -1626,14 +1626,14 @@ export const generatePoint = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            // const outletRef =
-            //     req.body?.outletRef ??
-            //     req.query?.outletRef ??
-            //     req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
 
-            // if (outletRef != null) {
-            //     qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
-            // }
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const check = await Order.findOne(qMatch);

@@ -403,6 +403,10 @@ const DataSchema = mongoose.Schema(
                     type: Date,
                     default: null,
                 },
+                acceptedAt: {
+                    type: Date,
+                    default: null,
+                },
                 closedAt: {
                     type: Date,
                     default: null,
