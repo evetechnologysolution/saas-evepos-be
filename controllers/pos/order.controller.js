@@ -23,6 +23,8 @@ export const getAllOrder = async (req, res) => {
             printCount,
             printLaundry,
             status,
+            isTransfer,
+            transferStatus,
             progressStatus,
             pickup,
             orderType,
@@ -41,9 +43,27 @@ export const getAllOrder = async (req, res) => {
                 req.body?.outletRef ??
                 req.query?.outletRef ??
                 req.userData?.outletRef;
-
             if (outletRef != null) {
-                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                const transferValue = String(isTransfer || "").toLowerCase();
+                if (["yes", "1", "true"].includes(transferValue)) {
+                    qMatch["transfer.toOutletRef"] = { $ne: null };
+                    if (outletRef != null) {
+                        const outletObjectId = new mongoose.Types.ObjectId(String(outletRef));
+                        qMatch.$and = [
+                            {
+                                $or: [
+                                    { outletRef: outletObjectId },
+                                    { "transfer.toOutletRef": outletObjectId },
+                                ],
+                            },
+                        ];
+                    }
+                } else if (["no", "0", "false"].includes(transferValue)) {
+                    qMatch["transfer.toOutletRef"] = null;
+                    qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                } else {
+                    qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                }
             }
         }
 
@@ -94,6 +114,23 @@ export const getAllOrder = async (req, res) => {
                 }
             }
         }
+
+        if (transferStatus) {
+            const fixStatus = transferStatus.replace(":ne", "").trim();
+            if (fixStatus) {
+                const fixStatusArray = fixStatus
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean); // Pastikan array dan bersih
+
+                if (transferStatus.includes(":ne")) {
+                    qMatch.transfer.status = { $nin: fixStatusArray };
+                } else {
+                    qMatch.transfer.status = { $in: fixStatusArray };
+                }
+            }
+        }
+
         if (progressStatus) {
             const fixProgressStatus = progressStatus.replace(":ne", "").trim();
             if (fixProgressStatus) {
@@ -1708,7 +1745,15 @@ export const editOrderRaw = async (req, res) => {
                 req.userData?.outletRef;
 
             if (outletRef != null) {
-                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                const outletObjectId = new mongoose.Types.ObjectId(String(outletRef));
+                qMatch.$and = [
+                    {
+                        $or: [
+                            { outletRef: outletObjectId },
+                            { "transfer.toOutletRef": outletObjectId },
+                        ],
+                    },
+                ];
             }
         }
 
@@ -1820,7 +1865,15 @@ export const editPrintCount = async (req, res) => {
                 req.userData?.outletRef;
 
             if (outletRef != null) {
-                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                const outletObjectId = new mongoose.Types.ObjectId(String(outletRef));
+                qMatch.$and = [
+                    {
+                        $or: [
+                            { outletRef: outletObjectId },
+                            { "transfer.toOutletRef": outletObjectId },
+                        ],
+                    },
+                ];
             }
         }
         const updatedData = await Order.updateOne(qMatch, {
@@ -1863,7 +1916,15 @@ export const editPrintLaundry = async (req, res) => {
                 req.userData?.outletRef;
 
             if (outletRef != null) {
-                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                const outletObjectId = new mongoose.Types.ObjectId(String(outletRef));
+                qMatch.$and = [
+                    {
+                        $or: [
+                            { outletRef: outletObjectId },
+                            { "transfer.toOutletRef": outletObjectId },
+                        ],
+                    },
+                ];
             }
         }
         const updatedData = await Order.updateOne(qMatch, {
