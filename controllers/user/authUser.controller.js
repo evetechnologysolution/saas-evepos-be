@@ -26,6 +26,7 @@ export const loginUser = async (req, res) => {
                         },
                     ],
                 },
+                { path: "outletRef", select: "name isPrimary" }
             ])
             .lean({ virtuals: true });
 
@@ -36,13 +37,19 @@ export const loginUser = async (req, res) => {
         if (!validPassword) return res.status(400).json({ message: "Invalid password" });
 
         // check outletRef
-        let outletFinal = userExist?.outletRef || null;
-        if (!outletFinal) { // jika owner atau tidak memiliki outletRef
+        let outletFinal = {
+            _id: userExist?.outletRef?._id || null,
+            name: userExist?.outletRef?.name || "",
+        }
+        if (!outletFinal?._id) { // jika owner atau tidak memiliki outletRef
             const outletResult = await Outlet.findOne({
                 tenantRef: userExist.tenantRef?._id,
                 isPrimary: true,
             }).lean();
-            outletFinal = outletResult?._id || null;
+            outletFinal = {
+                _id: outletResult?._id || null,
+                name: outletResult?.name || "",
+            };
         }
         userExist.outletRef = outletFinal;
 
@@ -107,6 +114,7 @@ export const getMyUser = async (req, res) => {
                         },
                     ],
                 },
+                { path: "outletRef", select: "name isPrimary" }
             ])
             .lean({ virtuals: true });
 
@@ -115,13 +123,19 @@ export const getMyUser = async (req, res) => {
         }
 
         // check outletRef
-        let outletFinal = userExist?.outletRef || null;
-        if (!outletFinal) { // jika owner atau tidak memiliki outletRef
+        let outletFinal = {
+            _id: userExist?.outletRef?._id || null,
+            name: userExist?.outletRef?.name || "",
+        }
+        if (!outletFinal?._id) { // jika owner atau tidak memiliki outletRef
             const outletResult = await Outlet.findOne({
                 tenantRef: userExist.tenantRef?._id,
                 isPrimary: true,
             }).lean();
-            outletFinal = outletResult?._id || null;
+            outletFinal = {
+                _id: outletResult?._id || null,
+                name: outletResult?.name || "",
+            };
         }
         userExist.outletRef = outletFinal;
 

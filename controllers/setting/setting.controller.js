@@ -34,7 +34,7 @@ export const getAllSetting = async (req, res) => {
 // CREATE NEW DATA
 export const saveSetting = async (req, res) => {
     try {
-        let qMatch = { _id: { $ne: null } };
+        let qMatch = {};
         let objData = req.body;
 
         if (req.userData) {
@@ -47,10 +47,8 @@ export const saveSetting = async (req, res) => {
                 objData.outletRef = [objData.outletRef];
             }
 
-            qMatch = {
-                tenantRef: req.userData?.tenantRef,
-                outletRef: { $in: objData.outletRef },
-            };
+            qMatch.tenantRef = req.userData?.tenantRef;
+            qMatch.outletRef = { $in: objData.outletRef };
         }
 
         const data = await Setting.findOneAndUpdate(qMatch, objData, {

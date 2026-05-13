@@ -6,17 +6,23 @@ import { errorResponse } from "../../utils/errorResponse.js";
 // GETTING ALL THE DATA
 export const getAll = async (req, res) => {
     try {
-        const { page, perPage, search, sort, primary, tenant } = req.query;
+        const { page, perPage, search, sort, status, primary, tenant } = req.query;
         let qMatch = {};
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
         }
 
+        if (["active", "1", "true"].includes(status)) {
+            qMatch.isActive = { $eq: true };
+        }
+        if (["inactive", "notactive", "0", "false"].includes(status)) {
+            qMatch.isActive = { $ne: true };
+        }
+
         if (["yes", "1", "true"].includes(primary)) {
             qMatch.isPrimary = { $eq: true };
         }
-
         if (["no", "0", "false"].includes(primary)) {
             qMatch.isPrimary = { $ne: true };
         }

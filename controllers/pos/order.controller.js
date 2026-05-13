@@ -1031,6 +1031,7 @@ export const getOrderById = async (req, res) => {
                         select: "fullname",
                     },
                 },
+                { path: "outletRef", select: "name isPrimary" }
             ])
             .lean({ virtuals: true });
 
@@ -1090,6 +1091,7 @@ export const getOrderProgressById = async (req, res) => {
                         select: "fullname",
                     },
                 },
+                { path: "outletRef", select: "name isPrimary" }
             ])
             .lean({ virtuals: true });
 
