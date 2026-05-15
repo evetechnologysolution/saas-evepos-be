@@ -403,11 +403,7 @@ const DataSchema = mongoose.Schema(
                     type: Date,
                     default: null,
                 },
-                acceptedAt: {
-                    type: Date,
-                    default: null,
-                },
-                closedAt: {
+                updatedAt: {
                     type: Date,
                     default: null,
                 },
@@ -417,6 +413,34 @@ const DataSchema = mongoose.Schema(
                     default: null,
                     lowercase: true,
                     trim: true,
+                },
+                log: {
+                    type: [
+                        {
+                            createdAt: {
+                                type: Date,
+                                default: Date.now,
+                            },
+                            status: {
+                                type: String,
+                                lowercase: true,
+                                trim: true,
+                                default: "",
+                            },
+                            notes: {
+                                type: String,
+                                trim: true,
+                                default: "",
+                            },
+                            staff: {
+                                type: String,
+                                trim: true,
+                                set: capitalizeFirstLetter,
+                                default: "",
+                            }
+                        },
+                    ],
+                    default: [],
                 },
             },
             default: null,

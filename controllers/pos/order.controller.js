@@ -209,7 +209,8 @@ export const getAllOrder = async (req, res) => {
                         select: "fullname",
                     },
                 },
-                { path: "outletRef", select: "name isPrimary" }
+                { path: "outletRef", select: "name isPrimary" },
+                { path: "transfer.toOutletRef", select: "name" }
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
@@ -1068,7 +1069,8 @@ export const getOrderById = async (req, res) => {
                         select: "fullname",
                     },
                 },
-                { path: "outletRef", select: "name isPrimary" }
+                { path: "outletRef", select: "name isPrimary" },
+                { path: "transfer.toOutletRef", select: "name" }
             ])
             .lean({ virtuals: true });
 
@@ -1128,7 +1130,8 @@ export const getOrderProgressById = async (req, res) => {
                         select: "fullname",
                     },
                 },
-                { path: "outletRef", select: "name isPrimary" }
+                { path: "outletRef", select: "name isPrimary" },
+                { path: "transfer.toOutletRef", select: "name" }
             ])
             .lean({ virtuals: true });
 
@@ -1728,6 +1731,7 @@ export const editOrderRaw = async (req, res) => {
 
     try {
         const { id } = req.params;
+        const { transfer, ...objData } = req.body;
 
         let qMatch = {
             $or: [
@@ -1773,6 +1777,43 @@ export const editOrderRaw = async (req, res) => {
 
         const promises = [];
 
+        let transferLog = [];
+
+        const transferData = transfer ? { ...transfer } : null;
+
+        // ambil newLog dari transfer
+        if (transferData?.newLog) {
+            if (Array.isArray(transferData.newLog)) {
+                transferLog = transferData.newLog;
+            } else if (typeof transferData.newLog === "object") {
+                transferLog = [transferData.newLog];
+            }
+
+            delete transferData.newLog;
+        }
+
+        // update function
+        const updatePayload = {
+            $set: {
+                ...objData,
+            },
+        };
+
+        if (transferData) {
+            Object.entries(transferData).forEach(([key, value]) => {
+                updatePayload.$set[`transfer.${key}`] = value;
+            });
+        }
+
+        // push log jika ada
+        if (transferLog.length > 0) {
+            updatePayload.$push = {
+                "transfer.log": {
+                    $each: transferLog,
+                },
+            };
+        }
+
         // hanya jalan kalau benar-benar berubah
         if (
             existData?.status === "paid" &&
@@ -1817,7 +1858,7 @@ export const editOrderRaw = async (req, res) => {
         promises.push(
             Order.updateOne(
                 { _id: existData._id },
-                { $set: req.body },
+                updatePayload,
                 { session }
             )
         );
