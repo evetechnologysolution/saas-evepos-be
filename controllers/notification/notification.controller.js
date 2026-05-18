@@ -4,6 +4,12 @@ import VoucherPostcard from "../../models/member/voucherMember.js";
 
 export const getAllNotification = async (req, res) => {
     try {
+        const outletSource =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
+        const outletFilter = outletSource ? { outletRef: outletSource } : {};
         const tenantFilter = req.userData?.tenantRef ? { tenantRef: req.userData.tenantRef } : {};
 
         const [totalDelivery, totalUnreadMessage, totalNewPostcard] = await Promise.all([
@@ -11,6 +17,7 @@ export const getAllNotification = async (req, res) => {
                 status: "backlog",
                 orderType: "delivery",
                 ...tenantFilter,
+                ...outletFilter,
             }),
             Message.countDocuments({
                 isRead: false,

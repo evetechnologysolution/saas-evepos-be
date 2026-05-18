@@ -1,14 +1,23 @@
+import mongoose from "mongoose";
 import Setting from "../../models/setting/settings.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
 // GETTING ALL THE DATA
 export const getAllSetting = async (req, res) => {
     try {
+        const { byOutlet } = req.query;
         let qMatch = {};
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null && byOutlet !== "none") {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const listofData = await Setting.findOne(qMatch);
@@ -25,14 +34,24 @@ export const getAllSetting = async (req, res) => {
 // CREATE NEW DATA
 export const saveSetting = async (req, res) => {
     try {
-        let qMatch = { _id: { $ne: null } };
+        let qMatch = {};
+        let objData = req.body;
 
         if (req.userData) {
+            // ================= NORMALIZE outletRef =================
+            if (!objData.outletRef) {
+                // tidak dikirim → pakai dari user
+                objData.outletRef = [req.userData?.outletRef];
+            } else if (!Array.isArray(objData.outletRef)) {
+                // dikirim tapi bukan array → bungkus jadi array
+                objData.outletRef = [objData.outletRef];
+            }
+
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            qMatch.outletRef = { $in: objData.outletRef };
         }
 
-        const data = await Setting.findOneAndUpdate(qMatch, req.body, {
+        const data = await Setting.findOneAndUpdate(qMatch, objData, {
             new: true,
             upsert: true,
         });

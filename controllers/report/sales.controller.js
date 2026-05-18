@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Order from "../../models/pos/order.js";
 import { getFirstAndLastDayOfWeek, getDatesInRange, formatDate } from "../../lib/dateFormatter.js";
 import { errorResponse } from "../../utils/errorResponse.js";
@@ -84,7 +85,14 @@ export const getSales = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         /* =======================
@@ -143,10 +151,10 @@ export const getSales = async (req, res) => {
                     filter === "monthly"
                         ? label[row - 1]
                         : filter === "thisWeek"
-                          ? label[row - 1]
-                          : filter === "date"
-                            ? formatDate(row)
-                            : `${row}`;
+                            ? label[row - 1]
+                            : filter === "date"
+                                ? formatDate(row)
+                                : `${row}`;
 
                 const i = initialData.label.indexOf(key);
                 if (i !== -1) target.data[i] = order.value[idx];

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import multer from "multer";
 import Product from "../../models/library/product.js";
 import Category from "../../models/library/category.js";
@@ -10,10 +11,18 @@ export const getAllRawProduct = async (req, res) => {
     try {
         const { category, subcategory, onweb, sort } = req.query;
         let qMatch = {};
+        let outletRef = null;
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         if (category) {
@@ -116,6 +125,13 @@ export const getAllRawProduct = async (req, res) => {
                             if: {
                                 $and: [
                                     { $eq: ["$promo.isAvailable", true] },
+                                    // promo khusus outlet
+                                    {
+                                        $in: [
+                                            new mongoose.Types.ObjectId(String(outletRef)),
+                                            "$promo.outletRef",
+                                        ],
+                                    },
                                     {
                                         $or: [{ $gt: ["$promo.amount", 0] }, { $gt: ["$promo.qtyMin", 0] }],
                                     },
@@ -268,7 +284,14 @@ export const getAllProduct = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         if (search) {
@@ -309,6 +332,7 @@ export const getAllProduct = async (req, res) => {
                     path: "promotionRef",
                     select: "name type amount qtyMin qtyFree startDate endDate selectedDay isAvailable",
                 },
+                { path: "outletRef", select: "name isPrimary" }
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
@@ -338,7 +362,14 @@ export const getProductById = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
         const spesificData = await Product.findOne(qMatch).lean();
         return res.json(spesificData);
@@ -365,7 +396,14 @@ export const reorderProduct = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const bulkOps = items.map((item) => ({
@@ -406,10 +444,19 @@ export const addProduct = async (req, res) => {
 
         try {
             let objData = req.body;
+
+            let convertOutletId = [];
+            if (objData.outletRef) {
+                convertOutletId = typeof objData.outletRef === "string" ? JSON.parse(objData.outletRef) : objData.outletRef;
+                objData.outletRef = convertOutletId;
+            }
+
             if (req.userData) {
                 objData.tenantRef = req.userData?.tenantRef;
                 if (req.userData?.outletRef) {
-                    objData.outletRef = [req.userData.outletRef];
+                    if (!Array.isArray(objData.outletRef)) {
+                        objData.outletRef = [req.userData.outletRef];
+                    }
                 }
             }
 
@@ -425,6 +472,7 @@ export const addProduct = async (req, res) => {
                 convertId = typeof req.body.masterStatus === "string" ? JSON.parse(req.body.masterStatus) : req.body.masterStatus;
                 objData.masterStatus = convertId;
             }
+
 
             if (req.file) {
                 const cloud = await cloudinary.uploader.upload(req.file.path, {
@@ -486,7 +534,14 @@ export const editProduct = async (req, res) => {
             let qMatch = { _id: req.params.id };
             if (req.userData) {
                 qMatch.tenantRef = req.userData?.tenantRef;
-                qMatch.outletRef = req.userData?.outletRef;
+                const outletRef =
+                    // req.body?.outletRef ?? karena payload perlu simpan outletRef terbaru
+                    req.query?.outletRef ??
+                    req.userData?.outletRef;
+
+                if (outletRef != null) {
+                    qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                }
             }
             let objData = req.body;
 
@@ -501,6 +556,12 @@ export const editProduct = async (req, res) => {
             if (req.body.masterStatus) {
                 convertId = typeof req.body.masterStatus === "string" ? JSON.parse(req.body.masterStatus) : req.body.masterStatus;
                 objData.masterStatus = convertId;
+            }
+
+            let convertOutletId = [];
+            if (objData.outletRef) {
+                convertOutletId = typeof objData.outletRef === "string" ? JSON.parse(objData.outletRef) : objData.outletRef;
+                objData.outletRef = convertOutletId;
             }
 
             if (req.file) {
@@ -544,7 +605,14 @@ export const deleteProduct = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
         // Check image & delete image
         const existData = await Product.findOne(qMatch).lean();

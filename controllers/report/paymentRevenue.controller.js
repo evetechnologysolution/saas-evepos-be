@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Order from "../../models/pos/order.js";
 import { getFirstAndLastDayOfWeek } from "../../lib/dateFormatter.js";
 import { errorResponse } from "../../utils/errorResponse.js";
@@ -76,7 +77,14 @@ export const getPaymentRevenue = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const result = await Order.aggregate([

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Variant from "../../models/library/variant.js";
 import { errorResponse } from "../../utils/errorResponse.js";
 
@@ -9,7 +10,14 @@ export const getAllVariant = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         if (perfume === "yes") {
@@ -45,7 +53,14 @@ export const getPaginateVariant = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         if (perfume === "yes") {
@@ -79,6 +94,7 @@ export const getPaginateVariant = async (req, res) => {
         }
 
         const options = {
+            populate: [{ path: "outletRef", select: "name isPrimary" }],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
@@ -100,7 +116,14 @@ export const getVariantById = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
         const spesificData = await Variant.findOne(qMatch);
         return res.json(spesificData);
@@ -120,7 +143,9 @@ export const addVariant = async (req, res) => {
         if (req.userData) {
             objData.tenantRef = req.userData?.tenantRef;
             if (req.userData?.outletRef) {
-                objData.outletRef = [req.userData.outletRef];
+                if (!Array.isArray(objData.outletRef)) {
+                    objData.outletRef = [req.userData.outletRef];
+                }
             }
         }
         const data = new Variant(objData);
@@ -159,7 +184,14 @@ export const editVariant = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                // req.body?.outletRef ?? karena payload perlu simpan outletRef terbaru
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
         const updatedData = await Variant.updateOne(qMatch, {
             $set: req.body,
@@ -180,7 +212,14 @@ export const deleteVariant = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
         const deletedData = await Variant.deleteOne(qMatch);
         return res.json(deletedData);

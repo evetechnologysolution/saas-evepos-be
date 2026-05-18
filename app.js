@@ -22,59 +22,71 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Aktifkan CORS ketat hanya di production
-const isProduction = process.env.NODE_ENV === "production";
-
-// Middlewares
 const allowedOrigins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:3060",
+
     "https://evewash-cms.vercel.app",
     "https://evewash-cms-dev.vercel.app",
     "https://evewash-dev.vercel.app",
     "https://evewash-staging.vercel.app",
     "https://evewash-saas.vercel.app",
     "https://evewash.vercel.app",
+
     "https://evewash-pos-dev.vercel.app",
     "https://evewash-pos-staging.vercel.app",
     "https://evewash-pos.vercel.app",
+
     "https://evewash.com",
     "https://evewash-pos.com",
     "https://cms.evewash.com",
+
     "https://saas-evepos.vercel.app",
     "https://evepos-saas-dev.vercel.app",
     "https://evepos-saas.vercel.app",
     "https://evepos-saas-backup.vercel.app",
     "https://evepos-saas-ocean.vercel.app",
+
     "https://evepos-office-dev.vercel.app",
     "https://evepos-office.vercel.app",
-    "https://api.xendit.co",
-    "https://api.sandbox.midtrans.com",
-    "https://api.midtrans.com",
 ];
 
-if (isProduction) {
-    // jika menggunakan login by google
-    app.use(
-        cors({
-            origin: (origin, callback) => {
-                // Izinkan akses jika origin ada di daftar yang diizinkan atau tidak ada origin (permintaan server)
-                if (!origin || allowedOrigins.includes(origin)) {
-                    callback(null, true);
-                } else {
-                    // Kembalikan error jika origin tidak diizinkan
-                    callback(new Error(`Origin ${origin} tidak diizinkan oleh CORS`));
-                }
-            },
-            methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
-            credentials: true, // Pastikan aplikasi memang membutuhkan opsi ini
-        }),
-    );
-} else {
-    // jika tidak menggunakan login by google
-    app.use(cors({ origin: "*" }));
-}
+const corsOptions = {
+    origin: (origin, callback) => {
+        // allow server-to-server / postman
+        if (!origin) {
+            return callback(null, true);
+        }
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error(`Origin ${origin} tidak diizinkan oleh CORS`));
+    },
+
+    credentials: true,
+
+    methods: [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    ],
+
+    allowedHeaders: [
+        "Origin",
+        "X-Requested-With",
+        "Content-Type",
+        "Accept",
+        "Authorization",
+    ],
+};
+
+app.use(cors(corsOptions));
 
 // Error handling middleware untuk menangani error CORS
 app.use((err, req, res, next) => {

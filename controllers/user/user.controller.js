@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import fs from "fs";
@@ -28,7 +29,17 @@ export const getAllUser = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            // const outletRef =
+            //     req.body?.outletRef ??
+            //     req.query?.outletRef ??
+            //     req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         if (search) {
@@ -72,6 +83,7 @@ export const getAllUser = async (req, res) => {
         }
 
         const options = {
+            populate: [{ path: "outletRef", select: "name isPrimary" }],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             select: "-password",
@@ -133,6 +145,9 @@ export const addUser = async (req, res) => {
             if (req.userData) {
                 objData.tenantRef = req.userData?.tenantRef;
                 objData.outletRef = req.userData?.outletRef;
+                if (req?.body?.outletRef) {
+                    objData.outletRef = req?.body?.outletRef;
+                }
             }
 
             // Check user
@@ -243,7 +258,14 @@ export const editUser = async (req, res) => {
             let qMatch = { _id: req.params.id };
             if (req.userData) {
                 qMatch.tenantRef = req.userData?.tenantRef;
-                // qMatch.outletRef = req.userData?.outletRef;
+                // const outletRef =
+                //     req.body?.outletRef ??
+                //     req.query?.outletRef ??
+                //     req.userData?.outletRef;
+
+                // if (outletRef != null) {
+                //     qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                // }
             }
 
             let objData = req.body;
@@ -384,7 +406,14 @@ export const changeUserPassword = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            // qMatch.outletRef = req.userData?.outletRef;
+            // const outletRef =
+            //     req.body?.outletRef ??
+            //     req.query?.outletRef ??
+            //     req.userData?.outletRef;
+
+            // if (outletRef != null) {
+            //     qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            // }
         }
         // Chek user
         const userExist = await User.findOne(qMatch).lean();
@@ -428,7 +457,14 @@ export const deleteUser = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            // qMatch.outletRef = req.userData?.outletRef;
+            // const outletRef =
+            //     req.body?.outletRef ??
+            //     req.query?.outletRef ??
+            //     req.userData?.outletRef;
+
+            // if (outletRef != null) {
+            //     qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            // }
         }
 
         const existData = await User.findOne(qMatch);

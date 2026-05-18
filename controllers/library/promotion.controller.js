@@ -15,8 +15,13 @@ export const getAllPromotion = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            if (req.userData?.outletRef) {
-                qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
 
@@ -46,6 +51,7 @@ export const getAllPromotion = async (req, res) => {
                     path: "products",
                     select: "name price",
                 },
+                { path: "outletRef", select: "name isPrimary" }
             ],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
@@ -201,7 +207,14 @@ export const getPromotionById = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
         const spesificData = await Promotion.findOne(qMatch).lean();
         return res.json(spesificData);
@@ -237,10 +250,18 @@ export const addPromotion = async (req, res) => {
                 _id: newObjectId,
             };
 
+            let convertOutletId = [];
+            if (objData.outletRef) {
+                convertOutletId = typeof objData.outletRef === "string" ? JSON.parse(objData.outletRef) : objData.outletRef;
+                objData.outletRef = convertOutletId;
+            }
+
             if (req.userData) {
                 objData.tenantRef = req.userData?.tenantRef;
                 if (req.userData?.outletRef) {
-                    objData.outletRef = [req.userData.outletRef];
+                    if (!Array.isArray(objData.outletRef)) {
+                        objData.outletRef = [req.userData.outletRef];
+                    }
                 }
             }
 
@@ -339,7 +360,14 @@ export const editPromotion = async (req, res) => {
             let qMatch = { _id: req.params.id };
             if (req.userData) {
                 qMatch.tenantRef = req.userData?.tenantRef;
-                qMatch.outletRef = req.userData?.outletRef;
+                const outletRef =
+                    // req.body?.outletRef ?? karena payload perlu simpan outletRef terbaru
+                    req.query?.outletRef ??
+                    req.userData?.outletRef;
+
+                if (outletRef != null) {
+                    qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                }
             }
             // Check if the promotion exists
             const exist = await Promotion.findOne(qMatch).lean();
@@ -353,6 +381,12 @@ export const editPromotion = async (req, res) => {
             if (req.body.products) {
                 convertId = typeof req.body.products === "string" ? JSON.parse(req.body.products) : req.body.products;
                 objData.products = convertId;
+            }
+
+            let convertOutletId = [];
+            if (objData.outletRef) {
+                convertOutletId = typeof objData.outletRef === "string" ? JSON.parse(objData.outletRef) : objData.outletRef;
+                objData.outletRef = convertOutletId;
             }
 
             // Determine products to remove or update
@@ -441,7 +475,14 @@ export const deletePromotion = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const existData = await Promotion.findOne(qMatch).lean();

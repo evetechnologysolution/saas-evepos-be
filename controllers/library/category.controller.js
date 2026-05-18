@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import multer from "multer";
 import Category from "../../models/library/category.js";
 import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
@@ -10,7 +11,14 @@ export const getAllCategory = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const listofData = await Category.find(qMatch).sort({ listNumber: 1 }).lean();
@@ -32,7 +40,14 @@ export const getPaginateCategory = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         if (search) {
@@ -52,6 +67,7 @@ export const getPaginateCategory = async (req, res) => {
         }
 
         const options = {
+            populate: [{ path: "outletRef", select: "name isPrimary" }],
             page: parseInt(page, 10) || 1,
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
@@ -72,7 +88,14 @@ export const getCategoryById = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
         const spesificData = await Category.findOne(qMatch).lean();
         return res.json(spesificData);
@@ -105,7 +128,9 @@ export const addCategory = async (req, res) => {
             if (req.userData) {
                 objData.tenantRef = req.userData?.tenantRef;
                 if (req.userData?.outletRef) {
-                    objData.outletRef = [req.userData.outletRef];
+                    if (!Array.isArray(objData.outletRef)) {
+                        objData.outletRef = [req.userData.outletRef];
+                    }
                 }
             }
 
@@ -169,7 +194,14 @@ export const editCategory = async (req, res) => {
             let qMatch = { _id: req.params.id };
             if (req.userData) {
                 qMatch.tenantRef = req.userData?.tenantRef;
-                qMatch.outletRef = req.userData?.outletRef;
+                const outletRef =
+                    // req.body?.outletRef ?? karena payload perlu simpan outletRef terbaru
+                    req.query?.outletRef ??
+                    req.userData?.outletRef;
+
+                if (outletRef != null) {
+                    qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                }
             }
             let objData = req.body;
 
@@ -213,7 +245,15 @@ export const deleteCategory = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
+
         }
 
         const existData = await Category.findOne(qMatch).lean();

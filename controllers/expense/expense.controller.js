@@ -1,26 +1,32 @@
+import mongoose from "mongoose";
 import Expense from "../../models/expense/expense.js";
 
 // GETTING ALL THE DATA
 export const getAllExpense = async (req, res) => {
     try {
         const { page, perPage, code, search, sort } = req.query;
-        let query = {};
+        let qMatch = {};
+
         if (req.userData) {
-            query = {
-                ...query,
-                tenantRef: req.userData.tenantRef,
-                outletRef: req.userData.outletRef,
-            };
+            qMatch.tenantRef = req.userData?.tenantRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
         if (code) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 code: code,
             };
         }
         if (search) {
-            query = {
-                ...query,
+            qMatch = {
+                ...qMatch,
                 description: { $regex: search, $options: "i" }, // option i for case insensitivity to match upper and lower cases.
             };
         }
@@ -39,7 +45,7 @@ export const getAllExpense = async (req, res) => {
             limit: parseInt(perPage, 10) || 10,
             sort: sortObj,
         };
-        const listofData = await Expense.paginate(query, options);
+        const listofData = await Expense.paginate(qMatch, options);
         return res.json(listofData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -96,7 +102,14 @@ export const getExpenseTotal = async (req, res) => {
         }
 
         if (req.userData?.outletRef) {
-            matchQuery.outletRef = req.userData.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                matchQuery.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         // =========================
@@ -130,7 +143,20 @@ export const getExpenseTotal = async (req, res) => {
 
 export const getExpenseById = async (req, res) => {
     try {
-        const spesificData = await Expense.findById(req.params.id);
+        let qMatch = { _id: req.params.id };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
+        }
+        const spesificData = await Expense.findOne(qMatch);
         return res.json(spesificData);
     } catch (err) {
         return res.status(500).json({ message: err.message });
@@ -143,8 +169,12 @@ export const addExpense = async (req, res) => {
         let objData = req.body;
         if (req.userData) {
             objData.tenantRef = req.userData?.tenantRef;
-            if (req.userData?.outletRef) {
-                objData.outletRef = req.userData.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+            if (outletRef != null) {
+                objData.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         const data = new Expense(objData);
@@ -159,14 +189,21 @@ export const addExpense = async (req, res) => {
 export const editExpense = async (req, res) => {
     try {
         const objData = req.body;
+        let qMatch = { _id: req.params.id };
+
         if (req.userData) {
-            objData.tenantRef = req.userData?.tenantRef;
-            if (req.userData?.outletRef) {
-                objData.outletRef = req.userData.outletRef;
+            qMatch.tenantRef = req.userData?.tenantRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
             }
         }
         const updatedData = await Expense.updateOne(
-            { _id: req.params.id },
+            qMatch,
             {
                 $set: objData,
             },
@@ -180,7 +217,21 @@ export const editExpense = async (req, res) => {
 // DELETE A SPECIFIC DATA
 export const deleteExpense = async (req, res) => {
     try {
-        const deletedData = await Expense.deleteOne({ _id: req.params.id });
+        let qMatch = { _id: req.params.id };
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
+        }
+
+        const deletedData = await Expense.deleteOne(qMatch);
         return res.json(deletedData);
     } catch (err) {
         return res.status(500).json({ message: err.message });

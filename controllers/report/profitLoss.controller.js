@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Order from "../../models/pos/order.js";
 import Expense from "../../models/expense/expense.js";
 
@@ -29,10 +30,18 @@ export const getProfitLoss = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
-
             qMatchExp.tenantRef = req.userData?.tenantRef;
-            qMatchExp.outletRef = req.userData?.outletRef;
+
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                qMatchExp.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
+
         }
 
         const sales = await Order.aggregate([

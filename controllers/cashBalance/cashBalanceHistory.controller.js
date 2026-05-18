@@ -11,7 +11,14 @@ export const getAll = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         if (balanceRef && mongoose.Types.ObjectId.isValid(balanceRef)) {
@@ -76,7 +83,14 @@ export const getDataById = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const spesificData = await BalanceHistory.findOne(qMatch).lean({ virtuals: true });
@@ -99,13 +113,20 @@ export const addData = async (req, res) => {
             isOpen: true,
             ...(req.userData && {
                 tenantRef: req.userData?.tenantRef,
-                outletRef: req.userData?.outletRef,
             }),
         };
 
         if (req.userData) {
             objData.tenantRef = req.userData?.tenantRef;
-            objData.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                objData.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const check = await Balance.findOneAndUpdate(
@@ -139,7 +160,14 @@ export const editData = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const updatedData = await BalanceHistory.updateOne(qMatch, {
@@ -162,7 +190,14 @@ export const deleteData = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const deletedData = await BalanceHistory.deleteOne(qMatch);

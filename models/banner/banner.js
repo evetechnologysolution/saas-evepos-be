@@ -39,12 +39,12 @@ const DataSchema = mongoose.Schema({
         default: null,
         set: val => val === "" ? null : val
     },
-    outletRef: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Outlets",
-        default: null,
-        set: val => val === "" ? null : val
-    },
+    // outletRef: {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: "Outlets",
+    //     default: null,
+    //     set: val => val === "" ? null : val
+    // },
 }, { timestamps: true });
 
 DataSchema.pre("save", function (next) {

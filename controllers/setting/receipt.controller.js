@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import multer from "multer";
 import Receipt from "../../models/setting/receipt.js";
 import { cloudinary, imageUpload } from "../../lib/cloudinary.js";
@@ -10,7 +11,14 @@ export const getAllReceipt = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
 
         const listofData = await Receipt.findOne(qMatch);
@@ -40,11 +48,22 @@ export const saveReceipt = async (req, res) => {
         }
 
         try {
+            let qMatch = {};
             let objData = req.body;
 
             if (req.userData) {
+                qMatch.tenantRef = req.userData?.tenantRef;
                 objData.tenantRef = req.userData?.tenantRef;
-                objData.outletRef = req.userData?.outletRef;
+                const outletRef =
+                    req.body?.outletRef ??
+                    req.query?.outletRef ??
+                    req.userData?.outletRef;
+
+                if (outletRef != null) {
+                    const outletObjID = new mongoose.Types.ObjectId(String(outletRef));
+                    qMatch.outletRef = outletObjID;
+                    objData.outletRef = outletObjID;
+                }
             }
 
             if (req.file) {
@@ -70,10 +89,7 @@ export const saveReceipt = async (req, res) => {
                 }
             }
 
-            const data = await Receipt.findOneAndUpdate(
-                {
-                    _id: { $ne: null },
-                },
+            const data = await Receipt.findOneAndUpdate(qMatch,
                 objData,
                 { new: true, upsert: true },
             );

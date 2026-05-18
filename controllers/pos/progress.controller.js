@@ -26,7 +26,14 @@ export const getAllData = async (req, res) => {
 
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
         if (search) {
             const fixedId = mongoose.Types.ObjectId.isValid(search) ? search : null;
@@ -171,8 +178,13 @@ export const getAllLogs = async (req, res) => {
             qMatch.tenantRef = req.userData.tenantRef;
         }
 
-        if (req.userData?.outletRef) {
-            qMatch.outletRef = req.userData.outletRef;
+        const outletRef =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
+        if (outletRef != null) {
+            qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
         }
 
         // --- SEARCH (orderId, staff fullname, status) ---
@@ -322,8 +334,13 @@ export const getLogSummary = async (req, res) => {
             qMatch.tenantRef = req.userData.tenantRef;
         }
 
-        if (req.userData?.outletRef) {
-            qMatch.outletRef = req.userData.outletRef;
+        const outletRef =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
+        if (outletRef != null) {
+            qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
         }
 
         // ======================================================
@@ -620,8 +637,13 @@ export const getLogSummaryV2 = async (req, res) => {
             qMatch.tenantRef = req.userData.tenantRef;
         }
 
-        if (req.userData?.outletRef) {
-            qMatch.outletRef = req.userData.outletRef;
+        const outletRef =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
+        if (outletRef != null) {
+            qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
         }
 
         // ======================================================
@@ -1041,8 +1063,13 @@ export const getTotalPoint = async (req, res) => {
             qMatch.tenantRef = req.userData.tenantRef;
         }
 
-        if (req.userData?.outletRef) {
-            qMatch.outletRef = req.userData.outletRef;
+        const outletRef =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
+        if (outletRef != null) {
+            qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
         }
 
         // ==============================
@@ -1268,7 +1295,14 @@ export const getDataById = async (req, res) => {
         let qMatch = { _id: req.params.id };
         if (req.userData) {
             qMatch.tenantRef = req.userData?.tenantRef;
-            qMatch.outletRef = req.userData?.outletRef;
+            const outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
         }
         const spesificData = await Progress.findOne(qMatch)
             .populate([
@@ -1294,11 +1328,16 @@ export const addData = async (req, res) => {
     try {
         const objData = { ...req.body };
 
+        const outletFinal =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
         if (req.userData) {
             objData.tenantRef = req.userData.tenantRef;
 
-            if (req.userData?.outletRef) {
-                objData.outletRef = req.userData.outletRef;
+            if (outletFinal != null) {
+                objData.outletRef = new mongoose.Types.ObjectId(String(outletFinal));
             }
         }
 
@@ -1415,11 +1454,17 @@ export const addDataByOrder = async (req, res) => {
         const { lockerName, ...objData } = req.body;
         const orderId = req.params.id;
 
+        const outletFinal =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
         if (req.userData) {
             objData.tenantRef = req.userData.tenantRef;
 
-            if (req.userData?.outletRef) {
-                objData.outletRef = req.userData.outletRef;
+
+            if (outletFinal != null) {
+                objData.outletRef = new mongoose.Types.ObjectId(String(outletFinal));
             }
         }
 
@@ -1568,8 +1613,8 @@ export const addDataByOrder = async (req, res) => {
             ...(req.userData?.tenantRef && {
                 tenantRef: req.userData.tenantRef,
             }),
-            ...(req.userData?.outletRef && {
-                outletRef: req.userData.outletRef,
+            ...(outletFinal && {
+                outletRef: new mongoose.Types.ObjectId(String(outletFinal)),
             }),
         };
 
@@ -1611,9 +1656,9 @@ export const deleteData = async (req, res) => {
             ...(req.userData?.tenantRef && {
                 tenantRef: req.userData.tenantRef,
             }),
-            ...(req.userData?.outletRef && {
-                outletRef: req.userData.outletRef,
-            }),
+            // ...(req.userData?.outletRef && {
+            //     outletRef: req.userData.outletRef,
+            // }),
         };
 
         const qProgress = {
@@ -1621,9 +1666,9 @@ export const deleteData = async (req, res) => {
             ...(req.userData?.tenantRef && {
                 tenantRef: req.userData.tenantRef,
             }),
-            ...(req.userData?.outletRef && {
-                outletRef: req.userData.outletRef,
-            }),
+            // ...(req.userData?.outletRef && {
+            //     outletRef: req.userData.outletRef,
+            // }),
         };
 
         // ================= EXECUTE PARALLEL =================
@@ -1653,9 +1698,9 @@ export const migrateItemRef = async (req, res) => {
             ...(req.userData?.tenantRef && {
                 tenantRef: req.userData.tenantRef,
             }),
-            ...(req.userData?.outletRef && {
-                outletRef: req.userData.outletRef,
-            }),
+            // ...(req.userData?.outletRef && {
+            //     outletRef: req.userData.outletRef,
+            // }),
         };
 
         const cursor = Progress.find(qMatch).lean().cursor();
