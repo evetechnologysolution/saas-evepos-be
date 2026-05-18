@@ -11,7 +11,7 @@ export const getAllNotification = async (req, res) => {
 
         const outletFilter = outletSource ? { outletRef: outletSource } : {};
         const tenantFilter = req.userData?.tenantRef ? { tenantRef: req.userData.tenantRef } : {};
-        const tenantTransfer = req.userData?.tenantRef ? { "transfer.toOutletRef": req.userData.tenantRef } : {};
+        const outletTransfer = req.userData?.tenantRef ? { "transfer.toOutletRef": outletSource } : {};
 
         const [totalDelivery, totalUnreadMessage, totalNewPostcard, totalNewTransfer] = await Promise.all([
             Order.countDocuments({
@@ -32,8 +32,8 @@ export const getAllNotification = async (req, res) => {
             }),
             Order.countDocuments({
                 "transfer.status": "open",
-                ...tenantTransfer,
-                ...outletFilter,
+                ...outletTransfer,
+                ...tenantFilter,
             }),
         ]);
 

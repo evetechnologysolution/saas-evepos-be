@@ -1869,16 +1869,16 @@ export const editOrderRaw = async (req, res) => {
         session.endSession();
 
         // ================= NOTIFICATION =================
-        if (updatePayload?.transfer?.toOutletRef && updatePayload?.transfer?.status === "open") {
+        if (transferData?.toOutletRef && transferData?.status === "open") {
             try {
                 const channel = "admin-notif";
                 const event = "transfer-new";
-                const newObj = newData.toObject();
                 const roles = ["owner", "super admin", "admin", "cashier"];
                 const message = `New Transfer Order ${existData?.orderId})!`;
-                const notifPayload = { toNotifOutlet: updatePayload?.transfer?.toOutletRef, message, roles };
+                const notifPayload = { toNotifOutlet: transferData?.toOutletRef, message, roles };
 
                 await pusherNotif(channel, event, notifPayload);
+                // console.log("Notification success");
             } catch (err) {
                 console.error("Notification error:", err.message);
             }
