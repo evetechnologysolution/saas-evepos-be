@@ -1387,7 +1387,7 @@ export const addOrder = async (req, res) => {
                         newObj?.customer?.name && newObj?.customer?.phone
                             ? `New Delivery Order from ${newObj.customer.name} (${newObj.customer.phone})!`
                             : "New Delivery Order!";
-                    const notifPayload = { ...newObj, message, roles };
+                    const notifPayload = { ...newObj, toNotifOutlet: newData?.outletRef, message, roles };
 
                     // kirim email + pusher parallel
                     await Promise.allSettled([sendOrderMail(newObj), pusherNotif(channel, event, notifPayload)]);
@@ -1867,6 +1867,22 @@ export const editOrderRaw = async (req, res) => {
 
         await session.commitTransaction();
         session.endSession();
+
+        // ================= NOTIFICATION =================
+        if (updatePayload?.transfer?.toOutletRef && updatePayload?.transfer?.status === "open") {
+            try {
+                const channel = "admin-notif";
+                const event = "transfer-new";
+                const newObj = newData.toObject();
+                const roles = ["owner", "super admin", "admin", "cashier"];
+                const message = `New Transfer Order ${existData?.orderId})!`;
+                const notifPayload = { toNotifOutlet: updatePayload?.transfer?.toOutletRef, message, roles };
+
+                await pusherNotif(channel, event, notifPayload);
+            } catch (err) {
+                console.error("Notification error:", err.message);
+            }
+        }
 
         return res.json({
             success: true,
