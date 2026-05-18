@@ -409,8 +409,8 @@ const DataSchema = mongoose.Schema(
                 },
                 status: {
                     type: String,
-                    enum: ["open", "closed"],
-                    default: null,
+                    // enum: ["open", "accepted", "return", "closed"],
+                    default: "",
                     lowercase: true,
                     trim: true,
                 },
@@ -443,7 +443,7 @@ const DataSchema = mongoose.Schema(
                     default: [],
                 },
             },
-            default: null,
+            // default: null, // tidak perlu disimpan null, jadi error saat update data
         },
         tenantRef: {
             type: mongoose.Schema.Types.ObjectId,
