@@ -276,6 +276,303 @@ export const getAllRawProduct = async (req, res) => {
     }
 };
 
+export const getAllRawProductV2 = async (req, res) => {
+    try {
+        const { category, subcategory, onweb, sort } = req.query;
+        let qMatch = {};
+        let outletRef = null;
+
+        if (req.userData) {
+            qMatch.tenantRef = req.userData?.tenantRef;
+            outletRef =
+                req.body?.outletRef ??
+                req.query?.outletRef ??
+                req.userData?.outletRef;
+
+            if (outletRef != null) {
+                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+            }
+        }
+
+        if (category) {
+            let categoryName = category.replace(":ne", "").trim();
+
+            const categories = await Category.find({
+                name: { $regex: categoryName, $options: "i" },
+            });
+            const filteredCategory = categories.map((item) => item._id);
+
+            if (category.includes(":ne")) {
+                qMatch.category = { $nin: filteredCategory };
+            } else {
+                qMatch.category = { $in: filteredCategory };
+            }
+        }
+
+        if (subcategory) {
+            let subName = subcategory.replace(":ne", "").trim();
+
+            const subs = await Subcategory.find({
+                name: { $regex: subName, $options: "i" },
+            });
+            const filteredSub = subs.map((item) => item._id);
+
+            if (subcategory.includes(":ne")) {
+                qMatch.subcategory = { $nin: filteredSub };
+            } else {
+                qMatch.subcategory = { $in: filteredSub };
+            }
+        }
+
+        if (onweb === "yes") {
+            qMatch.showOnWeb = { $eq: true };
+        }
+
+        if (onweb === "no") {
+            qMatch.showOnWeb = { $ne: true };
+        }
+
+        var d = new Date();
+        var currDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+        let sortObj = {
+            // isRecommended: -1,
+            listNumber: 1,
+            name: 1,
+        }; // default
+        if (sort && sort.trim() !== "") {
+            sortObj = {};
+            sort.split(",").forEach((rule) => {
+                const [field, type] = rule.split(":");
+                sortObj[field] = type === "asc" ? 1 : -1;
+            });
+        }
+
+        const listofData = await Product.aggregate([
+            { $match: qMatch },
+            {
+                $lookup: {
+                    from: "categories",
+                    localField: "category",
+                    foreignField: "_id",
+                    as: "category",
+                },
+            },
+            {
+                $lookup: {
+                    from: "subcategories",
+                    localField: "subcategory",
+                    foreignField: "_id",
+                    as: "subcategory",
+                },
+            },
+            {
+                $lookup: {
+                    from: "variants",
+                    localField: "variant.variantRef",
+                    foreignField: "_id",
+                    as: "variantDetails",
+                },
+            },
+            {
+                $lookup: {
+                    from: "promotions",
+                    let: {
+                        productId: "$_id",
+                        outletId: new mongoose.Types.ObjectId(String(outletRef)),
+                        currDate: currDate,
+                    },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        // product ada di promotion.products
+                                        {
+                                            $in: ["$$productId", "$products",],
+                                        },
+                                        { $eq: ["$isAvailable", true] },
+                                        // promo khusus outlet
+                                        {
+                                            $in: ["$$outletId", "$outletRef",],
+                                        },
+                                        {
+                                            $or: [{ $gt: ["$amount", 0] }, { $gt: ["$qtyMin", 0] },],
+                                        },
+                                        { $lte: ["$startDate", currDate] },
+                                        {
+                                            $or: [
+                                                { $eq: ["$endDate", null] },
+                                                { $not: { $ifNull: ["$endDate", false] } },
+                                                { $gte: ["$endDate", currDate] },
+                                            ],
+                                        },
+                                        // selected day
+                                        {
+                                            $or: [
+                                                // setiap hari (null atau [])
+                                                {
+                                                    $or: [
+                                                        { $eq: ["$selectedDay", null] },
+                                                        {
+                                                            $and: [
+                                                                { $isArray: "$selectedDay" },
+                                                                { $eq: [{ $size: "$selectedDay" }, 0,], },
+                                                            ],
+                                                        },
+                                                    ],
+                                                },
+                                                // hari tertentu
+                                                {
+                                                    $and: [
+                                                        { $isArray: "$selectedDay" },
+                                                        { $gt: [{ $size: "$selectedDay" }, 0,], },
+                                                        { $in: [{ $dayOfWeek: currDate }, "$selectedDay",], },
+                                                    ],
+                                                },
+                                            ],
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+
+                        // promotion terbaru
+                        {
+                            $sort: {
+                                startDate: -1,
+                                createdAt: -1,
+                            },
+                        },
+
+                        // hanya 1 promo
+                        {
+                            $limit: 1,
+                        },
+                    ],
+                    as: "promoRef",
+                },
+            },
+            {
+                $addFields: {
+                    promo: { $arrayElemAt: ["$promoRef", 0] },
+                },
+            },
+            {
+                $addFields: {
+                    discount: {
+                        name: "$promo.name",
+                        amount: "$promo.amount",
+                        qtyMin: "$promo.qtyMin",
+                        qtyFree: "$promo.qtyFree",
+                        conditional: "$promo.conditional",
+                        isDailyPromotion: {
+                            $cond: {
+                                if: { $ifNull: ["$promo._id", false] },
+                                then: true,
+                                else: false,
+                            },
+                        },
+                        isAvailable: {
+                            $cond: {
+                                if: { $ifNull: ["$promo._id", false] },
+                                then: true,
+                                else: false,
+                            },
+                        },
+                    },
+                },
+            },
+            {
+                $addFields: {
+                    category: { $arrayElemAt: ["$category", 0] },
+                    subcategory: { $arrayElemAt: ["$subcategory", 0] },
+                },
+            },
+            {
+                $sort: sortObj
+            },
+            {
+                $project: {
+                    _id: 1,
+                    createdAt: 1,
+                    name: 1,
+                    image: 1,
+                    price: 1,
+                    productionPrice: 1,
+                    productionNotes: 1,
+                    description: 1,
+                    unit: 1,
+                    listNumber: 1,
+                    amountKg: 1,
+                    isLaundryBag: 1,
+                    extraNotes: 1,
+                    isRecommended: 1,
+                    isAvailable: 1,
+                    minimumOrderQty: 1,
+                    baseTime: 1,
+                    category: {
+                        _id: "$category._id",
+                        name: "$category.name",
+                    },
+                    subcategory: {
+                        _id: "$subcategory._id",
+                        name: "$subcategory.name",
+                    },
+                    discount: 1,
+                    variant: {
+                        $map: {
+                            input: "$variant",
+                            as: "variantItem",
+                            in: {
+                                isMandatory: "$$variantItem.isMandatory",
+                                isMultiple: "$$variantItem.isMultiple",
+                                variantRef: {
+                                    $let: {
+                                        vars: {
+                                            variantDetailsFiltered: {
+                                                $arrayElemAt: [
+                                                    {
+                                                        $filter: {
+                                                            input: "$variantDetails",
+                                                            as: "variantDetail",
+                                                            cond: {
+                                                                $eq: ["$$variantDetail._id", "$$variantItem.variantRef"],
+                                                            },
+                                                        },
+                                                    },
+                                                    0,
+                                                ],
+                                            },
+                                        },
+                                        in: {
+                                            _id: "$$variantDetailsFiltered._id",
+                                            name: "$$variantDetailsFiltered.name",
+                                            caption: "$$variantDetailsFiltered.caption",
+                                            options: "$$variantDetailsFiltered.options",
+                                            suboptions: "$$variantDetailsFiltered.suboptions",
+                                            showOnWeb: "$$variantDetailsFiltered.showOnWeb",
+                                            // Explicitly avoid projecting date or any other unnecessary fields
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        ]);
+
+        return res.json(listofData);
+    } catch (err) {
+        return errorResponse(res, {
+            statusCode: 500,
+            code: "SERVER_ERROR",
+            message: err.message || "Terjadi kesalahan pada server",
+        });
+    }
+};
+
 // GETTING ALL THE DATA
 export const getAllProduct = async (req, res) => {
     try {
