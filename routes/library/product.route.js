@@ -1,7 +1,7 @@
 import express from "express";
 import { isAuth } from "../../middleware/auth.js";
 import {
-    getAllRawProduct,
+    getAllRawProductV2,
     getAllProduct,
     getProductById,
     reorderProduct,
@@ -13,7 +13,7 @@ import {
 const router = express.Router();
 
 // GETTING ALL THE DATA
-router.get("/all", isAuth, getAllRawProduct);
+router.get("/all", isAuth, getAllRawProductV2);
 router.get("/", isAuth, getAllProduct);
 
 // GET A SPECIFIC DATA
