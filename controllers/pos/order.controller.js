@@ -46,17 +46,19 @@ export const getAllOrder = async (req, res) => {
             if (outletRef != null) {
                 const transferValue = String(isTransfer || "").toLowerCase();
                 if (["yes", "1", "true"].includes(transferValue)) {
-                    qMatch["transfer.toOutletRef"] = { $ne: null };
                     if (outletRef != null) {
                         const outletObjectId = new mongoose.Types.ObjectId(String(outletRef));
-                        qMatch.$and = [
-                            {
-                                $or: [
-                                    { outletRef: outletObjectId },
-                                    { "transfer.toOutletRef": outletObjectId },
-                                ],
-                            },
-                        ];
+                        // qMatch.$and = [
+                        //     {
+                        //         $or: [
+                        //             { outletRef: outletObjectId },
+                        //             { "transfer.toOutletRef": outletObjectId },
+                        //         ],
+                        //     },
+                        // ];
+                        qMatch["transfer.toOutletRef"] = outletObjectId;
+                    } else {
+                        qMatch["transfer.toOutletRef"] = { $ne: null };
                     }
                 } else if (["no", "0", "false"].includes(transferValue)) {
                     qMatch["transfer.toOutletRef"] = null;
