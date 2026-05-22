@@ -52,6 +52,12 @@ const DataSchema = mongoose.Schema({
         enum: [1, 2, 3], // 1 diskon, 2 hadiah, 3 postcard
         default: 1
     },
+    option: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        default: ""
+    },
     product: {
         type: [{
             type: mongoose.Schema.Types.ObjectId,
