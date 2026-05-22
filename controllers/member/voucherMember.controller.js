@@ -90,7 +90,7 @@ export const getAllVoucher = async (req, res) => {
                         $in: mem.map((item) => new mongoose.Types.ObjectId(String(item._id))),
                     },
                 },
-            ];
+            ].filter(Boolean);
 
             if (qMatch.$and && status === "used") {
                 qMatch.$and.push({ $or: searchConditions });
