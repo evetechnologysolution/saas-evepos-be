@@ -12,6 +12,7 @@ import { errorResponse } from "../../utils/errorResponse.js";
 import { sendOrderMail } from "../../lib/nodemailer.js";
 import { pusherNotif } from "../../lib/pusher.js";
 import { mergeMasterStatus } from "../../lib/mergeStatus.js";
+import { processOrderAsync } from "../../lib/processOrder.js";
 
 // GETTING ALL THE DATA
 export const getAllOrder = async (req, res) => {
@@ -1409,6 +1410,93 @@ export const addOrder = async (req, res) => {
             statusCode: 500,
             code: "SERVER_ERROR",
             message: err.message || "Terjadi kesalahan pada server",
+        });
+    }
+};
+
+export const addOrderV2 = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        let objData = req.body;
+
+        // ================= USER CONTEXT =================
+        if (req.userData) {
+            objData.tenantRef = req.userData.tenantRef;
+
+            if (req.userData?.outletRef && !objData?.outletRef) {
+                objData.outletRef = req.userData.outletRef;
+            }
+        }
+
+        // ================= PARSE STRING INPUT =================
+        if (req.body?.customerString) {
+            objData.customer = JSON.parse(req.body.customerString);
+        }
+
+        if (req.body?.ordersString) {
+            objData.orders = JSON.parse(req.body.ordersString);
+        }
+
+        if (objData?.customer?.address) {
+            objData.isOnline = true;
+        }
+
+        // ================= MEMBER UPSERT (KEEP LIGHT) =================
+        let checkMember = null;
+
+        if (objData?.customer?.phone) {
+            const phoneE164 = convertToE164(objData.customer.phone);
+
+            checkMember = await Member.findOneAndUpdate(
+                {
+                    phone: phoneE164,
+                    tenantRef: req.userData?.tenantRef,
+                },
+                {
+                    $set: {
+                        ...objData.customer,
+                        phone: phoneE164,
+                    },
+                },
+                {
+                    new: true,
+                    upsert: true,
+                    session,
+                }
+            );
+
+            objData.customer.memberId = checkMember.memberId;
+        }
+
+        // ================= SAVE ORDER =================
+        const order = new Order(objData);
+        const newData = await order.save({ session });
+
+
+        await session.commitTransaction();
+        session.endSession();
+
+        // ================= RETURN FAST RESPONSE =================
+        res.json(newData);
+
+        // ================= BACKGROUND PROCESSING =================
+        processOrderAsync({
+            order: newData,
+            member: checkMember,
+            userData: req.userData,
+            objData,
+        });
+
+
+    } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+
+        return res.status(500).json({
+            success: false,
+            message: err.message,
         });
     }
 };
