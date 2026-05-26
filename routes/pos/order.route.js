@@ -13,6 +13,7 @@ import {
     getOrderById,
     getOrderProgressById,
     addOrder,
+    addOrderV2,
     generatePoint,
     editOrder,
     editOrderRaw,
@@ -43,6 +44,7 @@ router.get("/progress/:id", isAuth, getOrderProgressById);
 
 // CREATE NEW DATA
 router.post("/", isAuth, addOrder);
+router.post("/v2", isAuth, addOrderV2);
 
 // UPDATE A SPECIFIC DATA
 router.patch("/:id", isAuth, editOrder);
