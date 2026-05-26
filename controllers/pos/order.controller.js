@@ -251,6 +251,8 @@ export const getDeliveryOrder = async (req, res) => {
         }
 
         if (search) {
+            const fixedId = mongoose.Types.ObjectId.isValid(search) ? search : null;
+
             qMatch = {
                 ...qMatch,
                 $or: [
