@@ -2107,7 +2107,11 @@ export const deleteOrder = async (req, res) => {
                 req.userData?.outletRef;
 
             if (outletRef != null) {
-                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
+                const outletObjId = new mongoose.Types.ObjectId(String(outletRef));
+                qMatch.$or = [
+                    { outletRef: outletObjId },
+                    { "transfer.toOutletRef": outletObjId },
+                ];
             }
         }
         const deletedData = await Order.deleteOne(qMatch);
