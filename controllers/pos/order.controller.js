@@ -58,6 +58,7 @@ export const getAllOrder = async (req, res) => {
                                         { "transfer.toOutletRef": outletObjectId },
                                     ],
                                 },
+                                { "transfer.toOutletRef": { $ne: null } }
                             ];
                         } else {
                             qMatch["transfer.toOutletRef"] = outletObjectId;
