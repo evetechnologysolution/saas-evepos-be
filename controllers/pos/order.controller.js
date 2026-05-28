@@ -25,6 +25,7 @@ export const getAllOrder = async (req, res) => {
             printLaundry,
             status,
             isTransfer,
+            showAllTransfer,
             transferStatus,
             progressStatus,
             pickup,
@@ -49,15 +50,18 @@ export const getAllOrder = async (req, res) => {
                 if (["yes", "1", "true"].includes(transferValue)) {
                     if (outletRef != null) {
                         const outletObjectId = new mongoose.Types.ObjectId(String(outletRef));
-                        // qMatch.$and = [
-                        //     {
-                        //         $or: [
-                        //             { outletRef: outletObjectId },
-                        //             { "transfer.toOutletRef": outletObjectId },
-                        //         ],
-                        //     },
-                        // ];
-                        qMatch["transfer.toOutletRef"] = outletObjectId;
+                        if (["yes", "1", "true"].includes(showAllTransfer)) {
+                            qMatch.$and = [
+                                {
+                                    $or: [
+                                        { outletRef: outletObjectId },
+                                        { "transfer.toOutletRef": outletObjectId },
+                                    ],
+                                },
+                            ];
+                        } else {
+                            qMatch["transfer.toOutletRef"] = outletObjectId;
+                        }
                     } else {
                         qMatch["transfer.toOutletRef"] = { $ne: null };
                     }
