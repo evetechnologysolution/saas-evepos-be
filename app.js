@@ -231,6 +231,8 @@ import pusherRoute from "./routes/pusher.route.js";
 import blogRoute from "./routes/article/article.route.js";
 import galleryRoute from "./routes/article/gallery.route.js";
 
+import waHookRoute from "./routes/wa-webhook/webhook.route.js";
+
 // cron
 app.use("/api/cron", cronRoute); // disambungkan ke cron-job.org atau github actions
 
@@ -327,6 +329,8 @@ app.use("/api/pusher", pusherRoute);
 // blog
 app.use("/api/blog", blogRoute);
 app.use("/api/gallery", galleryRoute);
+
+app.use("/api/wa-webhook", waHookRoute);
 
 app.get("/", (_, res) => {
     res.send("We are on home");

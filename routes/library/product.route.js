@@ -14,6 +14,7 @@ const router = express.Router();
 
 // GETTING ALL THE DATA
 router.get("/all", isAuth, getAllRawProductV2);
+router.get("/all-webhook", getAllRawProductV2);
 router.get("/", isAuth, getAllProduct);
 
 // GET A SPECIFIC DATA

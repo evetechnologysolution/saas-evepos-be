@@ -280,18 +280,24 @@ export const getAllRawProductV2 = async (req, res) => {
     try {
         const { category, subcategory, onweb, sort } = req.query;
         let qMatch = {};
+        let tenantRef = null;
         let outletRef = null;
 
-        if (req.userData) {
-            qMatch.tenantRef = req.userData?.tenantRef;
-            outletRef =
-                req.body?.outletRef ??
-                req.query?.outletRef ??
-                req.userData?.outletRef;
+        tenantRef =
+            req.body?.tenantRef ??
+            req.query?.tenantRef ??
+            req.userData?.tenantRef;
+        if (tenantRef != null) {
+            qMatch.tenantRef = new mongoose.Types.ObjectId(String(tenantRef));
+        }
 
-            if (outletRef != null) {
-                qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
-            }
+        outletRef =
+            req.body?.outletRef ??
+            req.query?.outletRef ??
+            req.userData?.outletRef;
+
+        if (outletRef != null) {
+            qMatch.outletRef = new mongoose.Types.ObjectId(String(outletRef));
         }
 
         if (category) {
