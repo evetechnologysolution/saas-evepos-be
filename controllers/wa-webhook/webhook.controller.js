@@ -36,7 +36,7 @@ export const greetings = async (req, res) => {
             const from = message.from;
             const text = message.text?.body;
 
-            console.log("Pesan masuk:", from, text);
+            // console.log("Pesan masuk:", from, text);
 
             const content =
                 `👋 Selamat datang di Evewash!
