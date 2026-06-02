@@ -1383,7 +1383,7 @@ export const addData = async (req, res) => {
         }
 
         // ================= GET ORDER ITEM =================
-        const checkOrder = await Order.findOne({ _id: orderId, "orders.id": itemId }, { "orders.$": 1 }, { session });
+        const checkOrder = await Order.findOne({ _id: orderId, "orders.id": itemId }, { "orders.$": 1, transfer: 1 }, { session });
 
         if (!checkOrder) {
             throw new Error("Order item tidak ditemukan");
@@ -1508,7 +1508,7 @@ export const addDataByOrder = async (req, res) => {
         if (processedLog.length > 0) {
 
             // ambil order
-            const checkOrder = await Order.findById(orderId, { orders: 1 }, { session });
+            const checkOrder = await Order.findById(orderId, { orders: 1, transfer: 1 }, { session });
 
             if (!checkOrder) {
                 throw new Error("Order tidak ditemukan");
