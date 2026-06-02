@@ -1496,6 +1496,7 @@ export const addDataByOrder = async (req, res) => {
         }
 
         delete objData.log;
+        delete objData.outletRef; // tidak diperlukan, sudah ada di setOnInsert
 
         // ================= VALIDASI STATUS =================
         for (const item of processedLog) {
