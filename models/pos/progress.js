@@ -124,6 +124,12 @@ const DataSchema = mongoose.Schema(
       default: null,
       set: (val) => (val === "" ? null : val),
     },
+    transferOutletRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Outlets",
+      default: null,
+      set: (val) => (val === "" ? null : val),
+    },
   },
   { timestamps: true },
 );
