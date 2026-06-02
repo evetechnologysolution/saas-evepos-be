@@ -1467,9 +1467,9 @@ export const addDataByOrder = async (req, res) => {
             objData.tenantRef = req.userData.tenantRef;
 
 
-            if (outletFinal != null) {
-                objData.outletRef = new mongoose.Types.ObjectId(String(outletFinal));
-            }
+            // if (outletFinal != null) {
+            //     objData.outletRef = new mongoose.Types.ObjectId(String(outletFinal));
+            // }
         }
 
         // ================= NORMALIZE LOG =================
