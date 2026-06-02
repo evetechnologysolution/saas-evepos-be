@@ -1383,13 +1383,15 @@ export const addData = async (req, res) => {
         }
 
         // ================= GET ORDER ITEM =================
-        const order = await Order.findOne({ _id: orderId, "orders.id": itemId }, { "orders.$": 1 }, { session });
+        const checkOrder = await Order.findOne({ _id: orderId, "orders.id": itemId }, { "orders.$": 1 }, { session });
 
-        if (!order) {
+        if (!checkOrder) {
             throw new Error("Order item tidak ditemukan");
         }
 
-        const orderItem = order.orders[0];
+        objData.transferOutletRef = checkOrder?.transfer?.toOutletRef || null;
+
+        const orderItem = checkOrder.orders[0];
 
         // ================= HITUNG LOG EXISTING =================
         const progressList = await Progress.find(
@@ -1459,6 +1461,8 @@ export const addDataByOrder = async (req, res) => {
             req.query?.outletRef ??
             req.userData?.outletRef;
 
+        let outletTransferFinal = null;
+
         if (req.userData) {
             objData.tenantRef = req.userData.tenantRef;
 
@@ -1504,11 +1508,13 @@ export const addDataByOrder = async (req, res) => {
         if (processedLog.length > 0) {
 
             // ambil order
-            const order = await Order.findById(orderId, { orders: 1 }, { session });
+            const checkOrder = await Order.findById(orderId, { orders: 1 }, { session });
 
-            if (!order) {
+            if (!checkOrder) {
                 throw new Error("Order tidak ditemukan");
             }
+
+            outletTransferFinal = checkOrder?.transfer?.toOutletRef || null;
 
             // ambil semua progress log
             const progressList = await Progress.find(
@@ -1533,7 +1539,7 @@ export const addDataByOrder = async (req, res) => {
             }
 
             // ================= SIMPAN ORDER DETAIL (PER ITEM, BUKAN DIGABUNG) =================
-            const orderItems = (order.orders || []).map((item) => ({
+            const orderItems = (checkOrder.orders || []).map((item) => ({
                 id: String(item.id),
                 itemRef: item?._id ? String(item?._id) : "",
                 orderedQty: Number(item.qty || 0),
@@ -1615,6 +1621,9 @@ export const addDataByOrder = async (req, res) => {
             }),
             ...(outletFinal && {
                 outletRef: new mongoose.Types.ObjectId(String(outletFinal)),
+            }),
+            ...(outletTransferFinal && {
+                transferOutletRef: new mongoose.Types.ObjectId(String(outletTransferFinal)),
             }),
         };
 
