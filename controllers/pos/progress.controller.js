@@ -1619,17 +1619,28 @@ export const addDataByOrder = async (req, res) => {
             ...(req.userData?.tenantRef && {
                 tenantRef: req.userData.tenantRef,
             }),
-            ...(outletFinal && {
-                outletRef: new mongoose.Types.ObjectId(String(outletFinal)),
-            }),
-            ...(outletTransferFinal && {
-                transferOutletRef: new mongoose.Types.ObjectId(String(outletTransferFinal)),
-            }),
+            // ...(outletFinal && {
+            //     outletRef: new mongoose.Types.ObjectId(String(outletFinal)),
+            // }),
+            // ...(outletTransferFinal && {
+            //     transferOutletRef: new mongoose.Types.ObjectId(String(outletTransferFinal)),
+            // }),
         };
 
         const updatedProgress = await Progress.findOneAndUpdate(
             qProgress,
-            update,
+            // update,
+            {
+                ...update,
+                $setOnInsert: {
+                    ...(outletFinal && {
+                        outletRef: new mongoose.Types.ObjectId(String(outletFinal)),
+                    }),
+                    ...(outletTransferFinal && {
+                        transferOutletRef: new mongoose.Types.ObjectId(String(outletTransferFinal)),
+                    }),
+                },
+            },
             {
                 new: true,
                 upsert: true,
