@@ -28,6 +28,7 @@ export const getAllOrder = async (req, res) => {
             showAllTransfer,
             transferStatus,
             progressStatus,
+            paymentMethod,
             pickup,
             orderType,
             start,
@@ -153,6 +154,23 @@ export const getAllOrder = async (req, res) => {
                 }
             }
         }
+        if (paymentMethod) {
+            const fixMethodArray = paymentMethod
+                .replace(":ne", "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+
+            const regexArray = fixMethodArray.map(
+                (item) => new RegExp(`^${item}$`, "i")
+            );
+
+            if (paymentMethod.includes(":ne")) {
+                qMatch.payment = { $nin: regexArray };
+            } else {
+                qMatch.payment = { $in: regexArray };
+            }
+        }
         if (pickup) {
             qMatch.pickUpStatus = pickup;
         }
@@ -239,7 +257,7 @@ export const getAllOrder = async (req, res) => {
 
 export const getDeliveryOrder = async (req, res) => {
     try {
-        const { page, perPage, search, printCount, printLaundry, status, progressStatus, pickup, start, end, paidStart, paidEnd, sort } =
+        const { page, perPage, search, printCount, printLaundry, status, progressStatus, paymentMethod, pickup, start, end, paidStart, paidEnd, sort } =
             req.query;
 
         let qMatch = { orderType: "delivery" };
@@ -316,6 +334,23 @@ export const getDeliveryOrder = async (req, res) => {
                 }
             }
         }
+        if (paymentMethod) {
+            const fixMethodArray = paymentMethod
+                .replace(":ne", "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+
+            const regexArray = fixMethodArray.map(
+                (item) => new RegExp(`^${item}$`, "i")
+            );
+
+            if (paymentMethod.includes(":ne")) {
+                qMatch.payment = { $nin: regexArray };
+            } else {
+                qMatch.payment = { $in: regexArray };
+            }
+        }
         if (pickup) {
             qMatch.pickUpStatus = pickup;
         }
@@ -384,7 +419,7 @@ export const getDeliveryOrder = async (req, res) => {
 
 export const getTrackOrder = async (req, res) => {
     try {
-        const { page, perPage, search, status, progressStatus, pickup, start, end, paidStart, paidEnd, sort } = req.query;
+        const { page, perPage, search, status, progressStatus, paymentMethod, pickup, start, end, paidStart, paidEnd, sort } = req.query;
 
         let qMatch = {};
 
@@ -446,6 +481,23 @@ export const getTrackOrder = async (req, res) => {
                 } else {
                     qMatch.progressStatus = { $in: fixProgressStatusArray };
                 }
+            }
+        }
+        if (paymentMethod) {
+            const fixMethodArray = paymentMethod
+                .replace(":ne", "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+
+            const regexArray = fixMethodArray.map(
+                (item) => new RegExp(`^${item}$`, "i")
+            );
+
+            if (paymentMethod.includes(":ne")) {
+                qMatch.payment = { $nin: regexArray };
+            } else {
+                qMatch.payment = { $in: regexArray };
             }
         }
         if (pickup) {
@@ -596,7 +648,7 @@ export const getCountTrackOrder = async (req, res) => {
 // GETTING ORDER BY MEMBER
 export const getOrderByMember = async (req, res) => {
     try {
-        const { page, perPage, search, status, progressStatus, pickup, orderType, sort } = req.query;
+        const { page, perPage, search, status, progressStatus, paymentMethod, pickup, orderType, sort } = req.query;
 
         let qMatch = {
             "customer.memberId": req.params.id,
@@ -651,6 +703,23 @@ export const getOrderByMember = async (req, res) => {
                 }
             }
         }
+        if (paymentMethod) {
+            const fixMethodArray = paymentMethod
+                .replace(":ne", "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+
+            const regexArray = fixMethodArray.map(
+                (item) => new RegExp(`^${item}$`, "i")
+            );
+
+            if (paymentMethod.includes(":ne")) {
+                qMatch.payment = { $nin: regexArray };
+            } else {
+                qMatch.payment = { $in: regexArray };
+            }
+        }
         if (pickup) {
             qMatch.pickUpStatus = pickup;
         }
@@ -686,7 +755,7 @@ export const getOrderByMember = async (req, res) => {
 // GETTING PAID DATA
 export const getPaidOrder = async (req, res) => {
     try {
-        const { page, perPage, search, start, end, paidStart, paidEnd, sort } = req.query;
+        const { page, perPage, search, paymentMethod, start, end, paidStart, paidEnd, sort } = req.query;
 
         let qMatch = {
             // status: { $in: [/^paid$/i, /^refund$/i] },
@@ -723,6 +792,23 @@ export const getPaidOrder = async (req, res) => {
                     { "customer.email": { $regex: search, $options: "i" } },
                 ], // option i for case insensitivity to match upper and lower cases.
             };
+        }
+        if (paymentMethod) {
+            const fixMethodArray = paymentMethod
+                .replace(":ne", "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+
+            const regexArray = fixMethodArray.map(
+                (item) => new RegExp(`^${item}$`, "i")
+            );
+
+            if (paymentMethod.includes(":ne")) {
+                qMatch.payment = { $nin: regexArray };
+            } else {
+                qMatch.payment = { $in: regexArray };
+            }
         }
         if (start) {
             const dStart = new Date(start);
@@ -856,7 +942,7 @@ export const getCloseCashierOrder = async (req, res) => {
 // GETTING EXPORT ORDER
 export const getExportOrder = async (req, res) => {
     try {
-        const { search, status, start, end, paidStart, paidEnd, sort } = req.query;
+        const { search, status, paymentMethod, start, end, paidStart, paidEnd, sort } = req.query;
         let qMatch = {
             // status: { $in: [/^paid$/i, /^refund$/i] },
             status: { $nin: "backlog" }
@@ -876,7 +962,7 @@ export const getExportOrder = async (req, res) => {
         if (status) {
             const fixStatus = status.replace(":ne", "").trim();
             if (fixStatus) {
-                const fixStatusArray = fixStatus
+                let fixStatusArray = fixStatus
                     .split(",")
                     .map((s) => s.trim())
                     .filter(Boolean); // Pastikan array dan bersih
@@ -912,6 +998,23 @@ export const getExportOrder = async (req, res) => {
                     { "customer.email": { $regex: search, $options: "i" } },
                 ], // option i for case insensitivity to match upper and lower cases.
             };
+        }
+        if (paymentMethod) {
+            const fixMethodArray = paymentMethod
+                .replace(":ne", "")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+
+            const regexArray = fixMethodArray.map(
+                (item) => new RegExp(`^${item}$`, "i")
+            );
+
+            if (paymentMethod.includes(":ne")) {
+                qMatch.payment = { $nin: regexArray };
+            } else {
+                qMatch.payment = { $in: regexArray };
+            }
         }
         if (start) {
             const dStart = new Date(start);
