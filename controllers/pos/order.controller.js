@@ -962,7 +962,7 @@ export const getExportOrder = async (req, res) => {
         if (status) {
             const fixStatus = status.replace(":ne", "").trim();
             if (fixStatus) {
-                const fixStatusArray = fixStatus
+                let fixStatusArray = fixStatus
                     .split(",")
                     .map((s) => s.trim())
                     .filter(Boolean); // Pastikan array dan bersih
