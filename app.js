@@ -174,6 +174,7 @@ import voucherRoute from "./routes/library/voucher.route.js";
 
 // pos
 import orderRoute from "./routes/pos/order.route.js";
+import orderRouteV2 from "./routes/pos/v2/order.route.js";
 import progressLabelRoute from "./routes/pos/progressLabel.route.js";
 import progressRoute from "./routes/pos/progress.route.js";
 
@@ -269,6 +270,7 @@ app.use("/api/voucher", voucherRoute);
 
 // pos
 app.use("/api/order", orderRoute);
+app.use("/api/transaction/", orderRouteV2);
 app.use("/api/progress-label", progressLabelRoute);
 app.use("/api/progress", progressRoute);
 
