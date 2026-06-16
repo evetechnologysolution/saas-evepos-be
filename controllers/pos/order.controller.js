@@ -1282,7 +1282,7 @@ export const getExportOrder = async (req, res) => {
         });
 
         return res.json({
-            data: listofData,
+            docs: listofData,
             summary,
             paymentSummary: paymentSummaryFormatted,
         });
